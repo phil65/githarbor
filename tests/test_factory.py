@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+import os
+
+import pytest
+
+from githarbor.exceptions import RepositoryNotFoundError
+from githarbor.providers.githubrepository import GitHubRepository
+from githarbor.providers.gitlabrepository import GitLabRepository
+from githarbor.repositories import create_repository
+
+
+BITBUCKET_TOKEN = os.getenv("BITBUCKET_TOKEN")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
+
+
+def test_create_github_repository():
+    repo = create_repository("https://github.com/phil65/mknodes")
+    assert isinstance(repo, GitHubRepository)
+    assert repo.name == "mknodes"
+
+
+def test_create_gitlab_repository():
+    repo = create_repository("https://gitlab.com/phil65/test")
+    assert isinstance(repo, GitLabRepository)
+    assert repo.name == "test"
+
+
+# def test_create_bitbucket_repository():
+#     repo = create_repository("https://bitbucket.org/phil__65/testrepo")
+#     assert isinstance(repo, BitbucketRepository)
+#     assert repo.name == "testrepo"
+
+
+def test_invalid_url():
+    with pytest.raises(RepositoryNotFoundError):
+        create_repository("https://invalid.com/owner/repo")
