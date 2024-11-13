@@ -168,6 +168,60 @@ class GitHubRepository(Repository):
             milestone=issue.milestone.title if issue.milestone else None,
         )
 
+    def _create_commit_model(self, commit: Any) -> Commit:
+        return Commit(
+            sha=commit.sha,
+            message=commit.commit.message,
+            created_at=commit.commit.author.date,
+            author=self._create_user_model(commit.author)
+            or User(
+                username="",
+                name=commit.commit.author.name,
+                email=commit.commit.author.email,
+            ),
+            committer=self._create_user_model(commit.committer),
+            url=commit.html_url,
+            stats={
+                "additions": commit.stats.additions,
+                "deletions": commit.stats.deletions,
+                "total": commit.stats.total,
+            },
+            parents=[p.sha for p in commit.parents],
+            # verified=commit.commit.verification.verified,
+            files_changed=[f.filename for f in commit.files],
+        )
+
+    def _create_release_model(self, release: Any) -> Release:
+        return Release(
+            tag_name=release.tag_name,
+            name=release.title,
+            description=release.body or "",
+            created_at=release.created_at,
+            published_at=release.published_at,
+            draft=release.draft,
+            prerelease=release.prerelease,
+            author=User(
+                username=release.author.login,
+                name=release.author.name,
+                avatar_url=release.author.avatar_url,
+            )
+            if release.author
+            else None,
+            assets=[
+                {
+                    "name": asset.name,
+                    "url": asset.browser_download_url,
+                    "size": asset.size,
+                    "download_count": asset.download_count,
+                    "created_at": asset.created_at,
+                    "updated_at": asset.updated_at,
+                }
+                for asset in release.assets
+            ],
+            url=release.html_url,
+            target_commitish=release.target_commitish,
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo.get_branch(name)
@@ -199,29 +253,7 @@ class GitHubRepository(Repository):
     def get_pull_request(self, number: int) -> PullRequest:
         try:
             pr = self._repo.get_pull(number)
-            return PullRequest(
-                number=pr.number,
-                title=pr.title,
-                description=pr.body or "",
-                state=pr.state,
-                source_branch=pr.head.ref,
-                target_branch=pr.base.ref,
-                created_at=pr.created_at,
-                updated_at=pr.updated_at,
-                merged_at=pr.merged_at,
-                closed_at=pr.closed_at,
-                author=self._create_user_model(pr.user),
-                assignees=[self._create_user_model(a) for a in pr.assignees if a],
-                labels=[self._create_label_model(lbl) for lbl in pr.labels],
-                merged_by=self._create_user_model(pr.merged_by),
-                review_comments_count=pr.review_comments,
-                commits_count=pr.commits,
-                additions=pr.additions,
-                deletions=pr.deletions,
-                changed_files=pr.changed_files,
-                mergeable=pr.mergeable,
-                url=pr.html_url,
-            )
+            return self._create_pull_request_model(pr)
         except GithubException as e:
             msg = f"Pull request #{number} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -254,27 +286,7 @@ class GitHubRepository(Repository):
     def get_commit(self, sha: str) -> Commit:
         try:
             commit = self._repo.get_commit(sha)
-            return Commit(
-                sha=commit.sha,
-                message=commit.commit.message,
-                created_at=commit.commit.author.date,
-                author=self._create_user_model(commit.author)
-                or User(
-                    username="",
-                    name=commit.commit.author.name,
-                    email=commit.commit.author.email,
-                ),
-                committer=self._create_user_model(commit.committer),
-                url=commit.html_url,
-                stats={
-                    "additions": commit.stats.additions,
-                    "deletions": commit.stats.deletions,
-                    "total": commit.stats.total,
-                },
-                parents=[p.sha for p in commit.parents],
-                # verified=commit.commit.verification.verified,
-                files_changed=[f.filename for f in commit.files],
-            )
+            return self._create_commit_model(commit)
         except GithubException as e:
             msg = f"Commit {sha} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -304,30 +316,7 @@ class GitHubRepository(Repository):
             commits = self._repo.get_commits(**kwargs)
             results = commits[:max_results] if max_results else commits
 
-            return [
-                Commit(
-                    sha=c.sha,
-                    message=c.commit.message,
-                    created_at=c.commit.author.date,
-                    author=self._create_user_model(c.author)
-                    or User(
-                        username="",
-                        name=c.commit.author.name,
-                        email=c.commit.author.email,
-                    ),
-                    committer=self._create_user_model(c.committer),
-                    url=c.html_url,
-                    stats={
-                        "additions": c.stats.additions,
-                        "deletions": c.stats.deletions,
-                        "total": c.stats.total,
-                    },
-                    parents=[p.sha for p in c.parents],
-                    # verified=c.commit.verification.verified,
-                    files_changed=[f.filename for f in c.files],
-                )
-                for c in results
-            ]
+            return [self._create_commit_model(c) for c in results]
         except GithubException as e:
             msg = f"Failed to list commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -555,35 +544,7 @@ class GitHubRepository(Repository):
             # Get latest release
             latest = filtered[0]  # Releases are returned in chronological order
 
-            return Release(
-                tag_name=latest.tag_name,
-                name=latest.title,
-                description=latest.body or "",
-                created_at=latest.created_at,
-                published_at=latest.published_at,
-                draft=latest.draft,
-                prerelease=latest.prerelease,
-                author=User(
-                    username=latest.author.login,
-                    name=latest.author.name,
-                    avatar_url=latest.author.avatar_url,
-                )
-                if latest.author
-                else None,
-                assets=[
-                    {
-                        "name": asset.name,
-                        "url": asset.browser_download_url,
-                        "size": asset.size,
-                        "download_count": asset.download_count,
-                        "created_at": asset.created_at,
-                        "updated_at": asset.updated_at,
-                    }
-                    for asset in latest.assets
-                ],
-                url=latest.html_url,
-                target_commitish=latest.target_commitish,
-            )
+            return self._create_release_model(latest)
 
         except GithubException as e:
             msg = f"Failed to get latest release: {e!s}"
@@ -612,39 +573,7 @@ class GitHubRepository(Repository):
                     continue
                 if not include_prereleases and release.prerelease:
                     continue
-
-                releases.append(
-                    Release(
-                        tag_name=release.tag_name,
-                        name=release.title,
-                        description=release.body or "",
-                        created_at=release.created_at,
-                        published_at=release.published_at,
-                        draft=release.draft,
-                        prerelease=release.prerelease,
-                        author=User(
-                            username=release.author.login,
-                            name=release.author.name,
-                            avatar_url=release.author.avatar_url,
-                        )
-                        if release.author
-                        else None,
-                        assets=[
-                            {
-                                "name": asset.name,
-                                "url": asset.browser_download_url,
-                                "size": asset.size,
-                                "download_count": asset.download_count,
-                                "created_at": asset.created_at,
-                                "updated_at": asset.updated_at,
-                            }
-                            for asset in release.assets
-                        ],
-                        url=release.html_url,
-                        target_commitish=release.target_commitish,
-                    )
-                )
-
+                releases.append(self._create_release_model(release))
                 if limit and len(releases) >= limit:
                     break
 
