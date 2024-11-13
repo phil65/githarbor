@@ -242,13 +242,15 @@ class GitHubRepository(Repository):
                 kwargs["author"] = author
             if path:
                 kwargs["path"] = path
+            if branch:
+                kwargs["sha"] = branch
 
-            commits = self._repo.get_commits(sha=branch, **kwargs)
+            commits = self._repo.get_commits(**kwargs)
 
             # Apply max_results limit if specified
-            commits = list(commits[:max_results]) if max_results else list(commits)
+            filtered = list(commits[:max_results]) if max_results else list(commits)
 
-            return [self.get_commit(c.sha) for c in commits]
+            return [self.get_commit(c.sha) for c in filtered]
 
         except GithubException as e:
             msg = f"Failed to list commits: {e!s}"
@@ -296,7 +298,7 @@ class GitHubRepository(Repository):
 
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         try:
-            run = self._repo.get_workflow_run(run_id)
+            run = self._repo.get_workflow_run(int(run_id))
             return WorkflowRun(
                 id=str(run.id),
                 name=run.name,
