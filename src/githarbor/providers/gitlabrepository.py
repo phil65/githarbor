@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import fnmatch
 import os
+import re
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
@@ -34,6 +35,10 @@ class GitLabRepository(Repository):
     """GitLab repository implementation."""
 
     url_patterns: ClassVar[list[str]] = ["gitlab.com"]
+    TIMESTAMP_FORMATS = [
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S.%f%z",  # Format with explicit timezone
+    ]
 
     def __init__(
         self,
@@ -96,11 +101,21 @@ class GitLabRepository(Repository):
             msg = f"Branch {name} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
-    def _parse_datetime(self, dt_str: str | None) -> datetime | None:
-        """Helper to consistently parse GitLab datetime strings."""
-        if not dt_str:
-            return None
-        return datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    def _parse_timestamp(self, timestamp: str) -> datetime:
+        """Parse GitLab timestamp string to datetime.
+        
+        Args:
+            timestamp: Timestamp string from GitLab API
+        """
+        # Convert 'Z' to +00:00 for consistent parsing
+        timestamp = re.sub(r"Z$", "+00:00", timestamp)
+        
+        for fmt in self.TIMESTAMP_FORMATS:
+            try:
+                return datetime.strptime(timestamp, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"Unable to parse timestamp: {timestamp}")
 
     def get_pull_request(self, number: int) -> PullRequest:
         try:
@@ -112,10 +127,10 @@ class GitLabRepository(Repository):
                 state=mr.state,
                 source_branch=mr.source_branch,
                 target_branch=mr.target_branch,
-                created_at=self._parse_datetime(mr.created_at),
-                updated_at=self._parse_datetime(mr.updated_at),
-                merged_at=self._parse_datetime(mr.merged_at),
-                closed_at=self._parse_datetime(mr.closed_at),
+                created_at=self._parse_timestamp(mr.created_at),
+                updated_at=self._parse_timestamp(mr.updated_at),
+                merged_at=self._parse_timestamp(mr.merged_at),
+                closed_at=self._parse_timestamp(mr.closed_at),
                 # ... rest of implementation
             )
         except GitlabGetError as e:
@@ -138,11 +153,11 @@ class GitLabRepository(Repository):
                 title=issue.title,
                 description=issue.description or "",
                 state=issue.state,
-                created_at=datetime.strptime(issue.created_at, "%Y-%m-%dT%H:%M:%S.%fZ"),
-                updated_at=datetime.strptime(issue.updated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                created_at=self._parse_timestamp(issue.created_at),
+                updated_at=self._parse_timestamp(issue.updated_at)
                 if issue.updated_at
                 else None,
-                closed_at=datetime.strptime(issue.closed_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                closed_at=self._parse_timestamp(issue.closed_at)
                 if issue.closed_at
                 else None,
                 closed=issue.state == "closed",
@@ -182,7 +197,7 @@ class GitLabRepository(Repository):
             return Commit(
                 sha=commit.id,
                 message=commit.message,
-                created_at=datetime.strptime(commit.created_at, "%Y-%m-%dT%H:%M:%S.%fZ"),
+                created_at=self._parse_timestamp(commit.created_at),
                 author=User(
                     username=commit.author_name,
                     email=commit.author_email,
@@ -256,9 +271,7 @@ class GitLabRepository(Repository):
                 name=pipeline.ref,
                 path="",  # GitLab doesn't have workflow paths
                 state=pipeline.status,
-                created_at=datetime.strptime(
-                    pipeline.created_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                ),
+                created_at=self._parse_timestamp(pipeline.created_at),
                 updated_at=None,
             )
         except GitlabGetError as e:
@@ -283,11 +296,11 @@ class GitLabRepository(Repository):
                 status=job.status,
                 conclusion=job.status,
                 branch=job.ref,
-                created_at=datetime.strptime(job.created_at, "%Y-%m-%dT%H:%M:%S.%fZ"),
-                started_at=datetime.strptime(job.started_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                created_at=self._parse_timestamp(job.created_at),
+                started_at=self._parse_timestamp(job.started_at)
                 if job.started_at
                 else None,
-                completed_at=datetime.strptime(job.finished_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                completed_at=self._parse_timestamp(job.finished_at)
                 if job.finished_at
                 else None,
             )
@@ -501,8 +514,8 @@ class GitLabRepository(Repository):
                 tag_name=latest.tag_name,
                 name=latest.name,
                 description=latest.description or "",
-                created_at=self._parse_datetime(latest.created_at),
-                published_at=self._parse_datetime(latest.released_at),
+                created_at=self._parse_timestamp(latest.created_at),
+                published_at=self._parse_timestamp(latest.released_at),
                 draft=False,  # GitLab doesn't have draft releases
                 prerelease=latest.tag_name.startswith(("alpha", "beta", "rc")),
                 author=User(
@@ -552,8 +565,8 @@ class GitLabRepository(Repository):
                         tag_name=release.tag_name,
                         name=release.name,
                         description=release.description or "",
-                        created_at=self._parse_datetime(release.created_at),
-                        published_at=self._parse_datetime(release.released_at),
+                        created_at=self._parse_timestamp(release.created_at),
+                        published_at=self._parse_timestamp(release.released_at),
                         draft=False,
                         prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
                         author=User(
@@ -594,8 +607,8 @@ class GitLabRepository(Repository):
                 tag_name=release.tag_name,
                 name=release.name,
                 description=release.description or "",
-                created_at=self._parse_datetime(release.created_at),
-                published_at=self._parse_datetime(release.released_at),
+                created_at=self._parse_timestamp(release.created_at),
+                published_at=self._parse_timestamp(release.released_at),
                 draft=False,
                 prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
                 author=User(
