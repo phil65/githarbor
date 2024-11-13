@@ -42,6 +42,10 @@ jobs:
 
       - name: Run tests
         run: uv run pytest --cov-report=xml --cov=src/githarbor/ --cov-report=term-missing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
 
       - name: Upload test results to Codecov
         uses: codecov/codecov-action@v4
