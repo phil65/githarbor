@@ -97,11 +97,57 @@ class GitHubRepository(Repository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
+    def _create_user_model(self, gh_user: Any) -> User | None:
+        """Create User model from GitHub user object."""
+        if not gh_user:
+            return None
+        return User(
+            username=gh_user.login,
+            name=gh_user.name,
+            email=gh_user.email,
+            avatar_url=gh_user.avatar_url,
+            created_at=gh_user.created_at,
+            bio=gh_user.bio,
+            location=gh_user.location,
+            company=gh_user.company,
+            url=gh_user.html_url,
+            followers=gh_user.followers,
+            following=gh_user.following,
+            public_repos=gh_user.public_repos,
+        )
+
+    def _create_label_model(self, gh_label: Any) -> Label:
+        """Create Label model from GitHub label object."""
+        return Label(
+            name=gh_label.name,
+            color=gh_label.color,
+            description=gh_label.description or "",
+            url=gh_label.url,
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo.get_branch(name)
+            last_commit = branch.commit
             return Branch(
-                name=branch.name, sha=branch.commit.sha, protected=branch.protected
+                name=branch.name,
+                sha=branch.commit.sha,
+                protected=branch.protected,
+                default=branch.name == self.default_branch,
+                protection_rules=(
+                    {
+                        "required_reviews": branch.get_required_status_checks(),
+                        "dismiss_stale_reviews": (
+                            branch.get_required_pull_request_reviews()
+                        ),
+                        "require_code_owner_reviews": (branch.get_required_signatures()),
+                    }
+                    if branch.protected
+                    else None
+                ),
+                last_commit_date=last_commit.commit.author.date,
+                last_commit_message=last_commit.commit.message,
+                last_commit_author=self._create_user_model(last_commit.author),
             )
         except GithubException as e:
             msg = f"Branch {name} not found: {e!s}"
@@ -121,21 +167,17 @@ class GitHubRepository(Repository):
                 updated_at=pr.updated_at,
                 merged_at=pr.merged_at,
                 closed_at=pr.closed_at,
-                author=User(
-                    username=pr.user.login,
-                    name=pr.user.name,
-                    avatar_url=pr.user.avatar_url,
-                )
-                if pr.user
-                else None,
-                assignees=[
-                    User(username=a.login, name=a.name, avatar_url=a.avatar_url)
-                    for a in pr.assignees
-                ],
-                labels=[
-                    Label(name=lbl.name, color=lbl.color, description=lbl.description)
-                    for lbl in pr.labels
-                ],
+                author=self._create_user_model(pr.user),
+                assignees=[self._create_user_model(a) for a in pr.assignees if a],
+                labels=[self._create_label_model(lbl) for lbl in pr.labels],
+                merged_by=self._create_user_model(pr.merged_by),
+                review_comments_count=pr.review_comments,
+                commits_count=pr.commits,
+                additions=pr.additions,
+                deletions=pr.deletions,
+                changed_files=pr.changed_files,
+                mergeable=pr.mergeable,
+                url=pr.html_url,
             )
         except GithubException as e:
             msg = f"Pull request #{number} not found: {e!s}"
@@ -160,25 +202,13 @@ class GitHubRepository(Repository):
                 created_at=issue.created_at,
                 updated_at=issue.updated_at,
                 closed_at=issue.closed_at,
-                closed=issue.closed_at is not None,
-                author=User(
-                    username=issue.user.login,
-                    name=issue.user.name,
-                    avatar_url=issue.user.avatar_url,
-                )
-                if issue.user
-                else None,
-                assignee=User(
-                    username=issue.assignee.login,
-                    name=issue.assignee.name,
-                    avatar_url=issue.assignee.avatar_url,
-                )
-                if issue.assignee
-                else None,
-                labels=[
-                    Label(name=lbl.name, color=lbl.color, description=lbl.description)
-                    for lbl in issue.labels
-                ],
+                closed=issue.state == "closed",
+                author=self._create_user_model(issue.user),
+                assignee=self._create_user_model(issue.assignee),
+                labels=[self._create_label_model(lbl) for lbl in issue.labels],
+                comments_count=issue.comments,
+                url=issue.html_url,
+                milestone=issue.milestone.title if issue.milestone else None,
             )
         except GithubException as e:
             msg = f"Issue #{issue_id} not found: {e!s}"
@@ -199,18 +229,13 @@ class GitHubRepository(Repository):
                 sha=commit.sha,
                 message=commit.commit.message,
                 created_at=commit.commit.author.date,
-                author=User(
-                    username=commit.author.login if commit.author else "",
+                author=self._create_user_model(commit.author)
+                or User(
+                    username="",
                     name=commit.commit.author.name,
                     email=commit.commit.author.email,
                 ),
-                committer=User(
-                    username=commit.committer.login if commit.committer else "",
-                    name=commit.commit.committer.name,
-                    email=commit.commit.committer.email,
-                )
-                if commit.committer
-                else None,
+                committer=self._create_user_model(commit.committer),
                 url=commit.html_url,
                 stats={
                     "additions": commit.stats.additions,
@@ -218,6 +243,8 @@ class GitHubRepository(Repository):
                     "total": commit.stats.total,
                 },
                 parents=[p.sha for p in commit.parents],
+                # verified=commit.commit.verification.verified,
+                files_changed=[f.filename for f in commit.files],
             )
         except GithubException as e:
             msg = f"Commit {sha} not found: {e!s}"
@@ -246,12 +273,32 @@ class GitHubRepository(Repository):
                 kwargs["sha"] = branch
 
             commits = self._repo.get_commits(**kwargs)
+            results = commits[:max_results] if max_results else commits
 
-            # Apply max_results limit if specified
-            filtered = list(commits[:max_results]) if max_results else list(commits)
-
-            return [self.get_commit(c.sha) for c in filtered]
-
+            return [
+                Commit(
+                    sha=c.sha,
+                    message=c.commit.message,
+                    created_at=c.commit.author.date,
+                    author=self._create_user_model(c.author)
+                    or User(
+                        username="",
+                        name=c.commit.author.name,
+                        email=c.commit.author.email,
+                    ),
+                    committer=self._create_user_model(c.committer),
+                    url=c.html_url,
+                    stats={
+                        "additions": c.stats.additions,
+                        "deletions": c.stats.deletions,
+                        "total": c.stats.total,
+                    },
+                    parents=[p.sha for p in c.parents],
+                    # verified=c.commit.verification.verified,
+                    files_changed=[f.filename for f in c.files],
+                )
+                for c in results
+            ]
         except GithubException as e:
             msg = f"Failed to list commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -301,7 +348,7 @@ class GitHubRepository(Repository):
             run = self._repo.get_workflow_run(int(run_id))
             return WorkflowRun(
                 id=str(run.id),
-                name=run.name,
+                name=run.name or run.display_title,
                 workflow_id=str(run.workflow_id),
                 status=run.status,
                 conclusion=run.conclusion,
@@ -311,10 +358,13 @@ class GitHubRepository(Repository):
                 created_at=run.created_at,
                 updated_at=run.updated_at,
                 started_at=run.run_started_at,
-                # completed_at=run.run_concluded_at,
+                completed_at=run.run_attempt_started_at,
+                run_number=run.run_number,
+                jobs_count=len(list(run.jobs())),
+                logs_url=run.logs_url,
             )
         except GithubException as e:
-            msg = f"Workflow run {id} not found: {e!s}"
+            msg = f"Workflow run {run_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
     def download(
