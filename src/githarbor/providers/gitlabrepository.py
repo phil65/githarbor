@@ -87,6 +87,174 @@ class GitLabRepository(Repository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
+    def _create_user_model(self, gl_user: Any | None) -> User | None:
+        """Create User model from GitLab user object."""
+        if not gl_user:
+            return None
+        return User(
+            username=gl_user.username,
+            name=gl_user.name,
+            email=gl_user.email,
+            avatar_url=gl_user.avatar_url,
+            created_at=self._parse_timestamp(gl_user.created_at)
+            if hasattr(gl_user, "created_at")
+            else None,
+            state=getattr(gl_user, "state", None),
+            locked=getattr(gl_user, "locked", None),
+            url=gl_user.web_url,
+        )
+
+    def _create_label_model(self, gl_label: Any) -> Label:
+        """Create Label model from GitLab label object."""
+        return Label(
+            name=gl_label.name,
+            color=getattr(gl_label, "color", ""),
+            description=getattr(gl_label, "description", ""),
+            url=getattr(gl_label, "url", None),
+        )
+
+    def _create_commit_model(self, commit: Any) -> Commit:
+        """Create Commit model from GitLab commit object."""
+        return Commit(
+            sha=commit.id,
+            message=commit.message,
+            created_at=self._parse_timestamp(commit.created_at),
+            author=User(
+                username=commit.author_name,
+                email=commit.author_email,
+                name=commit.author_name,
+            ),
+            url=commit.web_url,
+            stats={
+                "additions": getattr(commit.stats, "additions", 0),
+                "deletions": getattr(commit.stats, "deletions", 0),
+                "total": getattr(commit.stats, "total", 0),
+            },
+        )
+
+    def _create_issue_model(self, issue: Any) -> Issue:
+        """Create Issue model from GitLab issue object."""
+        return Issue(
+            number=issue.iid,
+            title=issue.title,
+            description=issue.description or "",
+            state=issue.state,
+            created_at=self._parse_timestamp(issue.created_at),
+            updated_at=self._parse_timestamp(issue.updated_at)
+            if issue.updated_at
+            else None,
+            closed_at=self._parse_timestamp(issue.closed_at) if issue.closed_at else None,
+            closed=issue.state == "closed",
+            author=User(
+                username=issue.author["username"],
+                name=issue.author["name"],
+                avatar_url=issue.author["avatar_url"],
+            )
+            if issue.author
+            else None,
+            assignee=User(
+                username=issue.assignee["username"],
+                name=issue.assignee["name"],
+                avatar_url=issue.assignee["avatar_url"],
+            )
+            if issue.assignee
+            else None,
+            labels=[Label(name=lbl) for lbl in issue.labels],
+        )
+
+    def _create_pull_request_model(self, mr: Any) -> PullRequest:
+        """Create PullRequest model from GitLab merge request object."""
+        return PullRequest(
+            number=mr.iid,
+            title=mr.title,
+            description=mr.description or "",
+            state=mr.state,
+            source_branch=mr.source_branch,
+            target_branch=mr.target_branch,
+            created_at=self._parse_timestamp(mr.created_at),
+            updated_at=self._parse_timestamp(mr.updated_at)
+            if hasattr(mr, "updated_at")
+            else None,
+            merged_at=self._parse_timestamp(mr.merged_at)
+            if hasattr(mr, "merged_at")
+            else None,
+            closed_at=self._parse_timestamp(mr.closed_at)
+            if hasattr(mr, "closed_at")
+            else None,
+            author=self._create_user_model(getattr(mr, "author", None)),
+            assignees=[
+                self._create_user_model(a)
+                for a in getattr(mr, "assignees", [])
+                if a is not None
+            ],
+            labels=[Label(name=label) for label in getattr(mr, "labels", [])],
+            review_comments_count=getattr(mr, "user_notes_count", 0),
+            commits_count=getattr(mr, "commits_count", 0),
+            additions=getattr(mr, "additions", 0),
+            deletions=getattr(mr, "deletions", 0),
+            changed_files=getattr(mr, "changes_count", 0),
+            mergeable=getattr(mr, "mergeable", None),
+            url=mr.web_url,
+        )
+
+    def _create_workflow_model(self, pipeline: Any) -> Workflow:
+        """Create Workflow model from GitLab pipeline object."""
+        return Workflow(
+            id=str(pipeline.id),
+            name=pipeline.ref,
+            path=getattr(pipeline, "path", ""),
+            state=pipeline.status,
+            created_at=self._parse_timestamp(pipeline.created_at),
+            updated_at=None,
+            badge_url=getattr(pipeline, "badge_url", None),
+        )
+
+    def _create_workflow_run_model(self, job: Any) -> WorkflowRun:
+        """Create WorkflowRun model from GitLab job object."""
+        return WorkflowRun(
+            id=str(job.id),
+            name=job.name,
+            workflow_id=str(job.pipeline["id"]),
+            status=job.status,
+            conclusion=job.status,
+            branch=getattr(job, "ref", None),
+            commit_sha=getattr(job.commit, "id", None),
+            url=job.web_url,
+            created_at=self._parse_timestamp(job.created_at),
+            started_at=self._parse_timestamp(job.started_at)
+            if hasattr(job, "started_at")
+            else None,
+            completed_at=self._parse_timestamp(job.finished_at)
+            if hasattr(job, "finished_at")
+            else None,
+            logs_url=getattr(job, "artifacts_file", {}).get("filename"),
+        )
+
+    def _create_release_model(self, release: Any) -> Release:
+        """Create Release model from GitLab release object."""
+        return Release(
+            tag_name=release.tag_name,
+            name=release.name,
+            description=release.description or "",
+            created_at=self._parse_timestamp(release.created_at),
+            published_at=self._parse_timestamp(release.released_at)
+            if hasattr(release, "released_at")
+            else None,
+            draft=False,  # GitLab doesn't have draft releases
+            prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
+            author=self._create_user_model(getattr(release, "author", None)),
+            assets=[
+                {
+                    "name": asset["name"],
+                    "url": asset["url"],
+                    "size": asset.get("size", 0),
+                }
+                for asset in getattr(release, "assets", {}).get("links", [])
+            ],
+            url=getattr(release, "_links", {}).get("self"),
+            target_commitish=getattr(release, "commit", {}).get("id"),
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo.branches.get(name)
@@ -121,19 +289,7 @@ class GitLabRepository(Repository):
     def get_pull_request(self, number: int) -> PullRequest:
         try:
             mr = self._repo.mergerequests.get(number)
-            return PullRequest(
-                number=mr.iid,
-                title=mr.title,
-                description=mr.description or "",
-                state=mr.state,
-                source_branch=mr.source_branch,
-                target_branch=mr.target_branch,
-                created_at=self._parse_timestamp(mr.created_at),
-                updated_at=self._parse_timestamp(mr.updated_at),
-                merged_at=self._parse_timestamp(mr.merged_at),
-                closed_at=self._parse_timestamp(mr.closed_at),
-                # ... rest of implementation
-            )
+            return self._create_pull_request_model(mr)
         except GitlabGetError as e:
             msg = f"Merge request #{number} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -145,62 +301,12 @@ class GitLabRepository(Repository):
             msg = f"Failed to list merge requests: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
-        return [
-            PullRequest(
-                number=mr.iid,
-                title=mr.title,
-                description=mr.description or "",
-                state=mr.state,
-                source_branch=mr.source_branch,
-                target_branch=mr.target_branch,
-                created_at=self._parse_timestamp(mr.created_at),
-                updated_at=self._parse_timestamp(mr.updated_at),
-                merged_at=self._parse_timestamp(mr.merged_at) if mr.merged_at else None,
-                closed_at=self._parse_timestamp(mr.closed_at) if mr.closed_at else None,
-                author=User(
-                    username=mr.author["username"],
-                    name=mr.author["name"],
-                    avatar_url=mr.author["avatar_url"],
-                )
-                if mr.author
-                else None,
-                labels=[Label(name=lbl) for lbl in mr.labels],
-            )
-            for mr in mrs
-        ]
+        return [self._create_pull_request_model(mr) for mr in mrs]
 
     def get_issue(self, issue_id: int) -> Issue:
         try:
             issue = self._repo.issues.get(issue_id)
-            return Issue(
-                number=issue.iid,
-                title=issue.title,
-                description=issue.description or "",
-                state=issue.state,
-                created_at=self._parse_timestamp(issue.created_at),
-                updated_at=self._parse_timestamp(issue.updated_at)
-                if issue.updated_at
-                else None,
-                closed_at=self._parse_timestamp(issue.closed_at)
-                if issue.closed_at
-                else None,
-                closed=issue.state == "closed",
-                author=User(
-                    username=issue.author["username"],
-                    name=issue.author["name"],
-                    avatar_url=issue.author["avatar_url"],
-                )
-                if issue.author
-                else None,
-                assignee=User(
-                    username=issue.assignee["username"],
-                    name=issue.assignee["name"],
-                    avatar_url=issue.assignee["avatar_url"],
-                )
-                if issue.assignee
-                else None,
-                labels=[Label(name=lbl) for lbl in issue.labels],
-            )
+            return self._create_issue_model(issue)
         except GitlabGetError as e:
             msg = f"Issue #{issue_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -214,53 +320,12 @@ class GitLabRepository(Repository):
             msg = f"Failed to list issues: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
-        return [
-            Issue(
-                number=issue.iid,
-                title=issue.title,
-                description=issue.description or "",
-                state=issue.state,
-                created_at=self._parse_timestamp(issue.created_at),
-                updated_at=self._parse_timestamp(issue.updated_at)
-                if issue.updated_at
-                else None,
-                closed_at=self._parse_timestamp(issue.closed_at)
-                if issue.closed_at
-                else None,
-                closed=issue.state == "closed",
-                author=User(
-                    username=issue.author["username"],
-                    name=issue.author["name"],
-                    avatar_url=issue.author["avatar_url"],
-                )
-                if issue.author
-                else None,
-                assignee=User(
-                    username=issue.assignee["username"],
-                    name=issue.assignee["name"],
-                    avatar_url=issue.assignee["avatar_url"],
-                )
-                if issue.assignee
-                else None,
-                labels=[Label(name=lbl) for lbl in issue.labels],
-            )
-            for issue in issues
-        ]
+        return [self._create_issue_model(issue) for issue in issues]
 
     def get_commit(self, sha: str) -> Commit:
         try:
             commit = self._repo.commits.get(sha)
-            return Commit(
-                sha=commit.id,
-                message=commit.message,
-                created_at=self._parse_timestamp(commit.created_at),
-                author=User(
-                    username=commit.author_name,
-                    email=commit.author_email,
-                    name=commit.author_name,
-                ),
-                url=commit.web_url,
-            )
+            return self._create_commit_model(commit)
         except GitlabGetError as e:
             msg = f"Commit {sha} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -315,32 +380,12 @@ class GitLabRepository(Repository):
 
         # Convert to list to materialize the results
         commits = list(commits)
-        return [
-            Commit(
-                sha=commit.id,
-                message=commit.message,
-                created_at=self._parse_timestamp(commit.created_at),
-                author=User(
-                    username=commit.author_name,
-                    email=commit.author_email,
-                    name=commit.author_name,
-                ),
-                url=commit.web_url,
-            )
-            for commit in commits
-        ]
+        return [self._create_commit_model(commit) for commit in commits]
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         try:
             pipeline = self._repo.pipelines.get(workflow_id)
-            return Workflow(
-                id=str(pipeline.id),
-                name=pipeline.ref,
-                path="",  # GitLab doesn't have workflow paths
-                state=pipeline.status,
-                created_at=self._parse_timestamp(pipeline.created_at),
-                updated_at=None,
-            )
+            return self._create_workflow_model(pipeline)
         except GitlabGetError as e:
             msg = f"Pipeline {id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -352,36 +397,12 @@ class GitLabRepository(Repository):
             msg = f"Failed to list pipelines: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
-        return [
-            Workflow(
-                id=str(pipeline.id),
-                name=pipeline.ref,
-                path="",  # GitLab doesn't have workflow paths
-                state=pipeline.status,
-                created_at=self._parse_timestamp(pipeline.created_at),
-                updated_at=None,
-            )
-            for pipeline in pipelines
-        ]
+        return [self._create_workflow_model(pipeline) for pipeline in pipelines]
 
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         try:
             job = self._repo.jobs.get(run_id)
-            return WorkflowRun(
-                id=str(job.id),
-                name=job.name,
-                workflow_id=str(job.pipeline["id"]),
-                status=job.status,
-                conclusion=job.status,
-                branch=job.ref,
-                created_at=self._parse_timestamp(job.created_at),
-                started_at=self._parse_timestamp(job.started_at)
-                if job.started_at
-                else None,
-                completed_at=self._parse_timestamp(job.finished_at)
-                if job.finished_at
-                else None,
-            )
+            return self._create_workflow_run_model(job)
         except GitlabGetError as e:
             msg = f"Job {id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -499,18 +520,8 @@ class GitLabRepository(Repository):
         elif sort_by == "date":
             contributors = sorted(contributors, key=lambda c: c.created_at)
         contributors = contributors[:limit] if limit else contributors
-        return [
-            User(
-                username=c.username,
-                name=c.name,
-                email=getattr(c, "email", None),
-                avatar_url=c.avatar_url,
-                created_at=getattr(c, "created_at", None),
-                locked=c.locked,
-                state=c.state,
-            )
-            for c in contributors
-        ]
+        items = [self._create_user_model(c) for c in contributors]
+        return [i for i in items if i is not None]
 
     def get_languages(self) -> dict[str, int]:
         return self._repo.languages()
@@ -630,37 +641,7 @@ class GitLabRepository(Repository):
                 raise ResourceNotFoundError(msg)
 
             latest = filtered[0]  # GitLab returns in descending order
-
-            return Release(
-                tag_name=latest.tag_name,
-                name=latest.name,
-                description=latest.description or "",
-                created_at=self._parse_timestamp(latest.created_at),
-                published_at=self._parse_timestamp(latest.released_at),
-                draft=False,  # GitLab doesn't have draft releases
-                prerelease=latest.tag_name.startswith(("alpha", "beta", "rc")),
-                author=User(
-                    username=latest.author["username"],
-                    name=latest.author["name"],
-                    avatar_url=latest.author["avatar_url"],
-                )
-                if latest.author
-                else None,
-                assets=[
-                    {
-                        "name": asset["name"],
-                        "url": asset["url"],
-                        "size": asset.get("size", 0),
-                        "download_count": 0,  # GitLab doesn't provide this
-                    }
-                    for asset in latest.assets.get("links", [])
-                ]
-                if latest.assets
-                else [],
-                url=latest.assets.get("_links", {}).get("self", ""),
-                target_commitish=latest.commit["id"] if latest.commit else None,
-            )
-
+            return self._create_release_model(latest)
         except gitlab.exceptions.GitlabError as e:
             msg = f"Failed to get latest release: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -680,38 +661,7 @@ class GitLabRepository(Repository):
                     "rc",
                 )):
                     continue
-
-                releases.append(
-                    Release(
-                        tag_name=release.tag_name,
-                        name=release.name,
-                        description=release.description or "",
-                        created_at=self._parse_timestamp(release.created_at),
-                        published_at=self._parse_timestamp(release.released_at),
-                        draft=False,
-                        prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
-                        author=User(
-                            username=release.author["username"],
-                            name=release.author["name"],
-                            avatar_url=release.author["avatar_url"],
-                        )
-                        if release.author
-                        else None,
-                        assets=[
-                            {
-                                "name": asset["name"],
-                                "url": asset["url"],
-                                "size": asset.get("size", 0),
-                            }
-                            for asset in release.assets.get("links", [])
-                        ]
-                        if release.assets
-                        else [],
-                        url=release.assets.get("_links", {}).get("self", ""),
-                        target_commitish=release.commit["id"] if release.commit else None,
-                    )
-                )
-
+                releases.append(self._create_release_model(release))
                 if limit and len(releases) >= limit:
                     break
 
@@ -724,34 +674,7 @@ class GitLabRepository(Repository):
     def get_release(self, tag: str) -> Release:
         try:
             release = self._repo.releases.get(tag)
-            return Release(
-                tag_name=release.tag_name,
-                name=release.name,
-                description=release.description or "",
-                created_at=self._parse_timestamp(release.created_at),
-                published_at=self._parse_timestamp(release.released_at),
-                draft=False,
-                prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
-                author=User(
-                    username=release.author["username"],
-                    name=release.author["name"],
-                    avatar_url=release.author["avatar_url"],
-                )
-                if release.author
-                else None,
-                assets=[
-                    {
-                        "name": asset["name"],
-                        "url": asset["url"],
-                        "size": asset.get("size", 0),
-                    }
-                    for asset in release.assets.get("links", [])
-                ]
-                if release.assets
-                else [],
-                url=release.assets.get("_links", {}).get("self", ""),
-                target_commitish=release.commit["id"] if release.commit else None,
-            )
+            return self._create_release_model(release)
 
         except gitlab.exceptions.GitlabError as e:
             msg = f"Release with tag {tag} not found: {e!s}"
