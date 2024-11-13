@@ -14,6 +14,7 @@ from githarbor.core.models import (
     Commit,
     Issue,
     PullRequest,
+    Release,
     User,
     Workflow,
     WorkflowRun,
@@ -260,4 +261,107 @@ class AzureRepository(Repository):
 
         except AzureDevOpsServiceError as e:
             msg = f"Failed to download {path}: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        try:
+            # Azure DevOps uses "releases" API which is different from Git releases
+            # This is a simplified version that maps to Git tags
+            tags = self._git_client.get_tags(
+                repository_id=self._repo.id,
+                project=self._project,
+            )
+
+            if not tags:
+                msg = "No releases found"
+                raise ResourceNotFoundError(msg)
+
+            # Sort by creation date
+            latest_tag = sorted(
+                tags, key=lambda t: t.commit.committer.date, reverse=True
+            )[0]
+
+            return Release(
+                tag_name=latest_tag.name,
+                name=latest_tag.name,
+                description=latest_tag.message or "",
+                created_at=latest_tag.commit.committer.date,
+                published_at=latest_tag.commit.committer.date,
+                draft=False,  # Azure doesn't have draft concept for tags
+                prerelease=False,  # Azure doesn't have prerelease concept for tags
+                author=User(
+                    username=latest_tag.commit.committer.name,
+                    name=latest_tag.commit.committer.name,
+                    email=latest_tag.commit.committer.email,
+                ),
+                url=None,  # Azure doesn't provide direct URLs for tags
+                target_commitish=latest_tag.commit.commit_id,
+            )
+
+        except AzureDevOpsServiceError as e:
+            msg = f"Failed to get latest release: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        try:
+            tags = self._git_client.get_tags(
+                repository_id=self._repo.id,
+                project=self._project,
+            )
+
+            releases = []
+            for tag in sorted(tags, key=lambda t: t.commit.committer.date, reverse=True):
+                releases.append(
+                    Release(
+                        tag_name=tag.name,
+                        name=tag.name,
+                        description=tag.message or "",
+                        created_at=tag.commit.committer.date,
+                        published_at=tag.commit.committer.date,
+                        draft=False,
+                        prerelease=False,
+                        author=User(
+                            username=tag.commit.committer.name,
+                            name=tag.commit.committer.name,
+                            email=tag.commit.committer.email,
+                        ),
+                        url=None,
+                        target_commitish=tag.commit.commit_id,
+                    )
+                )
+
+                if limit and len(releases) >= limit:
+                    break
+
+        except AzureDevOpsServiceError as e:
+            msg = f"Failed to list releases: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return releases
+
+    def get_release(self, tag: str) -> Release:
+        try:
+            tag_ref = self._git_client.get_tag(
+                repository_id=self._repo.id,
+                project=self._project,
+                tag=tag,
+            )
+
+            return Release(
+                tag_name=tag_ref.name,
+                name=tag_ref.name,
+                description=tag_ref.message or "",
+                created_at=tag_ref,
+            )
+        except AzureDevOpsServiceError as e:
+            msg = f"Failed to get release {tag}: {e!s}"
             raise ResourceNotFoundError(msg) from e

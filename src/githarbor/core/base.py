@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from datetime import datetime
     import os
 
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
         Commit,
         Issue,
         PullRequest,
+        Release,
+        User,
         Workflow,
         WorkflowRun,
     )
@@ -109,6 +112,7 @@ class Repository(ABC):
         """Get a specific workflow run."""
         raise NotImplementedError
 
+    @abstractmethod
     def download(
         self,
         path: str | os.PathLike[str],
@@ -122,4 +126,80 @@ class Repository(ABC):
             destination: Path where file/directory should be saved.
             recursive: Download all files from a folder (and subfolders).
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def search_commits(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def iter_files(
+        self,
+        path: str = "",
+        ref: str | None = None,
+        pattern: str | None = None,
+    ) -> Iterator[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_contributors(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_languages(self) -> dict[str, int]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def compare_branches(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        """Get latest release."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        """List releases."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_release(self, tag: str) -> Release:
+        """Get specific release by tag."""
         raise NotImplementedError

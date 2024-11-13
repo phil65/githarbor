@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import fnmatch
 import logging
 import os
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 from github import Auth, Github, NamedUser
@@ -15,6 +16,7 @@ from githarbor.core.models import (
     Issue,
     Label,
     PullRequest,
+    Release,
     User,
     Workflow,
     WorkflowRun,
@@ -23,6 +25,7 @@ from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from datetime import datetime
 
 
@@ -335,6 +338,327 @@ class GitHubRepository(Repository):
             token=TOKEN,
             recursive=recursive,
         )
+
+    def search_commits(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        kwargs = {"query": query}
+        if branch:
+            kwargs["ref"] = branch
+        if path:
+            kwargs["path"] = path
+        results = self._repo.search_commits(**kwargs)
+        commits = list(results[:max_results] if max_results else results)
+        return [self.get_commit(c.sha) for c in commits]
+
+    def iter_files(
+        self,
+        path: str = "",
+        ref: str | None = None,
+        pattern: str | None = None,
+    ) -> Iterator[str]:
+        contents = self._repo.get_contents(path, ref=ref or self.default_branch)
+        while contents:
+            content = contents.pop(0)
+            if content.type == "dir":
+                contents.extend(self._repo.get_contents(content.path, ref=ref))
+            elif not pattern or fnmatch.fnmatch(content.path, pattern):
+                yield content.path
+
+    def get_contributors(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        contributors = self._repo.get_contributors()
+        if sort_by == "name":
+            contributors = sorted(contributors, key=lambda c: c.login)
+        elif sort_by == "date":
+            contributors = sorted(contributors, key=lambda c: c.created_at)
+        contributors = contributors[:limit] if limit else contributors
+        return [
+            User(
+                username=c.login,
+                name=c.name,
+                email=c.email,
+                avatar_url=c.avatar_url,
+                created_at=c.created_at,
+            )
+            for c in contributors
+        ]
+
+    def get_languages(self) -> dict[str, int]:
+        return self._repo.get_languages()
+
+    def compare_branches(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        comparison = self._repo.compare(base, head)
+        result = {"ahead_by": comparison.ahead_by, "behind_by": comparison.behind_by}
+
+        if include_commits:
+            result["commits"] = [self.get_commit(c.sha) for c in comparison.commits]
+        if include_files:
+            result["files"] = [f.filename for f in comparison.files]
+        if include_stats:
+            result["stats"] = {
+                "additions": comparison.total_commits,
+                "deletions": comparison.total_commits,
+                "changes": len(comparison.files),
+            }
+        return result
+
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:  # Changed from dict[str, Any] to Release
+        """Get information about the latest release.
+
+        Args:
+            include_drafts: Whether to include draft releases
+            include_prereleases: Whether to include pre-releases
+
+        Returns:
+            Release object containing release information
+
+        Raises:
+            ResourceNotFoundError: If no releases are found
+        """
+        try:
+            # Get all releases
+            releases = self._repo.get_releases()
+
+            # Filter releases based on parameters
+            filtered = []
+            for release in releases:
+                # Skip drafts if not requested
+                if not include_drafts and release.draft:
+                    continue
+
+                # Skip pre-releases if not requested
+                if not include_prereleases and release.prerelease:
+                    continue
+
+                filtered.append(release)
+
+            if not filtered:
+                msg = "No matching releases found"
+                raise ResourceNotFoundError(msg)
+
+            # Get latest release
+            latest = filtered[0]  # Releases are returned in chronological order
+
+            return Release(
+                tag_name=latest.tag_name,
+                name=latest.title,
+                description=latest.body or "",
+                created_at=latest.created_at,
+                published_at=latest.published_at,
+                draft=latest.draft,
+                prerelease=latest.prerelease,
+                author=User(
+                    username=latest.author.login,
+                    name=latest.author.name,
+                    avatar_url=latest.author.avatar_url,
+                )
+                if latest.author
+                else None,
+                assets=[
+                    {
+                        "name": asset.name,
+                        "url": asset.browser_download_url,
+                        "size": asset.size,
+                        "download_count": asset.download_count,
+                        "created_at": asset.created_at,
+                        "updated_at": asset.updated_at,
+                    }
+                    for asset in latest.assets
+                ],
+                url=latest.html_url,
+                target_commitish=latest.target_commitish,
+            )
+
+        except GithubException as e:
+            msg = f"Failed to get latest release: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        """List repository releases.
+
+        Args:
+            include_drafts: Whether to include draft releases
+            include_prereleases: Whether to include pre-releases
+            limit: Maximum number of releases to return
+
+        Returns:
+            List of Release objects
+        """
+        try:
+            releases: list[Release] = []
+            for release in self._repo.get_releases():
+                if not include_drafts and release.draft:
+                    continue
+                if not include_prereleases and release.prerelease:
+                    continue
+
+                releases.append(
+                    Release(
+                        tag_name=release.tag_name,
+                        name=release.title,
+                        description=release.body or "",
+                        created_at=release.created_at,
+                        published_at=release.published_at,
+                        draft=release.draft,
+                        prerelease=release.prerelease,
+                        author=User(
+                            username=release.author.login,
+                            name=release.author.name,
+                            avatar_url=release.author.avatar_url,
+                        )
+                        if release.author
+                        else None,
+                        assets=[
+                            {
+                                "name": asset.name,
+                                "url": asset.browser_download_url,
+                                "size": asset.size,
+                                "download_count": asset.download_count,
+                                "created_at": asset.created_at,
+                                "updated_at": asset.updated_at,
+                            }
+                            for asset in release.assets
+                        ],
+                        url=release.html_url,
+                        target_commitish=release.target_commitish,
+                    )
+                )
+
+                if limit and len(releases) >= limit:
+                    break
+
+        except GithubException as e:
+            msg = f"Failed to list releases: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return releases
+
+    def get_release(self, tag: str) -> Release:
+        """Get a specific release by tag name.
+
+        Args:
+            tag: Tag name of the release
+
+        Returns:
+            Release object
+
+        Raises:
+            ResourceNotFoundError: If release is not found
+        """
+        try:
+            release = self._repo.get_release(tag)
+            return Release(
+                tag_name=release.tag_name,
+                name=release.title,
+                description=release.body or "",
+                created_at=release.created_at,
+                published_at=release.published_at,
+                draft=release.draft,
+                prerelease=release.prerelease,
+                author=User(
+                    username=release.author.login,
+                    name=release.author.name,
+                    avatar_url=release.author.avatar_url,
+                )
+                if release.author
+                else None,
+                assets=[
+                    {
+                        "name": asset.name,
+                        "url": asset.browser_download_url,
+                        "size": asset.size,
+                        "download_count": asset.download_count,
+                        "created_at": asset.created_at,
+                        "updated_at": asset.updated_at,
+                    }
+                    for asset in release.assets
+                ],
+                url=release.html_url,
+                target_commitish=release.target_commitish,
+            )
+
+        except GithubException as e:
+            msg = f"Release with tag {tag} not found: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        """Get repository activity statistics for the last N days.
+
+        Args:
+            days: Number of days to look back
+            include_commits: Whether to include commit counts
+            include_prs: Whether to include pull request counts
+            include_issues: Whether to include issue counts
+
+        Returns:
+            Dictionary with activity counts by type
+        """
+        from datetime import datetime, timedelta
+
+        since = datetime.now() - timedelta(days=days)
+        activity = {}
+
+        try:
+            if include_commits:
+                commits = self._repo.get_commits(since=since)
+                activity["commits"] = len(list(commits))
+
+            if include_prs:
+                # Get PRs updated in time period
+                prs = self._repo.get_pulls(state="all", sort="updated", direction="desc")
+                activity["pull_requests"] = len([
+                    pr for pr in prs if pr.updated_at and pr.updated_at >= since
+                ])
+
+            if include_issues:
+                # Get issues updated in time period
+                issues = self._repo.get_issues(
+                    state="all", sort="updated", direction="desc"
+                )
+                activity["issues"] = len([
+                    issue
+                    for issue in issues
+                    if issue.updated_at
+                    and issue.updated_at >= since
+                    # Exclude PRs which GitHub also returns as issues
+                    and not hasattr(issue, "pull_request")
+                ])
+
+        except GithubException as e:
+            msg = f"Failed to get recent activity: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+        return activity
 
 
 if __name__ == "__main__":

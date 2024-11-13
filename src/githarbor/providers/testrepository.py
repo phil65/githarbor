@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from githarbor.core.base import Repository
 from githarbor.core.models import (
@@ -8,13 +8,17 @@ from githarbor.core.models import (
     Commit,
     Issue,
     PullRequest,
+    Release,
+    User,
     Workflow,
     WorkflowRun,
 )
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from datetime import datetime
+    import os
 
 
 class DummyRepository(Repository):
@@ -117,3 +121,77 @@ class DummyRepository(Repository):
             conclusion="success",
             created_at=datetime.now(),
         )
+
+    def search_commits(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        raise NotImplementedError
+
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        raise NotImplementedError
+
+    def iter_files(
+        self,
+        path: str = "",
+        ref: str | None = None,
+        pattern: str | None = None,
+    ) -> Iterator[str]:
+        raise NotImplementedError
+
+    def get_contributors(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        raise NotImplementedError
+
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        raise NotImplementedError
+
+    def get_languages(self) -> dict[str, int]:
+        raise NotImplementedError
+
+    def compare_branches(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def download(
+        self,
+        path: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        recursive: bool = False,
+    ) -> None:
+        raise NotImplementedError
+
+    def get_release(self, tag: str) -> Release:
+        """Get specific release by tag."""
+        raise NotImplementedError
+
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        """List releases."""
+        raise NotImplementedError

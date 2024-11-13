@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+import fnmatch
 import os
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 import gitlab
@@ -15,11 +16,18 @@ from githarbor.core.models import (
     Issue,
     Label,
     PullRequest,
+    Release,
     User,
     Workflow,
     WorkflowRun,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from gitlab.base import RESTObject
 
 
 class GitLabRepository(Repository):
@@ -337,6 +345,282 @@ class GitLabRepository(Repository):
             except GitlabGetError as e:
                 msg = f"Failed to download file {path}: {e!s}"
                 raise ResourceNotFoundError(msg) from e
+
+    def search_commits(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        kwargs: dict[str, Any] = {"search": query}
+        if branch:
+            kwargs["ref_name"] = branch
+        if path:
+            kwargs["path"] = path
+        if max_results:
+            kwargs["max_results"] = max_results
+        commits = self._repo.commits.list(**kwargs)
+        return [self.get_commit(c.id) for c in commits]
+
+    def iter_files(
+        self,
+        path: str = "",
+        ref: str | None = None,
+        pattern: str | None = None,
+    ) -> Iterator[str]:
+        items = self._repo.repository_tree(
+            path=path, ref=ref or self.default_branch, recursive=True
+        )
+        for item in items:
+            if item["type"] == "blob" and (
+                not pattern or fnmatch.fnmatch(item["path"], pattern)
+            ):
+                yield item["path"]
+
+    def get_contributors(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        contributors = self._repo.users.list(include_stats=True)
+        if sort_by == "name":
+            contributors = sorted(contributors, key=lambda c: c.username)
+        elif sort_by == "date":
+            contributors = sorted(contributors, key=lambda c: c.created_at)
+        contributors = contributors[:limit] if limit else contributors
+        return [
+            User(
+                username=c.username,
+                name=c.name,
+                email=c.email,
+                avatar_url=c.avatar_url,
+                created_at=c.created_at,
+            )
+            for c in contributors
+        ]
+
+    def get_languages(self) -> dict[str, int]:
+        return self._repo.languages()
+
+    def compare_branches(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        comparison = self._repo.compare(base, head)
+        result: dict[str, Any] = {"ahead_by": len(comparison["commits"])}
+
+        if include_commits:
+            result["commits"] = [self.get_commit(c["id"]) for c in comparison["commits"]]
+        if include_files:
+            result["files"] = [f["new_path"] for f in comparison["diffs"]]
+        if include_stats:
+            result["stats"] = {
+                "additions": sum(d["additions"] for d in comparison["diffs"]),
+                "deletions": sum(d["deletions"] for d in comparison["diffs"]),
+                "changes": len(comparison["diffs"]),
+            }
+        return result
+
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        """Get repository activity statistics for the last N days.
+
+        Args:
+            days: Number of days to look back
+            include_commits: Whether to include commit counts
+            include_prs: Whether to include merge request counts
+            include_issues: Whether to include issue counts
+
+        Returns:
+            Dictionary with activity counts by type
+        """
+        from datetime import datetime, timedelta
+
+        since = datetime.now() - timedelta(days=days)
+        activity = {}
+
+        if include_commits:
+            commits = self._repo.commits.list(since=since.isoformat(), all=True)
+            activity["commits"] = len(list(commits))
+
+        if include_prs:
+            # Get merge requests updated in time period
+            mrs = self._repo.mergerequests.list(updated_after=since.isoformat(), all=True)
+            activity["pull_requests"] = len(list(mrs))
+
+        if include_issues:
+            # Get issues updated in time period
+            issues = self._repo.issues.list(updated_after=since.isoformat(), all=True)
+            activity["issues"] = len(list(issues))
+
+        return activity
+
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        try:
+            # Get all releases
+            releases = self._repo.releases.list()
+
+            if not releases:
+                msg = "No releases found"
+                raise ResourceNotFoundError(msg)
+
+            # Filter releases
+            filtered: list[RESTObject] = []
+            for release in releases:
+                # GitLab doesn't have draft releases
+                if not include_prereleases and release.tag_name.startswith((
+                    "alpha",
+                    "beta",
+                    "rc",
+                )):
+                    continue
+                filtered.append(release)
+
+            if not filtered:
+                msg = "No matching releases found"
+                raise ResourceNotFoundError(msg)
+
+            latest = filtered[0]  # GitLab returns in descending order
+
+            return Release(
+                tag_name=latest.tag_name,
+                name=latest.name,
+                description=latest.description or "",
+                created_at=self._parse_datetime(latest.created_at),
+                published_at=self._parse_datetime(latest.released_at),
+                draft=False,  # GitLab doesn't have draft releases
+                prerelease=latest.tag_name.startswith(("alpha", "beta", "rc")),
+                author=User(
+                    username=latest.author["username"],
+                    name=latest.author["name"],
+                    avatar_url=latest.author["avatar_url"],
+                )
+                if latest.author
+                else None,
+                assets=[
+                    {
+                        "name": asset["name"],
+                        "url": asset["url"],
+                        "size": asset.get("size", 0),
+                        "download_count": 0,  # GitLab doesn't provide this
+                    }
+                    for asset in latest.assets.get("links", [])
+                ]
+                if latest.assets
+                else [],
+                url=latest.assets.get("_links", {}).get("self", ""),
+                target_commitish=latest.commit["id"] if latest.commit else None,
+            )
+
+        except gitlab.exceptions.GitlabError as e:
+            msg = f"Failed to get latest release: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        try:
+            releases: list[Release] = []
+            for release in self._repo.releases.list():
+                if not include_prereleases and release.tag_name.startswith((
+                    "alpha",
+                    "beta",
+                    "rc",
+                )):
+                    continue
+
+                releases.append(
+                    Release(
+                        tag_name=release.tag_name,
+                        name=release.name,
+                        description=release.description or "",
+                        created_at=self._parse_datetime(release.created_at),
+                        published_at=self._parse_datetime(release.released_at),
+                        draft=False,
+                        prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
+                        author=User(
+                            username=release.author["username"],
+                            name=release.author["name"],
+                            avatar_url=release.author["avatar_url"],
+                        )
+                        if release.author
+                        else None,
+                        assets=[
+                            {
+                                "name": asset["name"],
+                                "url": asset["url"],
+                                "size": asset.get("size", 0),
+                            }
+                            for asset in release.assets.get("links", [])
+                        ]
+                        if release.assets
+                        else [],
+                        url=release.assets.get("_links", {}).get("self", ""),
+                        target_commitish=release.commit["id"] if release.commit else None,
+                    )
+                )
+
+                if limit and len(releases) >= limit:
+                    break
+
+        except gitlab.exceptions.GitlabError as e:
+            msg = f"Failed to list releases: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return releases
+
+    def get_release(self, tag: str) -> Release:
+        try:
+            release = self._repo.releases.get(tag)
+            return Release(
+                tag_name=release.tag_name,
+                name=release.name,
+                description=release.description or "",
+                created_at=self._parse_datetime(release.created_at),
+                published_at=self._parse_datetime(release.released_at),
+                draft=False,
+                prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
+                author=User(
+                    username=release.author["username"],
+                    name=release.author["name"],
+                    avatar_url=release.author["avatar_url"],
+                )
+                if release.author
+                else None,
+                assets=[
+                    {
+                        "name": asset["name"],
+                        "url": asset["url"],
+                        "size": asset.get("size", 0),
+                    }
+                    for asset in release.assets.get("links", [])
+                ]
+                if release.assets
+                else [],
+                url=release.assets.get("_links", {}).get("self", ""),
+                target_commitish=release.commit["id"] if release.commit else None,
+            )
+
+        except gitlab.exceptions.GitlabError as e:
+            msg = f"Release with tag {tag} not found: {e!s}"
+            raise ResourceNotFoundError(msg) from e
 
 
 if __name__ == "__main__":

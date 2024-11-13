@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+import fnmatch
 import os
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 import giteapy
@@ -14,6 +16,7 @@ from githarbor.core.models import (
     Issue,
     Label,
     PullRequest,
+    Release,
     User,
     Workflow,
     WorkflowRun,
@@ -22,7 +25,7 @@ from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from collections.abc import Iterator
 
 
 class GiteaRepository(Repository):
@@ -297,6 +300,331 @@ class GiteaRepository(Repository):
         except ApiException as e:
             msg = f"Failed to download {path}: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+    def search_commits(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        try:
+            kwargs: dict[str, Any] = {"keyword": query}
+            if branch:
+                kwargs["ref"] = branch
+            if path:
+                kwargs["path"] = path
+            if max_results:
+                kwargs["limit"] = max_results
+            commits = self._repo_api.repo_search_commits(
+                self._owner, self._name, **kwargs
+            )
+            return [self.get_commit(c.sha) for c in commits]
+        except ApiException as e:
+            msg = f"Failed to search commits: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def iter_files(
+        self,
+        path: str = "",
+        ref: str | None = None,
+        pattern: str | None = None,
+    ) -> Iterator[str]:
+        try:
+            entries = self._repo_api.repo_get_contents_list(
+                self._owner,
+                self._name,
+                str(path),
+                ref=ref or self.default_branch,
+            )
+            for entry in entries:
+                if entry.type == "file":
+                    if not pattern or fnmatch.fnmatch(entry.path, pattern):
+                        yield entry.path
+                elif entry.type == "dir":
+                    yield from self.iter_files(entry.path, ref, pattern)
+        except ApiException as e:
+            msg = f"Failed to list files: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def get_contributors(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        try:
+            # Get all commits to analyze contributors
+            # since API doesn't provide direct endpoint
+            commits = self._repo_api.repo_get_all_commits(self._owner, self._name)
+
+            # Build contributor stats from commits
+            contributors: dict[str, dict[str, Any]] = {}
+            for commit in commits:
+                author = commit.author
+                if not author:
+                    continue
+
+                if author.login not in contributors:
+                    contributors[author.login] = {
+                        "username": author.login,
+                        "name": author.full_name,
+                        "avatar_url": author.avatar_url,
+                        "commits": 0,
+                    }
+                contributors[author.login]["commits"] += 1
+
+            # Convert to list and sort
+            contributor_list = list(contributors.values())
+            if sort_by == "name":
+                contributor_list.sort(key=lambda c: c["username"])
+            elif sort_by == "commits":
+                contributor_list.sort(key=lambda c: c["commits"], reverse=True)
+
+            # Apply limit if specified
+            if limit:
+                contributor_list = contributor_list[:limit]
+
+            return [
+                User(
+                    username=c["username"],
+                    name=c["name"],
+                    avatar_url=c["avatar_url"],
+                )
+                for c in contributor_list
+            ]
+
+        except ApiException as e:
+            msg = f"Failed to get contributors: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def get_latest_release(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        try:
+            kwargs = {
+                "draft": include_drafts,
+                "pre_release": include_prereleases,
+            }
+            releases = self._repo_api.repo_list_releases(
+                self._owner,
+                self._name,
+                limit=1,
+                **kwargs,
+            )
+
+            if not releases:
+                msg = "No matching releases found"
+                raise ResourceNotFoundError(msg)
+
+            latest = releases[0]
+
+            return Release(
+                tag_name=latest.tag_name,
+                name=latest.name,
+                description=latest.body or "",
+                created_at=latest.created_at,
+                published_at=latest.published_at,
+                draft=latest.draft,
+                prerelease=latest.prerelease,
+                author=User(
+                    username=latest.author.login,
+                    name=latest.author.full_name,
+                    avatar_url=latest.author.avatar_url,
+                )
+                if latest.author
+                else None,
+                assets=[
+                    {
+                        "name": asset.name,
+                        "url": asset.browser_download_url,
+                        "size": asset.size,
+                        "download_count": asset.download_count,
+                    }
+                    for asset in latest.assets
+                ],
+                url=latest.url,
+                target_commitish=latest.target_commitish,
+            )
+
+        except giteapy.ApiException as e:
+            msg = f"Failed to get latest release: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def list_releases(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        try:
+            kwargs: dict[str, Any] = {
+                "draft": include_drafts,
+                "pre_release": include_prereleases,
+            }
+            if limit:
+                kwargs["limit"] = limit
+                return [
+                    Release(
+                        tag_name=release.tag_name,
+                        name=release.name,
+                        description=release.body or "",
+                        created_at=release.created_at,
+                        published_at=release.published_at,
+                        draft=release.draft,
+                        prerelease=release.prerelease,
+                        author=User(
+                            username=release.author.login,
+                            name=release.author.full_name,
+                            avatar_url=release.author.avatar_url,
+                        )
+                        if release.author
+                        else None,
+                        assets=[
+                            {
+                                "name": asset.name,
+                                "url": asset.browser_download_url,
+                                "size": asset.size,
+                                "download_count": asset.download_count,
+                            }
+                            for asset in release.assets
+                        ],
+                        url=release.url,
+                        target_commitish=release.target_commitish,
+                    )
+                    for release in self._repo_api.repo_list_releases(
+                        self._owner,
+                        self._name,
+                        **kwargs,
+                    )
+                ]
+            return []
+        except ApiException as e:
+            msg = f"Failed to list releases: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return []
+
+    def get_release(self, tag: str) -> Release:
+        try:
+            release = self._repo_api.repo_get_release_by_tag(
+                self._owner,
+                self._name,
+                tag,
+            )
+            return Release(
+                tag_name=release.tag_name,
+                name=release.name,
+                description=release.body or "",
+                created_at=release.created_at,
+                published_at=release.published_at,
+                draft=release.draft,
+                prerelease=release.prerelease,
+                author=User(
+                    username=release.author.login,
+                    name=release.author.full_name,
+                    avatar_url=release.author.avatar_url,
+                )
+                if release.author
+                else None,
+                assets=[
+                    {
+                        "name": asset.name,
+                        "url": asset.browser_download_url,
+                        "size": asset.size,
+                        "download_count": asset.download_count,
+                    }
+                    for asset in release.assets
+                ],
+                url=release.url,
+                target_commitish=release.target_commitish,
+            )
+
+        except ApiException as e:
+            msg = f"Release with tag {tag} not found: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def get_languages(self) -> dict[str, int]:
+        try:
+            return self._repo_api.repo_get_languages(self._owner, self._name)
+        except ApiException as e:
+            msg = f"Failed to get languages: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+    def compare_branches(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        try:
+            comparison = self._repo_api.repo_compare(self._owner, self._name, base, head)
+            result: dict[str, Any] = {
+                "ahead_by": len(comparison.commits),
+                "behind_by": 0,  # Gitea API doesn't provide this info
+            }
+
+            if include_commits:
+                result["commits"] = [self.get_commit(c.sha) for c in comparison.commits]
+            if include_files:
+                result["files"] = [f.filename for f in comparison.files]
+            if include_stats:
+                result["stats"] = {
+                    "additions": sum(f.additions for f in comparison.files),
+                    "deletions": sum(f.deletions for f in comparison.files),
+                    "changes": len(comparison.files),
+                }
+        except ApiException as e:
+            msg = f"Failed to compare branches: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return result
+
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        try:
+            since = datetime.now() - timedelta(days=days)
+            stats = {}
+
+            if include_commits:
+                commits = self._repo_api.repo_get_all_commits(
+                    self._owner,
+                    self._name,
+                    since=since.isoformat(),
+                )
+                stats["commits"] = len(commits)
+
+            if include_prs:
+                prs = self._repo_api.repo_list_pull_requests(
+                    self._owner,
+                    self._name,
+                    state="all",
+                    since=since.isoformat(),
+                )
+                stats["pull_requests"] = len(prs)
+
+            if include_issues:
+                issues = self._issues_api.issue_list_issues(
+                    self._owner,
+                    self._name,
+                    state="all",
+                    since=since.isoformat(),
+                )
+                stats["issues"] = len(issues)
+
+        except ApiException as e:
+            msg = f"Failed to get recent activity: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
+            return stats
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
@@ -208,3 +208,31 @@ class WorkflowRun:
     """Date and time when the workflow run started."""
     completed_at: datetime | None = None
     """Date and time when the workflow run completed."""
+
+
+@dataclass
+class Release:
+    """Model representing a repository release."""
+
+    tag_name: str
+    """Tag name for the release."""
+    name: str
+    """Name/title of the release."""
+    description: str = ""
+    """Description/body of the release."""
+    created_at: datetime | None = None
+    """Date and time when the release was created."""
+    published_at: datetime | None = None
+    """Date and time when the release was published."""
+    draft: bool = False
+    """Whether this is a draft release."""
+    prerelease: bool = False
+    """Whether this is a pre-release."""
+    author: User | None = None
+    """User who created the release."""
+    assets: list[dict[str, Any]] = field(default_factory=list)
+    """List of assets attached to the release."""
+    url: str | None = None
+    """URL to view the release."""
+    target_commitish: str | None = None
+    """The branch/tag/commit the release targets."""
