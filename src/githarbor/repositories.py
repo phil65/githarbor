@@ -17,6 +17,16 @@ if importlib.util.find_spec("gitlab"):
 
     RepoRegistry.register("gitlab")(GitLabRepository)
 
+if importlib.util.find_spec("giteapy"):
+    from githarbor.providers.gitearepository import GiteaRepository
+
+    RepoRegistry.register("gitea")(GiteaRepository)
+
+if importlib.util.find_spec("azure"):
+    from githarbor.providers.azurerepository import AzureRepository
+
+    RepoRegistry.register("azure")(AzureRepository)
+
 # if importlib.util.find_spec("atlassian"):
 #     from githarbor.providers.bitbucketrepository import BitbucketRepository
 

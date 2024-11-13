@@ -36,9 +36,17 @@ license = { file = "LICENSE" }
 
 [project.optional-dependencies]
 github = ["pygithub"]
+gitea = ["giteapy"]
 gitlab = ["python-gitlab"]
+azure = ["azure-devops"]
 bitbucket = ["atlassian-python-api"]
-all = ["pygithub", "python-gitlab", "atlassian-python-api"]
+all = [
+    "pygithub",
+    "python-gitlab",
+    "atlassian-python-api",
+    "giteapy",
+    "azure-devops",
+]
 
 [tool.uv]
 dev-dependencies = [
