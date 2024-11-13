@@ -384,6 +384,7 @@ class GitLabRepository(Repository):
         limit: int | None = None,
     ) -> list[User]:
         contributors = self._repo.users.list(include_stats=True)
+        assert isinstance(contributors, list)
         if sort_by == "name":
             contributors = sorted(contributors, key=lambda c: c.username)
         elif sort_by == "date":
