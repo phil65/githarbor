@@ -311,7 +311,7 @@ class GitHubRepository(Repository):
                 created_at=run.created_at,
                 updated_at=run.updated_at,
                 started_at=run.run_started_at,
-                completed_at=run.run_attempt,
+                # completed_at=run.run_concluded_at,
             )
         except GithubException as e:
             msg = f"Workflow run {id} not found: {e!s}"
@@ -364,10 +364,14 @@ class GitHubRepository(Repository):
         pattern: str | None = None,
     ) -> Iterator[str]:
         contents = self._repo.get_contents(path, ref=ref or self.default_branch)
+        assert isinstance(contents, list)
+        kwargs = {"ref": ref} if ref else {}
         while contents:
             content = contents.pop(0)
             if content.type == "dir":
-                contents.extend(self._repo.get_contents(content.path, ref=ref))
+                c = self._repo.get_contents(content.path, **kwargs)
+                assert isinstance(c, list)
+                contents.extend(c)
             elif not pattern or fnmatch.fnmatch(content.path, pattern):
                 yield content.path
 
@@ -376,7 +380,7 @@ class GitHubRepository(Repository):
         sort_by: Literal["commits", "name", "date"] = "commits",
         limit: int | None = None,
     ) -> list[User]:
-        contributors = self._repo.get_contributors()
+        contributors = list(self._repo.get_contributors())
         if sort_by == "name":
             contributors = sorted(contributors, key=lambda c: c.login)
         elif sort_by == "date":
@@ -405,7 +409,10 @@ class GitHubRepository(Repository):
         include_stats: bool = True,
     ) -> dict[str, Any]:
         comparison = self._repo.compare(base, head)
-        result = {"ahead_by": comparison.ahead_by, "behind_by": comparison.behind_by}
+        result: dict[str, Any] = {
+            "ahead_by": comparison.ahead_by,
+            "behind_by": comparison.behind_by,
+        }
 
         if include_commits:
             result["commits"] = [self.get_commit(c.sha) for c in comparison.commits]
