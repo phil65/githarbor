@@ -26,6 +26,10 @@ class User:
     """Geographic location of the user."""
     company: str | None = None
     """Company/organization the user belongs to."""
+    state: str | None = None
+    """State of the user (active / inactive)."""
+    locked: bool | None = None
+    """Whether user is locked."""
 
 
 @dataclass

@@ -35,7 +35,7 @@ class GitLabRepository(Repository):
     """GitLab repository implementation."""
 
     url_patterns: ClassVar[list[str]] = ["gitlab.com"]
-    TIMESTAMP_FORMATS = [
+    TIMESTAMP_FORMATS: ClassVar[list[str]] = [
         "%Y-%m-%dT%H:%M:%S.%fZ",
         "%Y-%m-%dT%H:%M:%S.%f%z",  # Format with explicit timezone
     ]
@@ -103,19 +103,20 @@ class GitLabRepository(Repository):
 
     def _parse_timestamp(self, timestamp: str) -> datetime:
         """Parse GitLab timestamp string to datetime.
-        
+
         Args:
             timestamp: Timestamp string from GitLab API
         """
         # Convert 'Z' to +00:00 for consistent parsing
         timestamp = re.sub(r"Z$", "+00:00", timestamp)
-        
+
         for fmt in self.TIMESTAMP_FORMATS:
             try:
                 return datetime.strptime(timestamp, fmt)
             except ValueError:
                 continue
-        raise ValueError(f"Unable to parse timestamp: {timestamp}")
+        msg = f"Unable to parse timestamp: {timestamp}"
+        raise ValueError(msg)
 
     def get_pull_request(self, number: int) -> PullRequest:
         try:
@@ -366,14 +367,14 @@ class GitLabRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        kwargs: dict[str, Any] = {"search": query}
+        kwargs: dict[str, Any] = {}
         if branch:
             kwargs["ref_name"] = branch
         if path:
             kwargs["path"] = path
         if max_results:
-            kwargs["max_results"] = max_results
-        commits = self._repo.commits.list(**kwargs)
+            kwargs["per_page"] = max_results
+        commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
         return [self.get_commit(c.id) for c in commits]
 
     def iter_files(
@@ -407,9 +408,11 @@ class GitLabRepository(Repository):
             User(
                 username=c.username,
                 name=c.name,
-                email=c.email,
+                email=getattr(c, "email", None),
                 avatar_url=c.avatar_url,
-                created_at=c.created_at,
+                created_at=getattr(c, "created_at", None),
+                locked=c.locked,
+                state=c.state,
             )
             for c in contributors
         ]
