@@ -348,12 +348,21 @@ class GitHubRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        kwargs = {"query": query}
+        # Build the search query
+        search_query = f"{query} repo:{self._owner}/{self._name}"
+        # Add branch qualifier if specified
         if branch:
-            kwargs["ref"] = branch
+            search_query += f" ref:{branch}"
+        # Add path qualifier if specified
         if path:
-            kwargs["path"] = path
-        results = self._repo.search_commits(**kwargs)
+            search_query += f" path:{path}"
+        kwargs = {"query": search_query}
+        # kwargs = {"query": f"{self._owner}/{self._name}+{query}"}
+        # if branch:
+        #     kwargs["ref"] = branch
+        # if path:
+        #     kwargs["path"] = path
+        results = self._gh.search_commits(**kwargs)
         commits = list(results[:max_results] if max_results else results)
         return [self.get_commit(c.sha) for c in commits]
 
@@ -672,6 +681,8 @@ class GitHubRepository(Repository):
 
 if __name__ == "__main__":
     repo = GitHubRepository.from_url("https://github.com/phil65/mknodes")
-    print(repo.list_workflows())
+    commits = repo.search_commits("implement")
+    print(commits)
+    # print(repo.list_workflows())
     branch = repo.get_branch("main")
     print(branch)
