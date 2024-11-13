@@ -136,11 +136,34 @@ class GiteaRepository(Repository):
                 self._name,
                 state=state,
             )
-            assert isinstance(prs, list)
-            return [self.get_pull_request(pr.number) for pr in prs]
         except ApiException as e:
             msg = f"Failed to list pull requests: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        assert isinstance(prs, list)
+        return [
+            PullRequest(
+                number=pr.number,
+                title=pr.title,
+                description=pr.body or "",
+                state=pr.state,
+                source_branch=pr.head.ref,
+                target_branch=pr.base.ref,
+                created_at=pr.created_at,
+                updated_at=pr.updated_at,
+                merged_at=pr.merged_at,
+                closed_at=pr.closed_at,
+                author=User(
+                    username=pr.user.login,
+                    name=pr.user.full_name or pr.user.login,
+                    avatar_url=pr.user.avatar_url,
+                )
+                if pr.user
+                else None,
+                labels=[Label(name=label.name) for label in (pr.labels or [])],
+            )
+            for pr in prs
+        ]
 
     def get_issue(self, issue_id: int) -> Issue:
         try:
@@ -181,11 +204,39 @@ class GiteaRepository(Repository):
                 self._name,
                 state=state,
             )
-            assert isinstance(issues, list)
-            return [self.get_issue(issue.number) for issue in issues]
         except ApiException as e:
             msg = f"Failed to list issues: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        assert isinstance(issues, list)
+        return [
+            Issue(
+                number=issue.number,
+                title=issue.title,
+                description=issue.body or "",
+                state=issue.state,
+                created_at=issue.created_at,
+                updated_at=issue.updated_at,
+                closed_at=issue.closed_at,
+                closed=issue.state == "closed",
+                author=User(
+                    username=issue.user.login,
+                    name=issue.user.full_name or issue.user.login,
+                    avatar_url=issue.user.avatar_url,
+                )
+                if issue.user
+                else None,
+                assignee=User(
+                    username=issue.assignee.login,
+                    name=issue.assignee.full_name or issue.assignee.login,
+                    avatar_url=issue.assignee.avatar_url,
+                )
+                if issue.assignee
+                else None,
+                labels=[Label(name=label.name) for label in (issue.labels or [])],
+            )
+            for issue in issues
+        ]
 
     def get_commit(self, sha: str) -> Commit:
         try:
@@ -232,20 +283,33 @@ class GiteaRepository(Repository):
                 self._name,
                 **kwargs,
             )
-            assert isinstance(commits, list)
-            # Filter by author if specified
-            if author:
-                commits = [
-                    c
-                    for c in commits
-                    if author in (c.commit.author.name or c.commit.author.email)
-                ]
-
-            return [self.get_commit(c.sha) for c in commits]
-
         except ApiException as e:
             msg = f"Failed to list commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        assert isinstance(commits, list)
+        # Filter by author if specified
+        if author:
+            commits = [
+                c
+                for c in commits
+                if author in (c.commit.author.name or c.commit.author.email)
+            ]
+
+        return [
+            Commit(
+                sha=commit.sha,
+                message=commit.commit.message,
+                created_at=commit.commit.author._date,
+                author=User(
+                    username=commit.commit.author.name,
+                    email=commit.commit.author.email,
+                    name=commit.commit.author.name,
+                ),
+                url=commit.html_url,
+            )
+            for commit in commits
+        ]
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         raise NotImplementedError
@@ -311,20 +375,38 @@ class GiteaRepository(Repository):
         max_results: int | None = None,
     ) -> list[Commit]:
         try:
-            kwargs: dict[str, Any] = {"keyword": query}
+            kwargs: dict[str, Any] = {}
             if branch:
-                kwargs["ref"] = branch
+                kwargs["ref_name"] = branch
             if path:
                 kwargs["path"] = path
             if max_results:
                 kwargs["limit"] = max_results
+
             commits = self._repo_api.repo_search_commits(
-                self._owner, self._name, **kwargs
+                self._owner,
+                self._name,
+                keyword=query,
+                **kwargs,
             )
-            return [self.get_commit(c.sha) for c in commits]
         except ApiException as e:
             msg = f"Failed to search commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        return [
+            Commit(
+                sha=commit.sha,
+                message=commit.commit.message,
+                created_at=commit.commit.author._date,
+                author=User(
+                    username=commit.commit.author.name,
+                    email=commit.commit.author.email,
+                    name=commit.commit.author.name,
+                ),
+                url=commit.html_url,
+            )
+            for commit in commits
+        ]
 
     def iter_files(
         self,
@@ -358,6 +440,10 @@ class GiteaRepository(Repository):
             # Get all commits to analyze contributors
             # since API doesn't provide direct endpoint
             commits = self._repo_api.repo_get_all_commits(self._owner, self._name)
+        except ApiException as e:
+            msg = f"Failed to get contributors: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+        else:
             assert isinstance(commits, list)
             # Build contributor stats from commits
             contributors: dict[str, dict[str, Any]] = {}
@@ -395,10 +481,6 @@ class GiteaRepository(Repository):
                 for c in contributor_list
             ]
 
-        except ApiException as e:
-            msg = f"Failed to get contributors: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
     def get_latest_release(
         self,
         include_drafts: bool = False,
@@ -412,7 +494,7 @@ class GiteaRepository(Repository):
             releases = self._repo_api.repo_list_releases(
                 self._owner,
                 self._name,
-                limit=1,
+                per_page=1,
                 **kwargs,
             )
 
@@ -545,11 +627,7 @@ class GiteaRepository(Repository):
             raise ResourceNotFoundError(msg) from e
 
     def get_languages(self) -> dict[str, int]:
-        try:
-            return self._repo_api.repo_get_languages(self._owner, self._name)
-        except ApiException as e:
-            msg = f"Failed to get languages: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        raise NotImplementedError
 
     def compare_branches(
         self,
@@ -559,28 +637,7 @@ class GiteaRepository(Repository):
         include_files: bool = True,
         include_stats: bool = True,
     ) -> dict[str, Any]:
-        try:
-            comparison = self._repo_api.repo_compare(self._owner, self._name, base, head)
-            result: dict[str, Any] = {
-                "ahead_by": len(comparison.commits),
-                "behind_by": 0,  # Gitea API doesn't provide this info
-            }
-
-            if include_commits:
-                result["commits"] = [self.get_commit(c.sha) for c in comparison.commits]
-            if include_files:
-                result["files"] = [f.filename for f in comparison.files]
-            if include_stats:
-                result["stats"] = {
-                    "additions": sum(f.additions for f in comparison.files),
-                    "deletions": sum(f.deletions for f in comparison.files),
-                    "changes": len(comparison.files),
-                }
-        except ApiException as e:
-            msg = f"Failed to compare branches: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-        else:
-            return result
+        raise NotImplementedError
 
     def get_recent_activity(
         self,
@@ -598,6 +655,7 @@ class GiteaRepository(Repository):
                     self._owner,
                     self._name,
                     since=since.isoformat(),
+                    per_page=100,  # Limit results since we only need count
                 )
                 stats["commits"] = len(commits)
 
@@ -607,6 +665,7 @@ class GiteaRepository(Repository):
                     self._name,
                     state="all",
                     since=since.isoformat(),
+                    per_page=100,
                 )
                 stats["pull_requests"] = len(prs)
 
@@ -616,14 +675,15 @@ class GiteaRepository(Repository):
                     self._name,
                     state="all",
                     since=since.isoformat(),
+                    per_page=100,
                 )
                 stats["issues"] = len(issues)
 
         except ApiException as e:
             msg = f"Failed to get recent activity: {e!s}"
             raise ResourceNotFoundError(msg) from e
-        else:
-            return stats
+
+        return stats
 
 
 if __name__ == "__main__":

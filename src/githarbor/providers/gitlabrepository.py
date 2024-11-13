@@ -141,10 +141,33 @@ class GitLabRepository(Repository):
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
         try:
             mrs = self._repo.mergerequests.list(state=state, all=True)
-            return [self.get_pull_request(mr.iid) for mr in mrs]
         except GitlabGetError as e:
             msg = f"Failed to list merge requests: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        return [
+            PullRequest(
+                number=mr.iid,
+                title=mr.title,
+                description=mr.description or "",
+                state=mr.state,
+                source_branch=mr.source_branch,
+                target_branch=mr.target_branch,
+                created_at=self._parse_timestamp(mr.created_at),
+                updated_at=self._parse_timestamp(mr.updated_at),
+                merged_at=self._parse_timestamp(mr.merged_at) if mr.merged_at else None,
+                closed_at=self._parse_timestamp(mr.closed_at) if mr.closed_at else None,
+                author=User(
+                    username=mr.author["username"],
+                    name=mr.author["name"],
+                    avatar_url=mr.author["avatar_url"],
+                )
+                if mr.author
+                else None,
+                labels=[Label(name=lbl) for lbl in mr.labels],
+            )
+            for mr in mrs
+        ]
 
     def get_issue(self, issue_id: int) -> Issue:
         try:
@@ -187,10 +210,42 @@ class GitLabRepository(Repository):
             state = "opened"
         try:
             issues = self._repo.issues.list(state=state, all=True)
-            return [self.get_issue(issue.iid) for issue in issues]
         except GitlabGetError as e:
             msg = f"Failed to list issues: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        return [
+            Issue(
+                number=issue.iid,
+                title=issue.title,
+                description=issue.description or "",
+                state=issue.state,
+                created_at=self._parse_timestamp(issue.created_at),
+                updated_at=self._parse_timestamp(issue.updated_at)
+                if issue.updated_at
+                else None,
+                closed_at=self._parse_timestamp(issue.closed_at)
+                if issue.closed_at
+                else None,
+                closed=issue.state == "closed",
+                author=User(
+                    username=issue.author["username"],
+                    name=issue.author["name"],
+                    avatar_url=issue.author["avatar_url"],
+                )
+                if issue.author
+                else None,
+                assignee=User(
+                    username=issue.assignee["username"],
+                    name=issue.assignee["name"],
+                    avatar_url=issue.assignee["avatar_url"],
+                )
+                if issue.assignee
+                else None,
+                labels=[Label(name=lbl) for lbl in issue.labels],
+            )
+            for issue in issues
+        ]
 
     def get_commit(self, sha: str) -> Commit:
         try:
@@ -254,15 +309,26 @@ class GitLabRepository(Repository):
                 kwargs["all"] = True
 
             commits = self._repo.commits.list(**kwargs)
-
-            # Convert to list to materialize the results
-            commits = list(commits)
-
-            return [self.get_commit(c.id) for c in commits]
-
         except GitlabGetError as e:
             msg = f"Failed to list commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        # Convert to list to materialize the results
+        commits = list(commits)
+        return [
+            Commit(
+                sha=commit.id,
+                message=commit.message,
+                created_at=self._parse_timestamp(commit.created_at),
+                author=User(
+                    username=commit.author_name,
+                    email=commit.author_email,
+                    name=commit.author_name,
+                ),
+                url=commit.web_url,
+            )
+            for commit in commits
+        ]
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         try:
@@ -282,10 +348,21 @@ class GitLabRepository(Repository):
     def list_workflows(self) -> list[Workflow]:
         try:
             pipelines = self._repo.pipelines.list()
-            return [self.get_workflow(str(p.id)) for p in pipelines]
         except GitlabGetError as e:
             msg = f"Failed to list pipelines: {e!s}"
             raise ResourceNotFoundError(msg) from e
+
+        return [
+            Workflow(
+                id=str(pipeline.id),
+                name=pipeline.ref,
+                path="",  # GitLab doesn't have workflow paths
+                state=pipeline.status,
+                created_at=self._parse_timestamp(pipeline.created_at),
+                updated_at=None,
+            )
+            for pipeline in pipelines
+        ]
 
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         try:
@@ -367,15 +444,33 @@ class GitLabRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        kwargs: dict[str, Any] = {}
-        if branch:
-            kwargs["ref_name"] = branch
-        if path:
-            kwargs["path"] = path
-        if max_results:
-            kwargs["per_page"] = max_results
-        commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
-        return [self.get_commit(c.id) for c in commits]
+        try:
+            kwargs: dict[str, Any] = {}
+            if branch:
+                kwargs["ref_name"] = branch
+            if path:
+                kwargs["path"] = path
+            if max_results:
+                kwargs["per_page"] = max_results
+            commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
+        except GitlabGetError as e:
+            msg = f"Failed to search commits: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
+        return [
+            Commit(
+                sha=commit.id,
+                message=commit.message,
+                created_at=self._parse_timestamp(commit.created_at),
+                author=User(
+                    username=commit.author_name,
+                    email=commit.author_email,
+                    name=commit.author_name,
+                ),
+                url=commit.web_url,
+            )
+            for commit in commits
+        ]
 
     def iter_files(
         self,
@@ -428,11 +523,29 @@ class GitLabRepository(Repository):
         include_files: bool = True,
         include_stats: bool = True,
     ) -> dict[str, Any]:
-        comparison = self._repo.compare(base, head)
+        try:
+            comparison = self._repo.compare(base, head)
+        except GitlabGetError as e:
+            msg = f"Failed to compare branches: {e!s}"
+            raise ResourceNotFoundError(msg) from e
+
         result: dict[str, Any] = {"ahead_by": len(comparison["commits"])}
 
         if include_commits:
-            result["commits"] = [self.get_commit(c["id"]) for c in comparison["commits"]]
+            result["commits"] = [
+                Commit(
+                    sha=c["id"],
+                    message=c["message"],
+                    created_at=self._parse_timestamp(c["created_at"]),
+                    author=User(
+                        username=c["author_name"],
+                        email=c["author_email"],
+                        name=c["author_name"],
+                    ),
+                    url=c["web_url"],
+                )
+                for c in comparison["commits"]
+            ]
         if include_files:
             result["files"] = [f["new_path"] for f in comparison["diffs"]]
         if include_stats:
@@ -450,35 +563,40 @@ class GitLabRepository(Repository):
         include_prs: bool = True,
         include_issues: bool = True,
     ) -> dict[str, int]:
-        """Get repository activity statistics for the last N days.
-
-        Args:
-            days: Number of days to look back
-            include_commits: Whether to include commit counts
-            include_prs: Whether to include merge request counts
-            include_issues: Whether to include issue counts
-
-        Returns:
-            Dictionary with activity counts by type
-        """
+        """Get repository activity statistics for the last N days."""
         from datetime import datetime, timedelta
 
         since = datetime.now() - timedelta(days=days)
-        activity = {}
+        activity: dict[str, int] = {}
 
-        if include_commits:
-            commits = self._repo.commits.list(since=since.isoformat(), all=True)
-            activity["commits"] = len(list(commits))
+        try:
+            if include_commits:
+                commits = self._repo.commits.list(
+                    since=since.isoformat(),
+                    per_page=100,
+                    get_all=False,
+                )
+                activity["commits"] = len(list(commits))
 
-        if include_prs:
-            # Get merge requests updated in time period
-            mrs = self._repo.mergerequests.list(updated_after=since.isoformat(), all=True)
-            activity["pull_requests"] = len(list(mrs))
+            if include_prs:
+                mrs = self._repo.mergerequests.list(
+                    updated_after=since.isoformat(),
+                    per_page=100,
+                    get_all=False,
+                )
+                activity["pull_requests"] = len(list(mrs))
 
-        if include_issues:
-            # Get issues updated in time period
-            issues = self._repo.issues.list(updated_after=since.isoformat(), all=True)
-            activity["issues"] = len(list(issues))
+            if include_issues:
+                issues = self._repo.issues.list(
+                    updated_after=since.isoformat(),
+                    per_page=100,
+                    get_all=False,
+                )
+                activity["issues"] = len(list(issues))
+
+        except GitlabGetError as e:
+            msg = f"Failed to get recent activity: {e!s}"
+            raise ResourceNotFoundError(msg) from e
 
         return activity
 
