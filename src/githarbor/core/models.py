@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class User:
+    """GitHub user model."""
+
     username: str
     """Username of the user."""
     name: str | None = None
@@ -30,6 +32,14 @@ class User:
     """State of the user (active / inactive)."""
     locked: bool | None = None
     """Whether user is locked."""
+    followers: int | None = None
+    """Number of followers."""
+    following: int | None = None
+    """Number of users being followed."""
+    public_repos: int | None = None
+    """Number of public repositories."""
+    url: str | None = None
+    """URL to user's profile."""
 
 
 @dataclass
@@ -44,6 +54,8 @@ class Label:
     """Date and time when the label was created."""
     updated_at: datetime | None = None
     """Date and time when the label was last updated."""
+    url: str | None = None
+    """URL to the label."""
 
 
 @dataclass
@@ -62,6 +74,8 @@ class Comment:
     """Dictionary of reaction types and their counts."""
     reply_to: str | None = None  # ID of parent comment if this is a reply
     """ID of parent comment if this is a reply."""
+    url: str | None = None
+    """URL to the comment."""
 
 
 @dataclass
@@ -78,38 +92,64 @@ class Branch:
     """Date and time when the branch was created."""
     updated_at: datetime | None = None
     """Date and time when the branch was last updated."""
+    last_commit_date: datetime | None = None
+    """Date of the last commit."""
+    last_commit_message: str | None = None
+    """Message of the last commit."""
+    last_commit_author: User | None = None
+    """Author of the last commit."""
+    protection_rules: dict[str, Any] | None = None
+    """Branch protection settings if any."""
 
 
 @dataclass
 class PullRequest:
+    """Pull request model."""
+
+    number: int
+    """Pull request number."""
     title: str
     """Title of the pull request."""
     source_branch: str
-    """Branch containing the changes to merge."""
+    """Branch containing the changes."""
     target_branch: str
-    """Branch to merge the changes into."""
+    """Branch to merge into."""
     description: str = ""
-    """Description of the changes in the pull request."""
-    state: str = "open"
-    """Current state of the pull request."""
-    number: int | None = None
-    """Unique identifier for the pull request."""
+    """Description/body of the pull request."""
+    state: str | None = None
+    """Current state (open/closed/merged)."""
     created_at: datetime | None = None
-    """Date and time when the pull request was created."""
+    """Creation timestamp."""
     updated_at: datetime | None = None
-    """Date and time when the pull request was last updated."""
+    """Last update timestamp."""
     merged_at: datetime | None = None
-    """Date and time when the pull request was merged."""
+    """Merge timestamp if merged."""
     closed_at: datetime | None = None
-    """Date and time when the pull request was closed."""
+    """Closing timestamp if closed."""
     author: User | None = None
-    """User who created the pull request."""
+    """PR creator."""
     assignees: list[User] = field(default_factory=list)
-    """List of users assigned to review the pull request."""
+    """Assigned reviewers."""
     labels: list[Label] = field(default_factory=list)
-    """List of labels attached to the pull request."""
+    """Applied labels."""
     comments: list[Comment] = field(default_factory=list)
-    """List of comments on the pull request."""
+    """PR comments."""
+    merged_by: User | None = None
+    """User who merged the PR."""
+    review_comments_count: int = 0
+    """Number of review comments."""
+    commits_count: int = 0
+    """Number of commits."""
+    additions: int = 0
+    """Lines added."""
+    deletions: int = 0
+    """Lines deleted."""
+    changed_files: int = 0
+    """Number of files changed."""
+    mergeable: bool | None = None
+    """Whether PR can be merged."""
+    url: str | None = None
+    """URL to the PR."""
 
 
 @dataclass
@@ -136,6 +176,12 @@ class Issue:
     """Date and time when the issue was closed."""
     closed: bool = False
     """Indicates if the issue is closed."""
+    comments_count: int = 0
+    """Number of comments."""
+    url: str | None = None
+    """URL to the issue."""
+    milestone: str | None = None
+    """Associated milestone."""
 
 
 @dataclass
@@ -156,6 +202,10 @@ class Commit:
     """Commit statistics."""
     parents: list[str] = field(default_factory=list)
     """List of parent commit SHAs."""
+    verified: bool = False
+    """Signature verification status."""
+    files_changed: list[str] = field(default_factory=list)
+    """Changed file paths."""
 
 
 @dataclass
@@ -184,6 +234,10 @@ class Workflow:
     """URL to the badge image for the workflow."""
     definition: str | None = None
     """Content of the workflow definition file."""
+    runs_count: int = 0
+    """Total number of runs."""
+    success_count: int = 0
+    """Successful runs count."""
 
 
 @dataclass
@@ -212,6 +266,12 @@ class WorkflowRun:
     """Date and time when the workflow run started."""
     completed_at: datetime | None = None
     """Date and time when the workflow run completed."""
+    run_number: int | None = None
+    """Sequential run number."""
+    jobs_count: int = 0
+    """Total jobs count."""
+    logs_url: str | None = None
+    """Logs URL."""
 
 
 @dataclass
@@ -240,3 +300,5 @@ class Release:
     """URL to view the release."""
     target_commitish: str | None = None
     """The branch/tag/commit the release targets."""
+    download_count: int = 0
+    """Total downloads."""
