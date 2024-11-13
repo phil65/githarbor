@@ -246,7 +246,7 @@ class GitHubRepository(Repository):
     def list_issues(self, state: str = "open") -> list[Issue]:
         try:
             issues = self._repo.get_issues(state=state)
-            return [self.get_issue(issue.number) for issue in issues]
+            return [self._create_issue_model(issue) for issue in issues]
         except GithubException as e:
             msg = f"Failed to list issues: {e!s}"
             raise ResourceNotFoundError(msg) from e
