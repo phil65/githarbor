@@ -125,6 +125,49 @@ class GitHubRepository(Repository):
             url=gh_label.url,
         )
 
+    def _create_pull_request_model(self, pr: Any) -> PullRequest:
+        return PullRequest(
+            number=pr.number,
+            title=pr.title,
+            description=pr.body or "",
+            state=pr.state,
+            source_branch=pr.head.ref,
+            target_branch=pr.base.ref,
+            created_at=pr.created_at,
+            updated_at=pr.updated_at,
+            merged_at=pr.merged_at,
+            closed_at=pr.closed_at,
+            author=self._create_user_model(pr.user),
+            assignees=[self._create_user_model(a) for a in pr.assignees if a],
+            labels=[self._create_label_model(lbl) for lbl in pr.labels],
+            merged_by=self._create_user_model(pr.merged_by),
+            review_comments_count=pr.review_comments,
+            commits_count=pr.commits,
+            additions=pr.additions,
+            deletions=pr.deletions,
+            changed_files=pr.changed_files,
+            mergeable=pr.mergeable,
+            url=pr.html_url,
+        )
+
+    def _create_issue_model(self, issue: Any) -> Issue:
+        return Issue(
+            number=issue.number,
+            title=issue.title,
+            description=issue.body or "",
+            state=issue.state,
+            created_at=issue.created_at,
+            updated_at=issue.updated_at,
+            closed_at=issue.closed_at,
+            closed=issue.state == "closed",
+            author=self._create_user_model(issue.user),
+            assignee=self._create_user_model(issue.assignee),
+            labels=[self._create_label_model(lbl) for lbl in issue.labels],
+            comments_count=issue.comments,
+            url=issue.html_url,
+            milestone=issue.milestone.title if issue.milestone else None,
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo.get_branch(name)
@@ -186,30 +229,16 @@ class GitHubRepository(Repository):
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
         try:
             prs = self._repo.get_pulls(state=state)
-            return [self.get_pull_request(pr.number) for pr in prs]
         except GithubException as e:
             msg = f"Failed to list pull requests: {e!s}"
             raise ResourceNotFoundError(msg) from e
+        else:
+            return [self._create_pull_request_model(pr) for pr in prs]
 
     def get_issue(self, issue_id: int) -> Issue:
         try:
             issue = self._repo.get_issue(issue_id)
-            return Issue(
-                number=issue.number,
-                title=issue.title,
-                description=issue.body or "",
-                state=issue.state,
-                created_at=issue.created_at,
-                updated_at=issue.updated_at,
-                closed_at=issue.closed_at,
-                closed=issue.state == "closed",
-                author=self._create_user_model(issue.user),
-                assignee=self._create_user_model(issue.assignee),
-                labels=[self._create_label_model(lbl) for lbl in issue.labels],
-                comments_count=issue.comments,
-                url=issue.html_url,
-                milestone=issue.milestone.title if issue.milestone else None,
-            )
+            return self._create_issue_model(issue)
         except GithubException as e:
             msg = f"Issue #{issue_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
