@@ -48,7 +48,7 @@ all = [
 ]
 
 [tool.uv]
-default-groups = ["lint", "docs"]
+default-groups = ["dev", "lint", "docs"]
 
 [dependency-groups]
 dev = ["pytest", "pytest-cov", "pyreadline3"]
