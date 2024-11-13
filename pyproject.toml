@@ -48,22 +48,11 @@ all = [
     "azure-devops",
 ]
 
-[tool.uv]
-dev-dependencies = [
-    # lint
-    "ruff",
-    "mypy[faster-cache]",
-    # test
-    "pytest",
-    "pytest-cov",
-
-    # docs
-    "mkdocs-material",
-    "mkdocs-mknodes",
-    # dev
-    "pyreadline3",
-    "pyinstrument",
-]
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "pyreadline3"]
+benchmark = ["pyinstrument"]
+lint = ["ruff", "mypy[faster-cache]"]
+docs = ["mkdocs-mknodes", "mkdocs-material"]
 
 [project.urls]
 Documentation = "https://phil65.github.io/githarbor/"
