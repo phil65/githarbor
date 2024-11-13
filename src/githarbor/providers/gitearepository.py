@@ -136,6 +136,7 @@ class GiteaRepository(Repository):
                 self._name,
                 state=state,
             )
+            assert isinstance(prs, list)
             return [self.get_pull_request(pr.number) for pr in prs]
         except ApiException as e:
             msg = f"Failed to list pull requests: {e!s}"
@@ -180,6 +181,7 @@ class GiteaRepository(Repository):
                 self._name,
                 state=state,
             )
+            assert isinstance(issues, list)
             return [self.get_issue(issue.number) for issue in issues]
         except ApiException as e:
             msg = f"Failed to list issues: {e!s}"
@@ -230,7 +232,7 @@ class GiteaRepository(Repository):
                 self._name,
                 **kwargs,
             )
-
+            assert isinstance(commits, list)
             # Filter by author if specified
             if author:
                 commits = [
@@ -356,7 +358,7 @@ class GiteaRepository(Repository):
             # Get all commits to analyze contributors
             # since API doesn't provide direct endpoint
             commits = self._repo_api.repo_get_all_commits(self._owner, self._name)
-
+            assert isinstance(commits, list)
             # Build contributor stats from commits
             contributors: dict[str, dict[str, Any]] = {}
             for commit in commits:
@@ -458,57 +460,54 @@ class GiteaRepository(Repository):
         include_prereleases: bool = False,
         limit: int | None = None,
     ) -> list[Release]:
+        kwargs = {"per_page": limit} if limit else {}
         try:
-            kwargs: dict[str, Any] = {
-                "draft": include_drafts,
-                "pre_release": include_prereleases,
-            }
-            if limit:
-                kwargs["limit"] = limit
-                return [
-                    Release(
-                        tag_name=release.tag_name,
-                        name=release.name,
-                        description=release.body or "",
-                        created_at=release.created_at,
-                        published_at=release.published_at,
-                        draft=release.draft,
-                        prerelease=release.prerelease,
-                        author=User(
-                            username=release.author.login,
-                            name=release.author.full_name,
-                            avatar_url=release.author.avatar_url,
-                        )
-                        if release.author
-                        else None,
-                        assets=[
-                            {
-                                "name": asset.name,
-                                "url": asset.browser_download_url,
-                                "size": asset.size,
-                                "download_count": asset.download_count,
-                            }
-                            for asset in release.assets
-                        ],
-                        url=release.url,
-                        target_commitish=release.target_commitish,
-                    )
-                    for release in self._repo_api.repo_list_releases(
-                        self._owner,
-                        self._name,
-                        **kwargs,
-                    )
-                ]
-            return []
+            results = self._repo_api.repo_list_releases(
+                self._owner,
+                self._name,
+                **kwargs,
+            )
         except ApiException as e:
             msg = f"Failed to list releases: {e!s}"
             raise ResourceNotFoundError(msg) from e
         else:
-            return []
+            assert isinstance(results, list)
+            return [
+                Release(
+                    tag_name=release.tag_name,
+                    name=release.name,
+                    description=release.body or "",
+                    created_at=release.created_at,
+                    published_at=release.published_at,
+                    draft=release.draft,
+                    prerelease=release.prerelease,
+                    author=User(
+                        username=release.author.login,
+                        name=release.author.full_name,
+                        avatar_url=release.author.avatar_url,
+                    )
+                    if release.author
+                    else None,
+                    assets=[
+                        {
+                            "name": asset.name,
+                            "url": asset.browser_download_url,
+                            "size": asset.size,
+                            "download_count": asset.download_count,
+                        }
+                        for asset in release.assets
+                    ],
+                    url=release.url,
+                    target_commitish=release.target_commitish,
+                )
+                for release in results
+                if (release.draft and include_drafts or not release.draft)
+                and (release.prerelease and include_prereleases or not release.prerelease)
+            ]
 
     def get_release(self, tag: str) -> Release:
         try:
-            release = self._repo_api.repo_get_release_by_tag(
+            release = self._repo_api.repo_get_release(
                 self._owner,
                 self._name,
                 tag,
@@ -632,5 +631,6 @@ if __name__ == "__main__":
 
     # Test Gitea API
     gitea = GiteaRepository.from_url(url="https://gitea.com/phil65/test")
-    # gitea.download("README.md", "teststststs")
-    print(gitea.list_issues())
+    # print(gitea._repo_api.repo_list_releases("phil65", "test"))
+    releases = gitea.list_releases()
+    print(releases)
