@@ -641,9 +641,9 @@ class GitHubRepository(Repository):
         Returns:
             Dictionary with activity counts by type
         """
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
-        since = datetime.now() - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
         activity = {}
 
         try:
