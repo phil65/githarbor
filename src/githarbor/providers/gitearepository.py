@@ -31,7 +31,10 @@ if TYPE_CHECKING:
 class GiteaRepository(Repository):
     """Gitea repository implementation."""
 
-    url_patterns: ClassVar[list[str]] = ["gitea.com"]  # Add your Gitea instances here
+    url_patterns: ClassVar[list[str]] = [
+        "gitea.com",
+        "codeberg.org",
+    ]  # Add your Gitea instances here
 
     def __init__(
         self,
