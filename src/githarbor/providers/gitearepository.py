@@ -392,6 +392,7 @@ class GiteaRepository(Repository):
     ) -> dict[str, Any]:
         raise NotImplementedError
 
+    @giteatools.handle_api_errors("Failed to get recent activity")
     def get_recent_activity(
         self,
         days: int = 30,
@@ -399,43 +400,27 @@ class GiteaRepository(Repository):
         include_prs: bool = True,
         include_issues: bool = True,
     ) -> dict[str, int]:
-        try:
-            since = datetime.now() - timedelta(days=days)
-            stats = {}
+        since = datetime.now() - timedelta(days=days)
+        stats = {}
+        date = since.isoformat()
+        if include_commits:
+            # Limit results since we only need count
+            commits = self._repo_api.repo_get_all_commits(
+                self._owner, self._name, since=date, per_page=100
+            )
+            stats["commits"] = len(commits)
 
-            if include_commits:
-                commits = self._repo_api.repo_get_all_commits(
-                    self._owner,
-                    self._name,
-                    since=since.isoformat(),
-                    per_page=100,  # Limit results since we only need count
-                )
-                stats["commits"] = len(commits)
+        if include_prs:
+            prs = self._repo_api.repo_list_pull_requests(
+                self._owner, self._name, state="all", since=date, per_page=100
+            )
+            stats["pull_requests"] = len(prs)
 
-            if include_prs:
-                prs = self._repo_api.repo_list_pull_requests(
-                    self._owner,
-                    self._name,
-                    state="all",
-                    since=since.isoformat(),
-                    per_page=100,
-                )
-                stats["pull_requests"] = len(prs)
-
-            if include_issues:
-                issues = self._issues_api.issue_list_issues(
-                    self._owner,
-                    self._name,
-                    state="all",
-                    since=since.isoformat(),
-                    per_page=100,
-                )
-                stats["issues"] = len(issues)
-
-        except ApiException as e:
-            msg = f"Failed to get recent activity: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        if include_issues:
+            issues = self._issues_api.issue_list_issues(
+                self._owner, self._name, state="all", since=date, per_page=100
+            )
+            stats["issues"] = len(issues)
         return stats
 
 
