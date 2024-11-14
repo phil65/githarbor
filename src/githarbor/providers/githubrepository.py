@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from github import Auth, Github, NamedUser
 from github.GithubException import GithubException
 
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import githubtools
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 TOKEN = os.getenv("GITHUB_TOKEN")
 
 
-class GitHubRepository(Repository):
+class GitHubRepository(BaseRepository):
     """GitHub repository implementation."""
 
     url_patterns: ClassVar[list[str]] = ["github.com"]

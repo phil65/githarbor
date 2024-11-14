@@ -10,7 +10,7 @@ import giteapy
 from giteapy.rest import ApiException
 import upath
 
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import giteatools
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     )
 
 
-class GiteaRepository(Repository):
+class GiteaRepository(BaseRepository):
     """Gitea repository implementation."""
 
     url_patterns: ClassVar[list[str]] = [

@@ -9,13 +9,13 @@ from githarbor.exceptions import RepositoryNotFoundError
 
 
 if TYPE_CHECKING:
-    from githarbor.core.base import Repository
+    from githarbor.core.base import BaseRepository
 
 
 class RepoRegistry:
     """Registry for repository implementations."""
 
-    _repos: ClassVar[dict[str, type[Repository]]] = {}
+    _repos: ClassVar[dict[str, type[BaseRepository]]] = {}
 
     @classmethod
     def register(cls, name: str):
@@ -25,7 +25,7 @@ class RepoRegistry:
             name: Name to register the repository under.
         """
 
-        def decorator(repo_class: type[Repository]) -> type[Repository]:
+        def decorator(repo_class: type[BaseRepository]) -> type[BaseRepository]:
             cls._repos[name] = repo_class
             return repo_class
 
@@ -72,7 +72,7 @@ class RepoRegistry:
         raise RepositoryNotFoundError(msg)
 
     @classmethod
-    def get_repo_class_for_url(cls, url: str) -> type[Repository] | None:
+    def get_repo_class_for_url(cls, url: str) -> type[BaseRepository] | None:
         """Get the repository class that can handle the given URL.
 
         Args:

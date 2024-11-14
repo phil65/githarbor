@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
 
 
@@ -26,10 +26,10 @@ if TYPE_CHECKING:
     )
 
 
-class RepositoryProxy(Repository):
+class RepositoryProxy(BaseRepository):
     """Proxy class that forwards all method calls to a repository instance."""
 
-    def __init__(self, repository: Repository) -> None:
+    def __init__(self, repository: BaseRepository) -> None:
         """Initialize proxy with repository instance.
 
         Args:

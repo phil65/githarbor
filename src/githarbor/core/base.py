@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 
-class Repository:
+class BaseRepository:
     """Base repository class. All methods raise FeatureNotSupportedError by default."""
 
     url_patterns: ClassVar[list[str]] = []
@@ -43,7 +43,7 @@ class Repository:
         return any(pattern in url for pattern in cls.url_patterns)
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> Repository:
+    def from_url(cls, url: str, **kwargs: Any) -> BaseRepository:
         msg = f"{cls.__name__} does not implement from_url"
         raise FeatureNotSupportedError(msg)
 

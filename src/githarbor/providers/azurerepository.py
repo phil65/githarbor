@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from azure.devops.connection import Connection
 from msrest.authentication import BasicAuthentication
 
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     )
 
 
-class AzureRepository(Repository):
+class AzureRepository(BaseRepository):
     """Azure DevOps repository implementation."""
 
     url_patterns: ClassVar[list[str]] = ["dev.azure.com", "visualstudio.com"]

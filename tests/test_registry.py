@@ -7,14 +7,14 @@ from githarbor.exceptions import RepositoryNotFoundError
 from githarbor.registry import RepoRegistry
 
 
-class DummyRepository(base.Repository):
+class DummyRepository(base.BaseRepository):
     url_patterns: ClassVar[list[str]] = ["test.com"]
 
     def __init__(self, owner, repo, **kwargs: Any):
         self.kwargs = kwargs
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> base.Repository:
+    def from_url(cls, url: str, **kwargs: Any) -> base.BaseRepository:
         return cls("test", "test")
 
 

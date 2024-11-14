@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import git
 from upath import UPath
 
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
 from githarbor.providers import localtools
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from githarbor.core.models import Branch, Commit, Tag
 
 
-class LocalRepository(Repository):
+class LocalRepository(BaseRepository):
     """Local Git repository implementation using GitPython."""
 
     url_patterns: ClassVar[list[str]] = []  # Local repos don't have URL patterns

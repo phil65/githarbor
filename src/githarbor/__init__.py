@@ -1,4 +1,4 @@
-from githarbor.core.base import Repository
+from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
     Branch,
     Comment,
@@ -26,7 +26,7 @@ __version__ = "0.1.1"
 
 __all__ = [
     # Base
-    "Repository",
+    "BaseRepository",
     # Models
     "Branch",
     "Comment",
