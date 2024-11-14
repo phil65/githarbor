@@ -469,10 +469,10 @@ class Repository(BaseRepository):
         """
         try:
             # First try the repository's native implementation
-            return self._repository.get_recent_activity(
+            return self._repository.get_recent_activity(  # type: ignore[attr-defined]
                 days, include_commits, include_prs, include_issues
             )
-        except NotImplementedError:
+        except (NotImplementedError, AttributeError):
             # Fall back to our composite implementation
             from datetime import UTC, datetime, timedelta
 

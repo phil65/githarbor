@@ -339,55 +339,6 @@ class GitHubRepository(BaseRepository):
         """List all repository tags."""
         return [githubtools.create_tag_model(tag) for tag in self._repo.get_tags()]
 
-    @githubtools.handle_github_errors("Failed to get recent activity")
-    def get_recent_activity(
-        self,
-        days: int = 30,
-        include_commits: bool = True,
-        include_prs: bool = True,
-        include_issues: bool = True,
-    ) -> dict[str, int]:
-        """Get repository activity statistics for the last N days.
-
-        Args:
-            days: Number of days to look back
-            include_commits: Whether to include commit counts
-            include_prs: Whether to include pull request counts
-            include_issues: Whether to include issue counts
-
-        Returns:
-            Dictionary with activity counts by type
-        """
-        from datetime import UTC, datetime, timedelta
-
-        since = datetime.now(UTC) - timedelta(days=days)
-        activity = {}
-
-        if include_commits:
-            commits = self._repo.get_commits(since=since)
-            activity["commits"] = len(list(commits))
-
-        if include_prs:
-            # Get PRs updated in time period
-            prs = self._repo.get_pulls(state="all", sort="updated", direction="desc")
-            activity["pull_requests"] = len([
-                pr for pr in prs if pr.updated_at and pr.updated_at >= since
-            ])
-
-        if include_issues:
-            # Get issues updated in time period
-            issues = self._repo.get_issues(state="all", sort="updated", direction="desc")
-            activity["issues"] = len([
-                issue
-                for issue in issues
-                if issue.updated_at
-                and issue.updated_at >= since
-                # Exclude PRs which GitHub also returns as issues
-                and not hasattr(issue, "pull_request")
-            ])
-
-        return activity
-
 
 if __name__ == "__main__":
     repo = GitHubRepository.from_url("https://github.com/phil65/mknodes")

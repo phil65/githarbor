@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import fnmatch
 import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
@@ -8,6 +7,7 @@ from urllib.parse import urlparse
 
 import gitlab
 from gitlab.exceptions import GitlabAuthenticationError
+import upath
 
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
@@ -27,6 +27,7 @@ from githarbor.providers import gitlabtools
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from datetime import datetime
 
     from gitlab.base import RESTObject
 
@@ -182,8 +183,6 @@ class GitLabRepository(BaseRepository):
             destination: Path where file/directory should be saved.
             recursive: Download all files from a folder (and subfolders).
         """
-        import upath
-
         dest = upath.UPath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
@@ -296,35 +295,6 @@ class GitLabRepository(BaseRepository):
                 "changes": len(comparison["diffs"]),
             }
         return result
-
-    @gitlabtools.handle_gitlab_errors("Failed to get recent activity")
-    def get_recent_activity(
-        self,
-        days: int = 30,
-        include_commits: bool = True,
-        include_prs: bool = True,
-        include_issues: bool = True,
-    ) -> dict[str, int]:
-        """Get repository activity statistics for the last N days."""
-        since = datetime.now() - timedelta(days=days)
-        activity: dict[str, int] = {}
-        date = since.isoformat()
-        if include_commits:
-            commits = self._repo.commits.list(since=date, per_page=100, get_all=False)
-            activity["commits"] = len(list(commits))
-
-        if include_prs:
-            mrs = self._repo.mergerequests.list(
-                updated_after=date, per_page=100, get_all=False
-            )
-            activity["pull_requests"] = len(list(mrs))
-
-        if include_issues:
-            issues = self._repo.issues.list(
-                updated_after=date, per_page=100, get_all=False
-            )
-            activity["issues"] = len(list(issues))
-        return activity
 
     @gitlabtools.handle_gitlab_errors("Failed to get latest release")
     def get_latest_release(

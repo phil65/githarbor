@@ -75,16 +75,6 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement get_commit"
         raise FeatureNotSupportedError(msg)
 
-    def get_recent_activity(
-        self,
-        days: int = 30,
-        include_commits: bool = True,
-        include_prs: bool = True,
-        include_issues: bool = True,
-    ) -> dict[str, int]:
-        msg = f"{self.__class__.__name__} does not implement get_recent_activity"
-        raise FeatureNotSupportedError(msg)
-
     def list_commits(
         self,
         branch: str | None = None,
