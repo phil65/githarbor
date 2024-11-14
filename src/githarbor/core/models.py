@@ -238,7 +238,7 @@ class Workflow:
     """Path to the workflow file in the repository."""
     state: str
     """State of the workflow."""
-    created_at: datetime
+    created_at: datetime | None = None
     """Date and time when the workflow was created."""
     updated_at: datetime | None = None
     """Date and time when the workflow was last updated."""
@@ -288,7 +288,7 @@ class WorkflowRun:
     """Date and time when the workflow run completed."""
     run_number: int | None = None
     """Sequential run number."""
-    jobs_count: int = 0
+    jobs_count: int | None = None
     """Total jobs count."""
     logs_url: str | None = None
     """Logs URL."""
