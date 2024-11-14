@@ -30,3 +30,218 @@
 
 [Read the documentation!](https://phil65.github.io/githarbor/)
 
+# GitHarbor User Guide
+
+GitHarbor is a unified interface for interacting with Git hosting platforms. It provides a consistent API to work with repositories hosted on [GitHub](https://github.com), [GitLab](https://gitlab.com), [Azure DevOps](https://azure.microsoft.com/products/devops), [Gitea](https://gitea.io), [CodeBerg](https://codeberg.org) and [Bitbucket](https://bitbucket.org).
+
+## Getting Started
+
+The main entry point is the `create_repository()` function which accepts a repository URL and platform-specific credentials:
+
+```python
+from githarbor import create_repository
+
+# GitHub repository
+repo = create_repository("https://github.com/owner/repo", token="github_pat_...")
+
+# GitLab repository
+repo = create_repository("https://gitlab.com/owner/repo", token="glpat-...")
+
+# Azure DevOps repository
+repo = create_repository(
+    "https://dev.azure.com/org/project/_git/repo",
+    token="azure_pat"
+)
+```
+
+!!! tip "Authentication"
+    Always use personal access tokens (PATs) for authentication. Never hardcode tokens in your source code.
+
+## Working with Repositories
+
+### Basic Repository Information
+
+```python
+# Get repository name and default branch
+print(repo.name)
+print(repo.default_branch)
+
+# Get language statistics
+languages = repo.get_languages()
+# Returns: {"Python": 10000, "JavaScript": 5000}
+
+# Get recent activity statistics
+activity = repo.get_recent_activity(
+    days=30,
+    include_commits=True,
+    include_prs=True,
+    include_issues=True
+)
+```
+
+### Branches and Tags
+
+```python
+# List all branches
+branches = repo.list_branches()
+
+# Get specific branch
+main_branch = repo.get_branch("main")
+
+# List all tags
+tags = repo.list_tags()
+
+# Get specific tag
+tag = repo.get_tag("v1.0.0")
+
+# Compare branches
+diff = repo.compare_branches(
+    base="main",
+    head="feature",
+    include_commits=True,
+    include_files=True,
+    include_stats=True
+)
+```
+
+### Commits
+
+```python
+# Get specific commit
+commit = repo.get_commit("abcd1234")
+
+# List commits with filters
+commits = repo.list_commits(
+    branch="main",
+    since=datetime(2024, 1, 1),
+    until=datetime(2024, 2, 1),
+    author="username",
+    path="src/",
+    max_results=100
+)
+
+# Search commits
+results = repo.search_commits(
+    query="fix bug",
+    branch="main",
+    path="src/",
+    max_results=10
+)
+```
+
+### Issues and Pull Requests
+
+```python
+# List open issues
+open_issues = repo.list_issues(state="open")
+
+# Get specific issue
+issue = repo.get_issue(123)
+
+# List pull requests
+prs = repo.list_pull_requests(state="open")  # or "closed" or "all"
+
+# Get specific pull request
+pr = repo.get_pull_request(456)
+```
+
+### Releases
+
+```python
+# Get latest release
+latest = repo.get_latest_release(
+    include_drafts=False,
+    include_prereleases=False
+)
+
+# List all releases
+releases = repo.list_releases(
+    include_drafts=False,
+    include_prereleases=True,
+    limit=10
+)
+
+# Get specific release
+release = repo.get_release("v1.0.0")
+```
+
+### Repository Content
+
+```python
+# Download single file
+repo.download(
+    path="README.md",
+    destination="local/README.md"
+)
+
+# Download directory recursively
+repo.download(
+    path="src/",
+    destination="local/src",
+    recursive=True
+)
+
+# Iterate through files
+for file_path in repo.iter_files(
+    path="src/",
+    ref="main",
+    pattern="*.py"
+):
+    print(file_path)
+```
+
+### CI/CD Workflows
+
+```python
+# List all workflows
+workflows = repo.list_workflows()
+
+# Get specific workflow
+workflow = repo.get_workflow("workflow_id")
+
+# Get specific workflow run
+run = repo.get_workflow_run("run_id")
+```
+
+### Contributors
+
+```python
+# Get repository contributors
+contributors = repo.get_contributors(
+    sort_by="commits",  # or "name" or "date"
+    limit=10
+)
+```
+
+## Error Handling
+
+GitHarbor provides specific exceptions for different error cases:
+
+```python
+from githarbor.exceptions import (
+    RepositoryNotFoundError,
+    ResourceNotFoundError,
+    FeatureNotSupportedError
+)
+
+try:
+    repo = create_repository("https://github.com/nonexistent/repo")
+except RepositoryNotFoundError:
+    print("Repository does not exist")
+
+try:
+    issue = repo.get_issue(999999)
+except ResourceNotFoundError:
+    print("Issue does not exist")
+
+try:
+    repo.some_unsupported_method()
+except FeatureNotSupportedError:
+    print("This feature is not supported by this repository provider")
+```
+
+!!! note "Feature Support"
+    Not all features are supported by all platforms. Operations that aren't supported will raise `FeatureNotSupportedError`.
+
+!!! tip "Rate Limiting"
+    Be mindful of API rate limits when making many requests. Consider implementing retries and delays in your code.
