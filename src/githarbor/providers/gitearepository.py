@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import fnmatch
+import functools
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, ParamSpec, TypeVar
 from urllib.parse import urlparse
 
 import giteapy
 from giteapy.rest import ApiException
+import upath
 
 from githarbor.core.base import Repository
 from githarbor.core.models import (
@@ -25,7 +27,31 @@ from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Decorator to handle Gitea API exceptions consistently.
+
+    Args:
+        error_msg: Base error message to use in exception
+    """
+
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except ApiException as e:
+                msg = f"{error_msg}: {e!s}"
+                raise ResourceNotFoundError(msg) from e
+
+        return wrapper
+
+    return decorator
 
 
 class GiteaRepository(Repository):
@@ -188,77 +214,62 @@ class GiteaRepository(Repository):
             target_commitish=release.target_commitish,
         )
 
+    @handle_api_errors("Failed to get branch")
     def get_branch(self, name: str) -> Branch:
-        try:
-            branch = self._repo_api.repo_get_branch(self._owner, self._name, name)
-            return Branch(
-                name=branch.name,
-                sha=branch.commit.id,
-                protected=branch.protected,
-                created_at=None,  # Gitea doesn't provide branch creation date
-                updated_at=None,  # Gitea doesn't provide branch update date
-            )
-        except ApiException as e:
-            msg = f"Branch {name} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        branch = self._repo_api.repo_get_branch(self._owner, self._name, name)
+        return Branch(
+            name=branch.name,
+            sha=branch.commit.id,
+            protected=branch.protected,
+            created_at=None,
+            updated_at=None,
+        )
 
+    @handle_api_errors("Failed to get pull request")
     def get_pull_request(self, number: int) -> PullRequest:
         """Get a specific pull request by number."""
-        try:
-            pr = self._repo_api.repo_get_pull(self._owner, self._name, number)
-            return self._create_pull_request_model(pr)
-        except ApiException as e:
-            msg = f"Pull request #{number} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        pr = self._repo_api.repo_get_pull(self._owner, self._name, number)
+        return self._create_pull_request_model(pr)
 
+    @handle_api_errors("Failed to list pull requests")
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
         """List pull requests."""
-        try:
-            prs = self._repo_api.repo_list_pull_requests(
-                self._owner,
-                self._name,
-                state=state,
-            )
-        except ApiException as e:
-            msg = f"Failed to list pull requests: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        prs = self._repo_api.repo_list_pull_requests(
+            self._owner,
+            self._name,
+            state=state,
+        )
         assert isinstance(prs, list)
         return [self._create_pull_request_model(pr) for pr in prs]
 
+    @handle_api_errors("Failed to get issue")
     def get_issue(self, issue_id: int) -> Issue:
         """Get a specific issue by ID."""
-        try:
-            issue = self._issues_api.issue_get_issue(self._owner, self._name, issue_id)
-            return self._create_issue_model(issue)
-        except ApiException as e:
-            msg = f"Issue #{issue_id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        issue = self._issues_api.issue_get_issue(self._owner, self._name, issue_id)
+        return self._create_issue_model(issue)
 
+    @handle_api_errors("Failed to list issues")
     def list_issues(self, state: str = "open") -> list[Issue]:
         """List repository issues."""
-        try:
-            issues = self._issues_api.issue_list_issues(
-                self._owner,
-                self._name,
-                state=state,
-            )
-        except ApiException as e:
-            msg = f"Failed to list issues: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        issues = self._issues_api.issue_list_issues(
+            self._owner,
+            self._name,
+            state=state,
+        )
         assert isinstance(issues, list)
         return [self._create_issue_model(issue) for issue in issues]
 
+    @handle_api_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
         """Get a specific commit by SHA."""
-        try:
-            commit = self._repo_api.repo_get_single_commit(self._owner, self._name, sha)
-            return self._create_commit_model(commit)
-        except ApiException as e:
-            msg = f"Commit {sha} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        commit = self._repo_api.repo_get_single_commit(
+            self._owner,
+            self._name,
+            sha,
+        )
+        return self._create_commit_model(commit)
 
+    @handle_api_errors("Failed to list commits")
     def list_commits(
         self,
         branch: str | None = None,
@@ -269,30 +280,25 @@ class GiteaRepository(Repository):
         max_results: int | None = None,
     ) -> list[Commit]:
         """List repository commits with optional filters."""
-        try:
-            kwargs: dict[str, Any] = {}
-            if branch:
-                kwargs["sha"] = branch
-            if since:
-                kwargs["since"] = since.isoformat()
-            if until:
-                kwargs["until"] = until.isoformat()
-            if path:
-                kwargs["path"] = path
-            if max_results:
-                kwargs["limit"] = max_results
+        kwargs: dict[str, Any] = {}
+        if branch:
+            kwargs["sha"] = branch
+        if since:
+            kwargs["since"] = since.isoformat()
+        if until:
+            kwargs["until"] = until.isoformat()
+        if path:
+            kwargs["path"] = path
+        if max_results:
+            kwargs["limit"] = max_results
 
-            commits = self._repo_api.repo_get_all_commits(
-                self._owner,
-                self._name,
-                **kwargs,
-            )
-        except ApiException as e:
-            msg = f"Failed to list commits: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        commits = self._repo_api.repo_get_all_commits(
+            self._owner,
+            self._name,
+            **kwargs,
+        )
         assert isinstance(commits, list)
-        # Filter by author if specified
+
         if author:
             commits = [
                 c
@@ -311,53 +317,47 @@ class GiteaRepository(Repository):
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         raise NotImplementedError
 
+    @handle_api_errors("Failed to download file")
     def download(
         self,
         path: str | os.PathLike[str],
         destination: str | os.PathLike[str],
         recursive: bool = False,
-    ):
-        import upath
-
+    ) -> None:
+        """Download repository contents."""
         dest = upath.UPath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
-        try:
-            if recursive:
-                # Get repository contents recursively
-                contents = self._repo_api.repo_get_contents_list(
-                    self._owner,
-                    self._name,
-                    str(path),
-                    ref=self.default_branch,
-                )
+        if recursive:
+            contents = self._repo_api.repo_get_contents_list(
+                self._owner,
+                self._name,
+                str(path),
+                ref=self.default_branch,
+            )
 
-                for content in contents:
-                    if content.type == "file":
-                        file_content = self._repo_api.repo_get_contents(
-                            self._owner,
-                            self._name,
-                            content.path,
-                            ref=self.default_branch,
-                        )
-                        file_dest = dest / content.path
-                        file_dest.parent.mkdir(exist_ok=True, parents=True)
-                        file_dest.write_bytes(file_content.content.encode())
-            else:
-                # Download single file
-                content = self._repo_api.repo_get_contents(
-                    self._owner,
-                    self._name,
-                    str(path),
-                    ref=self.default_branch,
-                )
-                file_dest = dest / upath.UPath(path).name
-                file_dest.write_bytes(content.content.encode())
+            for content in contents:
+                if content.type == "file":
+                    file_content = self._repo_api.repo_get_contents(
+                        self._owner,
+                        self._name,
+                        content.path,
+                        ref=self.default_branch,
+                    )
+                    file_dest = dest / content.path
+                    file_dest.parent.mkdir(exist_ok=True, parents=True)
+                    file_dest.write_bytes(file_content.content.encode())
+        else:
+            content = self._repo_api.repo_get_contents(
+                self._owner,
+                self._name,
+                str(path),
+                ref=self.default_branch,
+            )
+            file_dest = dest / upath.UPath(path).name
+            file_dest.write_bytes(content.content.encode())
 
-        except ApiException as e:
-            msg = f"Failed to download {path}: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+    @handle_api_errors("Failed to search commits")
     def search_commits(
         self,
         query: str,
@@ -365,78 +365,54 @@ class GiteaRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        try:
-            kwargs: dict[str, Any] = {}
-            if branch:
-                kwargs["ref_name"] = branch
-            if path:
-                kwargs["path"] = path
-            if max_results:
-                kwargs["limit"] = max_results
+        """Search repository commits."""
+        kwargs: dict[str, Any] = {}
+        if branch:
+            kwargs["ref_name"] = branch
+        if path:
+            kwargs["path"] = path
+        if max_results:
+            kwargs["limit"] = max_results
 
-            commits = self._repo_api.repo_search_commits(
-                self._owner,
-                self._name,
-                keyword=query,
-                **kwargs,
-            )
-        except ApiException as e:
-            msg = f"Failed to search commits: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        commits = self._repo_api.repo_search_commits(
+            self._owner,
+            self._name,
+            keyword=query,
+            **kwargs,
+        )
+        return [self._create_commit_model(commit) for commit in commits]
 
-        return [
-            Commit(
-                sha=commit.sha,
-                message=commit.commit.message,
-                created_at=commit.commit.author._date,
-                author=User(
-                    username=commit.commit.author.name,
-                    email=commit.commit.author.email,
-                    name=commit.commit.author.name,
-                ),
-                url=commit.html_url,
-            )
-            for commit in commits
-        ]
-
+    @handle_api_errors("Failed to list files")
     def iter_files(
         self,
         path: str = "",
         ref: str | None = None,
         pattern: str | None = None,
     ) -> Iterator[str]:
-        try:
-            entries = self._repo_api.repo_get_contents_list(
-                self._owner,
-                self._name,
-                str(path),
-                ref=ref or self.default_branch,
-            )
-            for entry in entries:
-                if entry.type == "file":
-                    if not pattern or fnmatch.fnmatch(entry.path, pattern):
-                        yield entry.path
-                elif entry.type == "dir":
-                    yield from self.iter_files(entry.path, ref, pattern)
-        except ApiException as e:
-            msg = f"Failed to list files: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        """Iterate over repository files."""
+        entries = self._repo_api.repo_get_contents_list(
+            self._owner,
+            self._name,
+            str(path),
+            ref=ref or self.default_branch,
+        )
+        for entry in entries:
+            if entry.type == "file":
+                if not pattern or fnmatch.fnmatch(entry.path, pattern):
+                    yield entry.path
+            elif entry.type == "dir":
+                yield from self.iter_files(entry.path, ref, pattern)
 
+    @handle_api_errors("Failed to get contributors")
     def get_contributors(
         self,
         sort_by: Literal["commits", "name", "date"] = "commits",
         limit: int | None = None,
     ) -> list[User]:
         """Get repository contributors."""
-        try:
-            # Get all commits to analyze contributors
-            # since API doesn't provide direct endpoint
-            commits = self._repo_api.repo_get_all_commits(self._owner, self._name)
-        except ApiException as e:
-            msg = f"Failed to get contributors: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        commits = self._repo_api.repo_get_all_commits(self._owner, self._name)
         assert isinstance(commits, list)
+
         # Build contributor stats from commits
         contributors: dict[str, dict[str, Any]] = {}
         for commit in commits:
@@ -464,34 +440,31 @@ class GiteaRepository(Repository):
 
         return [self._create_user_model(c["user"]) for c in contributor_list]
 
+    @handle_api_errors("Failed to get latest release")
     def get_latest_release(
         self,
         include_drafts: bool = False,
         include_prereleases: bool = False,
     ) -> Release:
         """Get the latest repository release."""
-        try:
-            kwargs = {
-                "draft": include_drafts,
-                "pre_release": include_prereleases,
-            }
-            releases = self._repo_api.repo_list_releases(
-                self._owner,
-                self._name,
-                per_page=1,
-                **kwargs,
-            )
+        kwargs = {
+            "draft": include_drafts,
+            "pre_release": include_prereleases,
+        }
+        releases = self._repo_api.repo_list_releases(
+            self._owner,
+            self._name,
+            per_page=1,
+            **kwargs,
+        )
 
-            if not releases:
-                msg = "No matching releases found"
-                raise ResourceNotFoundError(msg)
+        if not releases:
+            msg = "No matching releases found"
+            raise ResourceNotFoundError(msg)
 
-            return self._create_release_model(releases[0])
+        return self._create_release_model(releases[0])
 
-        except ApiException as e:
-            msg = f"Failed to get latest release: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+    @handle_api_errors("Failed to list releases")
     def list_releases(
         self,
         include_drafts: bool = False,
@@ -500,16 +473,11 @@ class GiteaRepository(Repository):
     ) -> list[Release]:
         """List repository releases."""
         kwargs = {"per_page": limit} if limit else {}
-        try:
-            results = self._repo_api.repo_list_releases(
-                self._owner,
-                self._name,
-                **kwargs,
-            )
-        except ApiException as e:
-            msg = f"Failed to list releases: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        results = self._repo_api.repo_list_releases(
+            self._owner,
+            self._name,
+            **kwargs,
+        )
         assert isinstance(results, list)
         return [
             self._create_release_model(release)
@@ -518,19 +486,11 @@ class GiteaRepository(Repository):
             and (release.prerelease and include_prereleases or not release.prerelease)
         ]
 
+    @handle_api_errors("Failed to get release")
     def get_release(self, tag: str) -> Release:
         """Get a specific release by tag."""
-        try:
-            release = self._repo_api.repo_get_release(
-                self._owner,
-                self._name,
-                tag,
-            )
-            return self._create_release_model(release)
-
-        except ApiException as e:
-            msg = f"Release with tag {tag} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        release = self._repo_api.repo_get_release(self._owner, self._name, tag)
+        return self._create_release_model(release)
 
     def get_languages(self) -> dict[str, int]:
         raise NotImplementedError
