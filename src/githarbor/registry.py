@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from githarbor.core.proxy import RepositoryProxy
+from githarbor.core.proxy import Repository
 from githarbor.exceptions import RepositoryNotFoundError
 
 
@@ -32,7 +32,7 @@ class RepoRegistry:
         return decorator
 
     @classmethod
-    def create(cls, name: str, **kwargs: Any) -> RepositoryProxy:
+    def create(cls, name: str, **kwargs: Any) -> Repository:
         """Create a proxy-wrapped repository instance by name.
 
         Args:
@@ -48,10 +48,10 @@ class RepoRegistry:
         if not (repo_class := cls._repos.get(name)):
             msg = f"Repository type {name} not found"
             raise RepositoryNotFoundError(msg)
-        return RepositoryProxy(repo_class(**kwargs))
+        return Repository(repo_class(**kwargs))
 
     @classmethod
-    def from_url(cls, url: str, **kwargs: Any) -> RepositoryProxy:
+    def from_url(cls, url: str, **kwargs: Any) -> Repository:
         """Create a proxy-wrapped repository instance from a URL.
 
         Args:
@@ -66,7 +66,7 @@ class RepoRegistry:
         """
         for repo_class in cls._repos.values():
             if repo_class.supports_url(url):
-                return RepositoryProxy(repo_class.from_url(url, **kwargs))
+                return Repository(repo_class.from_url(url, **kwargs))
 
         msg = f"No repository implementation found for URL: {url}"
         raise RepositoryNotFoundError(msg)

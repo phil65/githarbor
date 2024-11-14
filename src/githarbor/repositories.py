@@ -8,7 +8,7 @@ from githarbor.registry import RepoRegistry
 
 
 if TYPE_CHECKING:
-    from githarbor.core.proxy import RepositoryProxy
+    from githarbor.core.proxy import Repository
 
 
 if importlib.util.find_spec("github"):
@@ -45,7 +45,7 @@ if importlib.util.find_spec("git"):
     RepoRegistry.register("local")(LocalRepository)
 
 
-def create_repository(url: str, **kwargs: Any) -> RepositoryProxy:
+def create_repository(url: str, **kwargs: Any) -> Repository:
     """Create a proxy-wrapped repository instance from a URL.
 
     Args:
@@ -53,7 +53,7 @@ def create_repository(url: str, **kwargs: Any) -> RepositoryProxy:
         **kwargs: Repository-specific configuration (tokens, credentials, etc.)
 
     Returns:
-        RepositoryProxy: Proxy-wrapped repository instance
+        Repository: Proxy-wrapped repository instance
 
     Raises:
         RepositoryNotFoundError: If the URL isn't supported or no repository found

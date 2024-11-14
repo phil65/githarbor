@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     )
 
 
-class RepositoryProxy(BaseRepository):
+class Repository(BaseRepository):
     """Proxy class that forwards all method calls to a repository instance."""
 
     def __init__(self, repository: BaseRepository) -> None:
