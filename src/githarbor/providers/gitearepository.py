@@ -137,11 +137,7 @@ class GiteaRepository(Repository):
     @giteatools.handle_api_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
         """Get a specific commit by SHA."""
-        commit = self._repo_api.repo_get_single_commit(
-            self._owner,
-            self._name,
-            sha,
-        )
+        commit = self._repo_api.repo_get_single_commit(self._owner, self._name, sha)
         return giteatools.create_commit_model(commit)
 
     @giteatools.handle_api_errors("Failed to list commits")
@@ -167,11 +163,7 @@ class GiteaRepository(Repository):
         if max_results:
             kwargs["limit"] = max_results
 
-        commits = self._repo_api.repo_get_all_commits(
-            self._owner,
-            self._name,
-            **kwargs,
-        )
+        commits = self._repo_api.repo_get_all_commits(self._owner, self._name, **kwargs)
         assert isinstance(commits, list)
 
         if author:
@@ -327,10 +319,7 @@ class GiteaRepository(Repository):
             "pre_release": include_prereleases,
         }
         releases = self._repo_api.repo_list_releases(
-            self._owner,
-            self._name,
-            per_page=1,
-            **kwargs,
+            self._owner, self._name, per_page=1, **kwargs
         )
 
         if not releases:
@@ -348,11 +337,7 @@ class GiteaRepository(Repository):
     ) -> list[Release]:
         """List repository releases."""
         kwargs = {"per_page": limit} if limit else {}
-        results = self._repo_api.repo_list_releases(
-            self._owner,
-            self._name,
-            **kwargs,
-        )
+        results = self._repo_api.repo_list_releases(self._owner, self._name, **kwargs)
         assert isinstance(results, list)
         return [
             giteatools.create_release_model(release)
@@ -400,26 +385,22 @@ class GiteaRepository(Repository):
         include_prs: bool = True,
         include_issues: bool = True,
     ) -> dict[str, int]:
-        since = datetime.now() - timedelta(days=days)
         stats = {}
-        date = since.isoformat()
+        kwargs = {
+            "since": (datetime.now() - timedelta(days=days)).isoformat(),
+            "per_page": 100,
+            "owner": self._owner,
+            "repo": self._name,
+        }
         if include_commits:
             # Limit results since we only need count
-            commits = self._repo_api.repo_get_all_commits(
-                self._owner, self._name, since=date, per_page=100
-            )
+            commits = self._repo_api.repo_get_all_commits(**kwargs)
             stats["commits"] = len(commits)
-
         if include_prs:
-            prs = self._repo_api.repo_list_pull_requests(
-                self._owner, self._name, state="all", since=date, per_page=100
-            )
+            prs = self._repo_api.repo_list_pull_requests(state="all", **kwargs)
             stats["pull_requests"] = len(prs)
-
         if include_issues:
-            issues = self._issues_api.issue_list_issues(
-                self._owner, self._name, state="all", since=date, per_page=100
-            )
+            issues = self._issues_api.issue_list_issues(state="all", **kwargs)
             stats["issues"] = len(issues)
         return stats
 
