@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import functools
+import inspect
 import logging
 import os
+import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from github.GithubException import GithubException
@@ -29,20 +31,44 @@ P = ParamSpec("P")
 TOKEN = os.getenv("GITHUB_TOKEN")
 
 
-def handle_github_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
+def handle_github_errors(
+    error_msg_template: str,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle GitHub API exceptions consistently.
 
     Args:
-        error_msg: Base error message to use in exception
+        error_msg_template: Message template with format placeholders
+
+    Example:
+        @handle_github_errors("Could not fetch branch {branch_name}")
+        def get_branch(self, branch_name: str) -> Branch:
+            ...
     """
+    # Extract field names from the template string
+    parser = string.Formatter()
+    param_names = {
+        field_name
+        for _, field_name, _, _ in parser.parse(error_msg_template)
+        if field_name and field_name != "error"
+    }
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            # Extract parameter values from args/kwargs based on function signature
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            params = {
+                name: bound_args.arguments[name]
+                for name in param_names
+                if name in bound_args.arguments
+            }
+
             try:
                 return func(*args, **kwargs)
             except GithubException as e:
-                msg = f"{error_msg}: {e!s}"
+                msg = error_msg_template.format(**params, error=str(e))
                 raise ResourceNotFoundError(msg) from e
 
         return wrapper

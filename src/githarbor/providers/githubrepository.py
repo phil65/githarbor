@@ -75,7 +75,7 @@ class GitHubRepository(Repository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
-    @githubtools.handle_github_errors("Failed to get branch")
+    @githubtools.handle_github_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         branch = self._repo.get_branch(name)
         last_commit = branch.commit
@@ -98,7 +98,7 @@ class GitHubRepository(Repository):
             last_commit_author=githubtools.create_user_model(last_commit.author),
         )
 
-    @githubtools.handle_github_errors("Failed to get pull request")
+    @githubtools.handle_github_errors("Failed to get pull request {number}")
     def get_pull_request(self, number: int) -> PullRequest:
         pr = self._repo.get_pull(number)
         return githubtools.create_pull_request_model(pr)
@@ -108,7 +108,7 @@ class GitHubRepository(Repository):
         prs = self._repo.get_pulls(state=state)
         return [githubtools.create_pull_request_model(pr) for pr in prs]
 
-    @githubtools.handle_github_errors("Failed to get issue")
+    @githubtools.handle_github_errors("Failed to get issue {issue_id}")
     def get_issue(self, issue_id: int) -> Issue:
         issue = self._repo.get_issue(issue_id)
         return githubtools.create_issue_model(issue)
@@ -118,7 +118,7 @@ class GitHubRepository(Repository):
         issues = self._repo.get_issues(state=state)
         return [githubtools.create_issue_model(issue) for issue in issues]
 
-    @githubtools.handle_github_errors("Failed to get commit")
+    @githubtools.handle_github_errors("Failed to get commit {sha}")
     def get_commit(self, sha: str) -> Commit:
         commit = self._repo.get_commit(sha)
         return githubtools.create_commit_model(commit)
@@ -146,7 +146,7 @@ class GitHubRepository(Repository):
         results = commits[:max_results] if max_results else commits
         return [githubtools.create_commit_model(c) for c in results]
 
-    @githubtools.handle_github_errors("Failed to get workflow")
+    @githubtools.handle_github_errors("Failed to get workflow {workflow_id}")
     def get_workflow(self, workflow_id: str) -> Workflow:
         workflow = self._repo.get_workflow(workflow_id)
         return githubtools.create_workflow_model(workflow)
@@ -156,12 +156,12 @@ class GitHubRepository(Repository):
         workflows = self._repo.get_workflows()
         return [githubtools.create_workflow_model(w) for w in workflows]
 
-    @githubtools.handle_github_errors("Failed to get workflow run")
+    @githubtools.handle_github_errors("Failed to get workflow run {run_id}")
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         run = self._repo.get_workflow_run(int(run_id))
         return githubtools.create_workflow_run_model(run)
 
-    @githubtools.handle_github_errors("Failed to download file")
+    @githubtools.handle_github_errors("Failed to download file {path}")
     def download(
         self,
         path: str | os.PathLike[str],
@@ -212,7 +212,7 @@ class GitHubRepository(Repository):
         commits = list(results[:max_results] if max_results else results)
         return [self.get_commit(c.sha) for c in commits]
 
-    @githubtools.handle_github_errors("Failed to list files")
+    @githubtools.handle_github_errors("Failed to list files for {path}")
     def iter_files(
         self,
         path: str = "",
@@ -328,7 +328,7 @@ class GitHubRepository(Repository):
             )
         ]
 
-    @githubtools.handle_github_errors("Failed to get release")
+    @githubtools.handle_github_errors("Failed to get release {tag}")
     def get_release(self, tag: str) -> Release:
         release = self._repo.get_release(tag)
         return githubtools.create_release_model(release)
