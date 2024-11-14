@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import fnmatch
+import functools
 import logging
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, ParamSpec, TypeVar
 from urllib.parse import urlparse
 
 from github import Auth, Github, NamedUser
@@ -25,11 +26,35 @@ from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from datetime import datetime
 
 
 TOKEN = os.getenv("GITHUB_TOKEN")
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+def handle_github_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Decorator to handle GitHub API exceptions consistently.
+
+    Args:
+        error_msg: Base error message to use in exception
+    """
+
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except GithubException as e:
+                msg = f"{error_msg}: {e!s}"
+                raise ResourceNotFoundError(msg) from e
+
+        return wrapper
+
+    return decorator
 
 
 def download_from_github(
@@ -260,75 +285,55 @@ class GitHubRepository(Repository):
             logs_url=run.logs_url,
         )
 
+    @handle_github_errors("Failed to get branch")
     def get_branch(self, name: str) -> Branch:
-        try:
-            branch = self._repo.get_branch(name)
-            last_commit = branch.commit
-            return Branch(
-                name=branch.name,
-                sha=branch.commit.sha,
-                protected=branch.protected,
-                default=branch.name == self.default_branch,
-                protection_rules=(
-                    {
-                        "required_reviews": branch.get_required_status_checks(),
-                        "dismiss_stale_reviews": (
-                            branch.get_required_pull_request_reviews()
-                        ),
-                        "require_code_owner_reviews": (branch.get_required_signatures()),
-                    }
-                    if branch.protected
-                    else None
-                ),
-                last_commit_date=last_commit.commit.author.date,
-                last_commit_message=last_commit.commit.message,
-                last_commit_author=self._create_user_model(last_commit.author),
-            )
-        except GithubException as e:
-            msg = f"Branch {name} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        branch = self._repo.get_branch(name)
+        last_commit = branch.commit
+        return Branch(
+            name=branch.name,
+            sha=branch.commit.sha,
+            protected=branch.protected,
+            default=branch.name == self.default_branch,
+            protection_rules=(
+                {
+                    "required_reviews": branch.get_required_status_checks(),
+                    "dismiss_stale_reviews": (branch.get_required_pull_request_reviews()),
+                    "require_code_owner_reviews": (branch.get_required_signatures()),
+                }
+                if branch.protected
+                else None
+            ),
+            last_commit_date=last_commit.commit.author.date,
+            last_commit_message=last_commit.commit.message,
+            last_commit_author=self._create_user_model(last_commit.author),
+        )
 
+    @handle_github_errors("Failed to get pull request")
     def get_pull_request(self, number: int) -> PullRequest:
-        try:
-            pr = self._repo.get_pull(number)
-            return self._create_pull_request_model(pr)
-        except GithubException as e:
-            msg = f"Pull request #{number} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        pr = self._repo.get_pull(number)
+        return self._create_pull_request_model(pr)
 
+    @handle_github_errors("Failed to list pull requests")
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
-        try:
-            prs = self._repo.get_pulls(state=state)
-        except GithubException as e:
-            msg = f"Failed to list pull requests: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-        else:
-            return [self._create_pull_request_model(pr) for pr in prs]
+        prs = self._repo.get_pulls(state=state)
+        return [self._create_pull_request_model(pr) for pr in prs]
 
+    @handle_github_errors("Failed to get issue")
     def get_issue(self, issue_id: int) -> Issue:
-        try:
-            issue = self._repo.get_issue(issue_id)
-            return self._create_issue_model(issue)
-        except GithubException as e:
-            msg = f"Issue #{issue_id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        issue = self._repo.get_issue(issue_id)
+        return self._create_issue_model(issue)
 
+    @handle_github_errors("Failed to list issues")
     def list_issues(self, state: str = "open") -> list[Issue]:
-        try:
-            issues = self._repo.get_issues(state=state)
-            return [self._create_issue_model(issue) for issue in issues]
-        except GithubException as e:
-            msg = f"Failed to list issues: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        issues = self._repo.get_issues(state=state)
+        return [self._create_issue_model(issue) for issue in issues]
 
+    @handle_github_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
-        try:
-            commit = self._repo.get_commit(sha)
-            return self._create_commit_model(commit)
-        except GithubException as e:
-            msg = f"Commit {sha} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        commit = self._repo.get_commit(sha)
+        return self._create_commit_model(commit)
 
+    @handle_github_errors("Failed to list commits")
     def list_commits(
         self,
         branch: str | None = None,
@@ -347,40 +352,26 @@ class GitHubRepository(Repository):
         }
         # Filter out None values
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
-
-        try:
-            commits = self._repo.get_commits(**kwargs)
-            results = commits[:max_results] if max_results else commits
-        except GithubException as e:
-            msg = f"Failed to list commits: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        commits = self._repo.get_commits(**kwargs)
+        results = commits[:max_results] if max_results else commits
         return [self._create_commit_model(c) for c in results]
 
+    @handle_github_errors("Failed to get workflow")
     def get_workflow(self, workflow_id: str) -> Workflow:
-        try:
-            workflow = self._repo.get_workflow(workflow_id)
-            return self._create_workflow_model(workflow)
-        except GithubException as e:
-            msg = f"Workflow {workflow_id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        workflow = self._repo.get_workflow(workflow_id)
+        return self._create_workflow_model(workflow)
 
+    @handle_github_errors("Failed to list workflows")
     def list_workflows(self) -> list[Workflow]:
-        try:
-            workflows = self._repo.get_workflows()
-            return [self._create_workflow_model(w) for w in workflows]
-        except GithubException as e:
-            msg = f"Failed to list workflows: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        workflows = self._repo.get_workflows()
+        return [self._create_workflow_model(w) for w in workflows]
 
+    @handle_github_errors("Failed to get workflow run")
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
-        try:
-            run = self._repo.get_workflow_run(int(run_id))
-            return self._create_workflow_run_model(run)
-        except GithubException as e:
-            msg = f"Workflow run {run_id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        run = self._repo.get_workflow_run(int(run_id))
+        return self._create_workflow_run_model(run)
 
+    @handle_github_errors("Failed to download file")
     def download(
         self,
         path: str | os.PathLike[str],
@@ -405,6 +396,7 @@ class GitHubRepository(Repository):
             recursive=recursive,
         )
 
+    @handle_github_errors("Failed to search commits")
     def search_commits(
         self,
         query: str,
@@ -430,6 +422,7 @@ class GitHubRepository(Repository):
         commits = list(results[:max_results] if max_results else results)
         return [self.get_commit(c.sha) for c in commits]
 
+    @handle_github_errors("Failed to list files")
     def iter_files(
         self,
         path: str = "",
@@ -448,6 +441,7 @@ class GitHubRepository(Repository):
             elif not pattern or fnmatch.fnmatch(content.path, pattern):
                 yield content.path
 
+    @handle_github_errors("Failed to get contributors")
     def get_contributors(
         self,
         sort_by: Literal["commits", "name", "date"] = "commits",
@@ -470,9 +464,11 @@ class GitHubRepository(Repository):
             for c in contributors
         ]
 
+    @handle_github_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
         return self._repo.get_languages()
 
+    @handle_github_errors("Failed to compare branches")
     def compare_branches(
         self,
         base: str,
@@ -499,6 +495,7 @@ class GitHubRepository(Repository):
             }
         return result
 
+    @handle_github_errors("Failed to get latest release")
     def get_latest_release(
         self,
         include_drafts: bool = False,
@@ -516,117 +513,72 @@ class GitHubRepository(Repository):
         Raises:
             ResourceNotFoundError: If no releases are found
         """
-        try:
-            # Get all releases
-            releases = self._repo.get_releases()
+        releases = self._repo.get_releases()
+        # Filter releases based on parameters
+        filtered = [
+            release
+            for release in releases
+            if (include_drafts or not release.draft)
+            and (include_prereleases or not release.prerelease)
+        ]
+        if not filtered:
+            msg = "No matching releases found"
+            raise ResourceNotFoundError(msg)
+        latest = filtered[0]  # Releases are returned in chronological order
+        return self._create_release_model(latest)
 
-            # Filter releases based on parameters
-            filtered = []
-            for release in releases:
-                # Skip drafts if not requested
-                if not include_drafts and release.draft:
-                    continue
-
-                # Skip pre-releases if not requested
-                if not include_prereleases and release.prerelease:
-                    continue
-
-                filtered.append(release)
-
-            if not filtered:
-                msg = "No matching releases found"
-                raise ResourceNotFoundError(msg)
-
-            # Get latest release
-            latest = filtered[0]  # Releases are returned in chronological order
-
-            return self._create_release_model(latest)
-
-        except GithubException as e:
-            msg = f"Failed to get latest release: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+    @handle_github_errors("Failed to list releases")
     def list_releases(
         self,
         include_drafts: bool = False,
         include_prereleases: bool = False,
         limit: int | None = None,
     ) -> list[Release]:
-        """List repository releases.
+        releases: list[Release] = []
+        for release in self._repo.get_releases():
+            if not include_drafts and release.draft:
+                continue
+            if not include_prereleases and release.prerelease:
+                continue
+            releases.append(self._create_release_model(release))
+            if limit and len(releases) >= limit:
+                break
+        return releases
 
-        Args:
-            include_drafts: Whether to include draft releases
-            include_prereleases: Whether to include pre-releases
-            limit: Maximum number of releases to return
-
-        Returns:
-            List of Release objects
-        """
-        try:
-            releases: list[Release] = []
-            for release in self._repo.get_releases():
-                if not include_drafts and release.draft:
-                    continue
-                if not include_prereleases and release.prerelease:
-                    continue
-                releases.append(self._create_release_model(release))
-                if limit and len(releases) >= limit:
-                    break
-
-        except GithubException as e:
-            msg = f"Failed to list releases: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-        else:
-            return releases
-
+    @handle_github_errors("Failed to get release")
     def get_release(self, tag: str) -> Release:
-        """Get a specific release by tag name.
-
-        Args:
-            tag: Tag name of the release
-
-        Returns:
-            Release object
-
-        Raises:
-            ResourceNotFoundError: If release is not found
-        """
-        try:
-            release = self._repo.get_release(tag)
-            return Release(
-                tag_name=release.tag_name,
-                name=release.title,
-                description=release.body or "",
-                created_at=release.created_at,
-                published_at=release.published_at,
-                draft=release.draft,
-                prerelease=release.prerelease,
-                author=User(
-                    username=release.author.login,
-                    name=release.author.name,
-                    avatar_url=release.author.avatar_url,
-                )
-                if release.author
-                else None,
-                assets=[
-                    {
-                        "name": asset.name,
-                        "url": asset.browser_download_url,
-                        "size": asset.size,
-                        "download_count": asset.download_count,
-                        "created_at": asset.created_at,
-                        "updated_at": asset.updated_at,
-                    }
-                    for asset in release.assets
-                ],
-                url=release.html_url,
-                target_commitish=release.target_commitish,
+        release = self._repo.get_release(tag)
+        return Release(
+            tag_name=release.tag_name,
+            name=release.title,
+            description=release.body or "",
+            created_at=release.created_at,
+            published_at=release.published_at,
+            draft=release.draft,
+            prerelease=release.prerelease,
+            author=User(
+                username=release.author.login,
+                name=release.author.name,
+                avatar_url=release.author.avatar_url,
             )
+            if release.author
+            else None,
+            assets=[
+                {
+                    "name": asset.name,
+                    "url": asset.browser_download_url,
+                    "size": asset.size,
+                    "download_count": asset.download_count,
+                    "created_at": asset.created_at,
+                    "updated_at": asset.updated_at,
+                }
+                for asset in release.assets
+            ],
+            url=release.html_url,
+            target_commitish=release.target_commitish,
+        )
 
-        except GithubException as e:
-            msg = f"Release with tag {tag} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+    @handle_github_errors("Failed to get recent activity")
     def get_recent_activity(
         self,
         days: int = 30,
@@ -650,35 +602,28 @@ class GitHubRepository(Repository):
         since = datetime.now(UTC) - timedelta(days=days)
         activity = {}
 
-        try:
-            if include_commits:
-                commits = self._repo.get_commits(since=since)
-                activity["commits"] = len(list(commits))
+        if include_commits:
+            commits = self._repo.get_commits(since=since)
+            activity["commits"] = len(list(commits))
 
-            if include_prs:
-                # Get PRs updated in time period
-                prs = self._repo.get_pulls(state="all", sort="updated", direction="desc")
-                activity["pull_requests"] = len([
-                    pr for pr in prs if pr.updated_at and pr.updated_at >= since
-                ])
+        if include_prs:
+            # Get PRs updated in time period
+            prs = self._repo.get_pulls(state="all", sort="updated", direction="desc")
+            activity["pull_requests"] = len([
+                pr for pr in prs if pr.updated_at and pr.updated_at >= since
+            ])
 
-            if include_issues:
-                # Get issues updated in time period
-                issues = self._repo.get_issues(
-                    state="all", sort="updated", direction="desc"
-                )
-                activity["issues"] = len([
-                    issue
-                    for issue in issues
-                    if issue.updated_at
-                    and issue.updated_at >= since
-                    # Exclude PRs which GitHub also returns as issues
-                    and not hasattr(issue, "pull_request")
-                ])
-
-        except GithubException as e:
-            msg = f"Failed to get recent activity: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        if include_issues:
+            # Get issues updated in time period
+            issues = self._repo.get_issues(state="all", sort="updated", direction="desc")
+            activity["issues"] = len([
+                issue
+                for issue in issues
+                if issue.updated_at
+                and issue.updated_at >= since
+                # Exclude PRs which GitHub also returns as issues
+                and not hasattr(issue, "pull_request")
+            ])
 
         return activity
 
