@@ -118,6 +118,10 @@ def create_user_model(gh_user: Any) -> User | None:
         followers=gh_user.followers,
         following=gh_user.following,
         public_repos=gh_user.public_repos,
+        blog=gh_user.blog,
+        twitter_username=gh_user.twitter_username,
+        hireable=gh_user.hireable,
+        gravatar_id=gh_user.gravatar_id,
     )
 
 

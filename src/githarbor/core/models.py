@@ -40,6 +40,14 @@ class User:
     """Number of public repositories."""
     url: str | None = None
     """URL to user's profile."""
+    blog: str | None = None
+    """Personal blog of this user"""
+    twitter_username: str | None = None
+    """X / Twitter username of this user"""
+    hireable: str | None = None
+    """Whether user is available for hiring"""
+    gravatar_id: str | None = None
+    """Gravatar id for this user."""
 
 
 @dataclass
