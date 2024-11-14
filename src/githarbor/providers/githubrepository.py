@@ -130,7 +130,7 @@ class GitHubRepository(Repository):
         }
         # Filter out None values
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        commits = self._repo.get_commits(**kwargs)
+        commits = self._repo.get_commits(**kwargs)  # type: ignore
         results = commits[:max_results] if max_results else commits
         return [githubtools.create_commit_model(c) for c in results]
 
