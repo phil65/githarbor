@@ -28,6 +28,16 @@ class Repository:
 
     url_patterns: ClassVar[list[str]] = []
 
+    @property
+    def name(self):
+        """The name of the repository."""
+        raise NotImplementedError
+
+    @property
+    def default_branch(self):
+        """The default branch of this repository."""
+        raise NotImplementedError
+
     @classmethod
     def supports_url(cls, url: str) -> bool:
         return any(pattern in url for pattern in cls.url_patterns)
@@ -63,6 +73,16 @@ class Repository:
 
     def get_commit(self, sha: str) -> Commit:
         msg = f"{self.__class__.__name__} does not implement get_commit"
+        raise FeatureNotSupportedError(msg)
+
+    def get_recent_activity(
+        self,
+        days: int = 30,
+        include_commits: bool = True,
+        include_prs: bool = True,
+        include_issues: bool = True,
+    ) -> dict[str, int]:
+        msg = f"{self.__class__.__name__} does not implement get_recent_activity"
         raise FeatureNotSupportedError(msg)
 
     def list_commits(
