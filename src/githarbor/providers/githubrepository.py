@@ -156,13 +156,6 @@ class GitHubRepository(BaseRepository):
         destination: str | os.PathLike[str],
         recursive: bool = False,
     ):
-        """Download a file from this github repository.
-
-        Args:
-            path: Path to the file we want to download.
-            destination: Path where file should be saved.
-            recursive: Download all files from a folder (and subfolders).
-        """
         user_name = self._gh.get_user().login if TOKEN else None
         return githubtools.download_from_github(
             org=self._owner,
@@ -270,18 +263,6 @@ class GitHubRepository(BaseRepository):
         include_drafts: bool = False,
         include_prereleases: bool = False,
     ) -> Release:  # Changed from dict[str, Any] to Release
-        """Get information about the latest release.
-
-        Args:
-            include_drafts: Whether to include draft releases
-            include_prereleases: Whether to include pre-releases
-
-        Returns:
-            Release object containing release information
-
-        Raises:
-            ResourceNotFoundError: If no releases are found
-        """
         releases = self._repo.get_releases()
         # Filter releases based on parameters
         filtered = [

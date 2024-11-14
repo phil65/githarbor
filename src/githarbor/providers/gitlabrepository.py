@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 
 import gitlab
 from gitlab.exceptions import GitlabAuthenticationError
-import upath
 
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
@@ -176,13 +175,8 @@ class GitLabRepository(BaseRepository):
         destination: str | os.PathLike[str],
         recursive: bool = False,
     ):
-        """Download a file or directory from this GitLab repository.
+        import upath
 
-        Args:
-            path: Path to the file or directory we want to download.
-            destination: Path where file/directory should be saved.
-            recursive: Download all files from a folder (and subfolders).
-        """
         dest = upath.UPath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
