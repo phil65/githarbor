@@ -16,6 +16,7 @@ from githarbor.core.models import (
     Issue,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -380,6 +381,36 @@ class GitLabRepository(Repository):
     def get_release(self, tag: str) -> Release:
         release = self._repo.releases.get(tag)
         return gitlabtools.create_release_model(release)
+
+    @gitlabtools.handle_gitlab_errors("Failed to get tag {name}")
+    def get_tag(self, name: str) -> Tag:
+        """Get a specific tag by name."""
+        tag = self._repo.tags.get(name)
+        return Tag(
+            name=tag.name,
+            sha=tag.commit["id"],
+            message=tag.message,
+            created_at=tag.commit["created_at"],
+            author=gitlabtools.create_user_model(tag.commit["author"]),
+            url=f"{self._repo.web_url}/-/tags/{name}",
+            verified=bool(getattr(tag, "verified", False)),
+        )
+
+    @gitlabtools.handle_gitlab_errors("Failed to list tags")
+    def list_tags(self) -> list[Tag]:
+        """List all repository tags."""
+        return [
+            Tag(
+                name=tag.name,
+                sha=tag.commit["id"],
+                message=tag.message,
+                created_at=tag.commit["created_at"],
+                author=gitlabtools.create_user_model(tag.commit["author"]),
+                url=f"{self._repo.web_url}/-/tags/{tag.name}",
+                verified=bool(getattr(tag, "verified", False)),
+            )
+            for tag in self._repo.tags.list()
+        ]
 
 
 if __name__ == "__main__":

@@ -209,6 +209,26 @@ class Commit:
 
 
 @dataclass
+class Tag:
+    """Model representing a repository tag."""
+
+    name: str
+    """Name of the tag."""
+    sha: str
+    """SHA hash of the commit this tag points to."""
+    message: str | None = None
+    """Tag message if provided."""
+    created_at: datetime | None = None
+    """Date and time when the tag was created."""
+    author: User | None = None
+    """User who created the tag."""
+    url: str | None = None
+    """URL to view the tag."""
+    verified: bool = False
+    """Whether the tag signature is verified."""
+
+
+@dataclass
 class Workflow:
     id: str
     """Unique identifier for the workflow."""

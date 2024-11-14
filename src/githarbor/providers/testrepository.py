@@ -9,6 +9,7 @@ from githarbor.core.models import (
     Issue,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -194,4 +195,12 @@ class DummyRepository(Repository):
         limit: int | None = None,
     ) -> list[Release]:
         """List releases."""
+        raise NotImplementedError
+
+    def get_tag(self, name: str) -> Tag:
+        """Get a specific tag by name."""
+        raise NotImplementedError
+
+    def list_tags(self) -> list[Tag]:
+        """List all repository tags."""
         raise NotImplementedError

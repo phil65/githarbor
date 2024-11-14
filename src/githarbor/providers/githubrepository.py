@@ -15,6 +15,7 @@ from githarbor.core.models import (
     Issue,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -332,6 +333,46 @@ class GitHubRepository(Repository):
     def get_release(self, tag: str) -> Release:
         release = self._repo.get_release(tag)
         return githubtools.create_release_model(release)
+
+    @githubtools.handle_github_errors("Failed to get tag {name}")
+    def get_tag(self, name: str) -> Tag:
+        """Get a specific tag by name."""
+        try:
+            tag = self._repo.get_git_ref(f"tags/{name}")
+            tag_obj = self._repo.get_git_tag(tag.object.sha)
+            return Tag(
+                name=name,
+                sha=tag.object.sha,
+                message=tag_obj.message,
+                created_at=tag_obj.tagger.date,
+                author=githubtools.create_user_model(tag_obj.tagger),
+                url=tag.url,
+                # verified=bool(tag_obj.verification.verified),
+            )
+        except GithubException as e:
+            if e.status == 404:  # Might be lightweight tag  # noqa: PLR2004
+                commit = self._repo.get_commit(name)
+                return Tag(
+                    name=name,
+                    sha=commit.sha,
+                    created_at=commit.commit.author.date,
+                    author=githubtools.create_user_model(commit.author),
+                    url=commit.html_url,
+                )
+            raise
+
+    @githubtools.handle_github_errors("Failed to list tags")
+    def list_tags(self) -> list[Tag]:
+        """List all repository tags."""
+        return [
+            Tag(
+                name=tag.name,
+                sha=tag.commit.sha,
+                created_at=tag.commit.author.date if tag.commit else None,
+                url=tag.commit.html_url if tag.commit else None,
+            )
+            for tag in self._repo.get_tags()
+        ]
 
     @githubtools.handle_github_errors("Failed to get recent activity")
     def get_recent_activity(

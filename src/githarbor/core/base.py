@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         Issue,
         PullRequest,
         Release,
+        Tag,
         User,
         Workflow,
         WorkflowRun,
@@ -203,3 +204,11 @@ class Repository(ABC):
     def get_release(self, tag: str) -> Release:
         """Get specific release by tag."""
         raise NotImplementedError
+
+    @abstractmethod
+    def get_tag(self, name: str) -> Tag:
+        """Get a specific tag by name."""
+
+    @abstractmethod
+    def list_tags(self) -> list[Tag]:
+        """List all repository tags."""

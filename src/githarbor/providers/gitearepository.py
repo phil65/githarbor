@@ -19,6 +19,7 @@ from githarbor.core.models import (
     Label,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -491,6 +492,40 @@ class GiteaRepository(Repository):
         """Get a specific release by tag."""
         release = self._repo_api.repo_get_release(self._owner, self._name, tag)
         return self._create_release_model(release)
+
+    @handle_api_errors("Failed to get tag {name}")
+    def get_tag(self, name: str) -> Tag:
+        """Get a specific tag by name."""
+        tag = self._repo_api.repo_get_tag(self._owner, self._name, name)
+        return Tag(
+            name=tag.name,
+            sha=tag.id,  # Gitea uses 'id' for the SHA
+            message=tag.message,
+            created_at=getattr(tag, "created_at", None),  # Might not be available
+            author=self._create_user_model(tag.tagger)
+            if hasattr(tag, "tagger")
+            else None,
+            url=getattr(tag, "url", None),
+            verified=bool(getattr(tag, "verification", {}).get("verified", False)),
+        )
+
+    @handle_api_errors("Failed to list tags")
+    def list_tags(self) -> list[Tag]:
+        """List all repository tags."""
+        return [
+            Tag(
+                name=tag.name,
+                sha=tag.id,
+                message=tag.message,
+                created_at=getattr(tag, "created_at", None),
+                author=self._create_user_model(tag.tagger)
+                if hasattr(tag, "tagger")
+                else None,
+                url=getattr(tag, "url", None),
+                verified=bool(getattr(tag, "verification", {}).get("verified", False)),
+            )
+            for tag in self._repo_api.repo_list_tags(self._owner, self._name)
+        ]
 
     def get_languages(self) -> dict[str, int]:
         raise NotImplementedError
