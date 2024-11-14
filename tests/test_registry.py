@@ -36,8 +36,8 @@ def test_create_repo():
 
     # Create by name
     repo = RepoRegistry.create("test", owner="test", repo="test", token="test-token")
-    assert isinstance(repo, DummyRepository)
-    assert repo.kwargs["token"] == "test-token"
+    assert isinstance(repo._repository, DummyRepository)
+    assert repo._repository.kwargs["token"] == "test-token"
 
     # Invalid repo
     with pytest.raises(RepositoryNotFoundError):
@@ -50,7 +50,7 @@ def test_from_url():
 
     # Create from URL
     repo = RepoRegistry.from_url("https://test.com/owner/repo", token="test-token")
-    assert isinstance(repo, DummyRepository)
+    assert isinstance(repo._repository, DummyRepository)
 
     # Invalid URL
     with pytest.raises(RepositoryNotFoundError):

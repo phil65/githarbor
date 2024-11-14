@@ -7,6 +7,10 @@ from githarbor.exceptions import RepositoryNotFoundError
 from githarbor.registry import RepoRegistry
 
 
+if TYPE_CHECKING:
+    from githarbor.core.proxy import RepositoryProxy
+
+
 if importlib.util.find_spec("github"):
     from githarbor.providers.githubrepository import GitHubRepository
 
@@ -32,22 +36,19 @@ if importlib.util.find_spec("azure"):
 
 #     RepoRegistry.register("bitbucket")(BitbucketRepository)
 
-if TYPE_CHECKING:
-    from githarbor.core.base import Repository
 
-
-def create_repository(url: str, **kwargs: Any) -> Repository:
-    """Create a repository instance from a URL.
+def create_repository(url: str, **kwargs: Any) -> RepositoryProxy:
+    """Create a proxy-wrapped repository instance from a URL.
 
     Args:
         url: The repository URL (e.g. 'https://github.com/owner/repo')
         **kwargs: Repository-specific configuration (tokens, credentials, etc.)
 
     Returns:
-        Repository: Configured repository instance
+        RepositoryProxy: Proxy-wrapped repository instance
 
     Raises:
-        RepositoryNotFoundError: If the repository cannot be created or URL isnt supported
+        RepositoryNotFoundError: If the URL isn't supported or no repository found
 
     Example:
         >>> repo = create_repository('https://github.com/owner/repo', token='my-token')

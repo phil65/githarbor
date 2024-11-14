@@ -17,19 +17,19 @@ GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 
 def test_create_github_repository():
     repo = create_repository("https://github.com/phil65/mknodes")
-    assert isinstance(repo, GitHubRepository)
+    assert isinstance(repo._repository, GitHubRepository)
     assert repo.name == "mknodes"
 
 
 def test_create_gitlab_repository():
     repo = create_repository("https://gitlab.com/phil65/test")
-    assert isinstance(repo, GitLabRepository)
+    assert isinstance(repo._repository, GitLabRepository)
     assert repo.name == "test"
 
 
 # def test_create_bitbucket_repository():
 #     repo = create_repository("https://bitbucket.org/phil__65/testrepo")
-#     assert isinstance(repo, BitbucketRepository)
+#     assert isinstance(repo._repository, BitbucketRepository)
 #     assert repo.name == "testrepo"
 
 
