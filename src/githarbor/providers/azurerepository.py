@@ -17,8 +17,6 @@ from githarbor.core.models import (
     Issue,
     PullRequest,
     Release,
-    Tag,
-    User,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import azuretools
@@ -215,12 +213,13 @@ class AzureRepository(Repository):
         """List repository commits with optional filters."""
         commits = self._git_client.get_commits(
             repository_id=self._repo.id,
+            search_criteria=None,
             project=self._project,
-            branch_name=branch,
-            from_date=since,
-            to_date=until,
-            author=author,
-            item_path=path,
+            # branch_name=branch,
+            # from_date=since,
+            # to_date=until,
+            # author=author,
+            # item_path=path,
             top=max_results,
         )
         return [azuretools.create_commit_model(c) for c in commits]
@@ -279,90 +278,3 @@ class AzureRepository(Repository):
 
         latest_tag = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)[0]
         return azuretools.create_release_model(latest_tag)
-
-    @azuretools.handle_azure_errors("Failed to list releases")
-    def list_releases(
-        self,
-        include_drafts: bool = False,
-        include_prereleases: bool = False,
-        limit: int | None = None,
-    ) -> list[Release]:
-        tags = self._git_client.get_tags(
-            repository_id=self._repo.id,
-            project=self._project,
-        )
-        sorted_tags = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)
-
-        if limit:
-            sorted_tags = sorted_tags[:limit]
-
-        return [azuretools.create_release_model(tag) for tag in sorted_tags]
-
-    @azuretools.handle_azure_errors("Failed to get release {tag}")
-    def get_release(self, tag: str) -> Release:
-        tag_ref = self._git_client.get_tag(
-            repository_id=self._repo.id,
-            project=self._project,
-            tag=tag,
-        )
-        return azuretools.create_release_model(tag_ref)
-
-    @azuretools.handle_azure_errors("Failed to get tag {name}")
-    def get_tag(self, name: str) -> Tag:
-        """Get a specific tag by name.
-
-        Args:
-            name: Name of the tag to get
-
-        Returns:
-            Tag object
-
-        Raises:
-            ResourceNotFoundError: If tag doesn't exist
-        """
-        tag_ref = self._git_client.get_tag(
-            repository_id=self._repo.id,
-            project=self._project,
-            tag=name,
-        )
-
-        return Tag(
-            name=tag_ref.name,
-            sha=tag_ref.commit.commit_id,
-            message=tag_ref.message or "",
-            created_at=tag_ref.commit.committer.date,
-            author=User(
-                username=tag_ref.commit.committer.name,
-                name=tag_ref.commit.committer.name,
-                email=tag_ref.commit.committer.email,
-            ),
-            url=None,  # Azure DevOps doesn't provide direct URLs for tags
-        )
-
-    @azuretools.handle_azure_errors("Failed to list tags")
-    def list_tags(self) -> list[Tag]:
-        """List all repository tags.
-
-        Returns:
-            List of Tag objects sorted by date
-        """
-        tags = self._git_client.get_tags(
-            repository_id=self._repo.id,
-            project=self._project,
-        )
-
-        return [
-            Tag(
-                name=tag.name,
-                sha=tag.commit.commit_id,
-                message=tag.message or "",
-                created_at=tag.commit.committer.date,
-                author=User(
-                    username=tag.commit.committer.name,
-                    name=tag.commit.committer.name,
-                    email=tag.commit.committer.email,
-                ),
-                url=None,  # Azure DevOps doesn't provide direct URLs for tags
-            )
-            for tag in tags
-        ]

@@ -17,6 +17,7 @@ from githarbor.core.models import (
     Label,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -277,4 +278,19 @@ def create_workflow_run_model(build: Any) -> WorkflowRun:
         run_number=build.build_number,
         jobs_count=None,  # Would need additional API calls
         logs_url=build.logs.url if build.logs else None,
+    )
+
+
+def create_tag_model(tag: Any) -> Tag:
+    return Tag(
+        name=tag.name,
+        sha=tag.commit.commit_id,
+        message=tag.message or "",
+        created_at=tag.commit.committer.date,
+        author=User(
+            username=tag.commit.committer.name,
+            name=tag.commit.committer.name,
+            email=tag.commit.committer.email,
+        ),
+        url=None,  # Azure DevOps doesn't provide direct URLs for tags
     )
