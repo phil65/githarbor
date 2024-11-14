@@ -38,6 +38,10 @@ class LocalRepository(BaseRepository):
     def from_url(cls, url: str, **_: Any) -> LocalRepository:
         return cls(url)
 
+    @classmethod
+    def supports_url(cls, url: str) -> bool:
+        return UPath(url).exists()
+
     @property
     def name(self) -> str:
         """Get repository name from directory name."""
