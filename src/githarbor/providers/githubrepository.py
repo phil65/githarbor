@@ -453,16 +453,7 @@ class GitHubRepository(Repository):
         elif sort_by == "date":
             contributors = sorted(contributors, key=lambda c: c.created_at)
         contributors = contributors[:limit] if limit else contributors
-        return [
-            User(
-                username=c.login,
-                name=c.name,
-                email=c.email,
-                avatar_url=c.avatar_url,
-                created_at=c.created_at,
-            )
-            for c in contributors
-        ]
+        return [u for c in contributors if (u := self._create_user_model(c))]
 
     @handle_github_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
@@ -534,49 +525,23 @@ class GitHubRepository(Repository):
         include_prereleases: bool = False,
         limit: int | None = None,
     ) -> list[Release]:
-        releases: list[Release] = []
-        for release in self._repo.get_releases():
-            if not include_drafts and release.draft:
-                continue
-            if not include_prereleases and release.prerelease:
-                continue
-            releases.append(self._create_release_model(release))
-            if limit and len(releases) >= limit:
-                break
-        return releases
+        filtered_releases = (
+            release
+            for release in self._repo.get_releases()
+            if (include_drafts or not release.draft)
+            and (include_prereleases or not release.prerelease)
+        )
+        return [
+            self._create_release_model(release)
+            for release in (
+                list(filtered_releases)[:limit] if limit else filtered_releases
+            )
+        ]
 
     @handle_github_errors("Failed to get release")
     def get_release(self, tag: str) -> Release:
         release = self._repo.get_release(tag)
-        return Release(
-            tag_name=release.tag_name,
-            name=release.title,
-            description=release.body or "",
-            created_at=release.created_at,
-            published_at=release.published_at,
-            draft=release.draft,
-            prerelease=release.prerelease,
-            author=User(
-                username=release.author.login,
-                name=release.author.name,
-                avatar_url=release.author.avatar_url,
-            )
-            if release.author
-            else None,
-            assets=[
-                {
-                    "name": asset.name,
-                    "url": asset.browser_download_url,
-                    "size": asset.size,
-                    "download_count": asset.download_count,
-                    "created_at": asset.created_at,
-                    "updated_at": asset.updated_at,
-                }
-                for asset in release.assets
-            ],
-            url=release.html_url,
-            target_commitish=release.target_commitish,
-        )
+        return self._create_release_model(release)
 
     @handle_github_errors("Failed to get recent activity")
     def get_recent_activity(
