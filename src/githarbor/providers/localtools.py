@@ -15,7 +15,7 @@ from githarbor.exceptions import ResourceNotFoundError
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from datetime import datetime
 
 
@@ -186,7 +186,7 @@ def get_commit_stats(commit: git.Commit) -> dict[str, int]:
 
 
 def filter_commits(
-    commits: git.Commit,
+    commits: Iterator[git.Commit],
     since: datetime | None = None,
     until: datetime | None = None,
     author: str | None = None,
