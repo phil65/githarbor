@@ -91,6 +91,103 @@ class GiteaRepository(Repository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
+    def _create_user_model(self, gitea_user: Any) -> User | None:
+        """Create User model from Gitea user object."""
+        if not gitea_user:
+            return None
+        return User(
+            username=gitea_user.login,
+            name=gitea_user.full_name or gitea_user.login,
+            email=gitea_user.email,
+            avatar_url=gitea_user.avatar_url,
+            created_at=gitea_user.created,
+            bio=gitea_user.description,
+            location=gitea_user.location,
+            url=gitea_user.html_url,
+        )
+
+    def _create_label_model(self, gitea_label: Any) -> Label:
+        """Create Label model from Gitea label object."""
+        return Label(
+            name=gitea_label.name,
+            color=gitea_label.color,
+            description=gitea_label.description or "",
+            url=gitea_label.url,
+        )
+
+    def _create_pull_request_model(self, pr: Any) -> PullRequest:
+        """Create PullRequest model from Gitea PR object."""
+        return PullRequest(
+            number=pr.number,
+            title=pr.title,
+            description=pr.body or "",
+            state=pr.state,
+            source_branch=pr.head.ref,
+            target_branch=pr.base.ref,
+            created_at=pr.created_at,
+            updated_at=pr.updated_at,
+            merged_at=pr.merged_at,
+            closed_at=pr.closed_at,
+            author=self._create_user_model(pr.user),
+            labels=[self._create_label_model(label) for label in (pr.labels or [])],
+            url=pr.html_url,
+        )
+
+    def _create_issue_model(self, issue: Any) -> Issue:
+        """Create Issue model from Gitea issue object."""
+        return Issue(
+            number=issue.number,
+            title=issue.title,
+            description=issue.body or "",
+            state=issue.state,
+            created_at=issue.created_at,
+            updated_at=issue.updated_at,
+            closed_at=issue.closed_at,
+            closed=issue.state == "closed",
+            author=self._create_user_model(issue.user),
+            assignee=self._create_user_model(issue.assignee),
+            labels=[self._create_label_model(label) for label in (issue.labels or [])],
+            url=issue.html_url,
+        )
+
+    def _create_commit_model(self, commit: Any) -> Commit:
+        """Create Commit model from Gitea commit object."""
+        return Commit(
+            sha=commit.sha,
+            message=commit.commit.message,
+            created_at=commit.commit.author._date,
+            author=User(
+                username=commit.commit.author.name,
+                email=commit.commit.author.email,
+                name=commit.commit.author.name,
+            ),
+            url=commit.html_url,
+        )
+
+    def _create_release_model(self, release: Any) -> Release:
+        """Create Release model from Gitea release object."""
+        return Release(
+            tag_name=release.tag_name,
+            name=release.name,
+            description=release.body or "",
+            created_at=release.created_at,
+            published_at=release.published_at,
+            draft=release.draft,
+            prerelease=release.prerelease,
+            author=self._create_user_model(release.author),
+            assets=[
+                {
+                    "name": asset.name,
+                    "url": asset.browser_download_url,
+                    "size": asset.size,
+                    "download_count": asset.download_count,
+                }
+                for asset in release.assets
+            ],
+            url=release.url,
+            target_commitish=release.target_commitish,
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo_api.repo_get_branch(self._owner, self._name, name)
@@ -106,33 +203,16 @@ class GiteaRepository(Repository):
             raise ResourceNotFoundError(msg) from e
 
     def get_pull_request(self, number: int) -> PullRequest:
+        """Get a specific pull request by number."""
         try:
             pr = self._repo_api.repo_get_pull(self._owner, self._name, number)
-            return PullRequest(
-                number=pr.number,
-                title=pr.title,
-                description=pr.body or "",
-                state=pr.state,
-                source_branch=pr.head.ref,
-                target_branch=pr.base.ref,
-                created_at=pr.created_at,
-                updated_at=pr.updated_at,
-                merged_at=pr.merged_at,
-                closed_at=pr.closed_at,
-                author=User(
-                    username=pr.user.login,
-                    name=pr.user.full_name or pr.user.login,
-                    avatar_url=pr.user.avatar_url,
-                )
-                if pr.user
-                else None,
-                labels=[Label(name=label.name) for label in (pr.labels or [])],
-            )
+            return self._create_pull_request_model(pr)
         except ApiException as e:
             msg = f"Pull request #{number} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+        """List pull requests."""
         try:
             prs = self._repo_api.repo_list_pull_requests(
                 self._owner,
@@ -144,63 +224,19 @@ class GiteaRepository(Repository):
             raise ResourceNotFoundError(msg) from e
 
         assert isinstance(prs, list)
-        return [
-            PullRequest(
-                number=pr.number,
-                title=pr.title,
-                description=pr.body or "",
-                state=pr.state,
-                source_branch=pr.head.ref,
-                target_branch=pr.base.ref,
-                created_at=pr.created_at,
-                updated_at=pr.updated_at,
-                merged_at=pr.merged_at,
-                closed_at=pr.closed_at,
-                author=User(
-                    username=pr.user.login,
-                    name=pr.user.full_name or pr.user.login,
-                    avatar_url=pr.user.avatar_url,
-                )
-                if pr.user
-                else None,
-                labels=[Label(name=label.name) for label in (pr.labels or [])],
-            )
-            for pr in prs
-        ]
+        return [self._create_pull_request_model(pr) for pr in prs]
 
     def get_issue(self, issue_id: int) -> Issue:
+        """Get a specific issue by ID."""
         try:
             issue = self._issues_api.issue_get_issue(self._owner, self._name, issue_id)
-            return Issue(
-                number=issue.number,
-                title=issue.title,
-                description=issue.body or "",
-                state=issue.state,
-                created_at=issue.created_at,
-                updated_at=issue.updated_at,
-                closed_at=issue.closed_at,
-                closed=issue.state == "closed",
-                author=User(
-                    username=issue.user.login,
-                    name=issue.user.full_name or issue.user.login,
-                    avatar_url=issue.user.avatar_url,
-                )
-                if issue.user
-                else None,
-                assignee=User(
-                    username=issue.assignee.login,
-                    name=issue.assignee.full_name or issue.assignee.login,
-                    avatar_url=issue.assignee.avatar_url,
-                )
-                if issue.assignee
-                else None,
-                labels=[Label(name=label.name) for label in (issue.labels or [])],
-            )
+            return self._create_issue_model(issue)
         except ApiException as e:
             msg = f"Issue #{issue_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
     def list_issues(self, state: str = "open") -> list[Issue]:
+        """List repository issues."""
         try:
             issues = self._issues_api.issue_list_issues(
                 self._owner,
@@ -212,49 +248,13 @@ class GiteaRepository(Repository):
             raise ResourceNotFoundError(msg) from e
 
         assert isinstance(issues, list)
-        return [
-            Issue(
-                number=issue.number,
-                title=issue.title,
-                description=issue.body or "",
-                state=issue.state,
-                created_at=issue.created_at,
-                updated_at=issue.updated_at,
-                closed_at=issue.closed_at,
-                closed=issue.state == "closed",
-                author=User(
-                    username=issue.user.login,
-                    name=issue.user.full_name or issue.user.login,
-                    avatar_url=issue.user.avatar_url,
-                )
-                if issue.user
-                else None,
-                assignee=User(
-                    username=issue.assignee.login,
-                    name=issue.assignee.full_name or issue.assignee.login,
-                    avatar_url=issue.assignee.avatar_url,
-                )
-                if issue.assignee
-                else None,
-                labels=[Label(name=label.name) for label in (issue.labels or [])],
-            )
-            for issue in issues
-        ]
+        return [self._create_issue_model(issue) for issue in issues]
 
     def get_commit(self, sha: str) -> Commit:
+        """Get a specific commit by SHA."""
         try:
             commit = self._repo_api.repo_get_single_commit(self._owner, self._name, sha)
-            return Commit(
-                sha=commit.sha,
-                message=commit.commit.message,
-                created_at=commit.commit.author._date,
-                author=User(
-                    username=commit.commit.author.name,
-                    email=commit.commit.author.email,
-                    name=commit.commit.author.name,
-                ),
-                url=commit.html_url,
-            )
+            return self._create_commit_model(commit)
         except ApiException as e:
             msg = f"Commit {sha} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -268,6 +268,7 @@ class GiteaRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
+        """List repository commits with optional filters."""
         try:
             kwargs: dict[str, Any] = {}
             if branch:
@@ -299,20 +300,7 @@ class GiteaRepository(Repository):
                 if author in (c.commit.author.name or c.commit.author.email)
             ]
 
-        return [
-            Commit(
-                sha=commit.sha,
-                message=commit.commit.message,
-                created_at=commit.commit.author._date,
-                author=User(
-                    username=commit.commit.author.name,
-                    email=commit.commit.author.email,
-                    name=commit.commit.author.name,
-                ),
-                url=commit.html_url,
-            )
-            for commit in commits
-        ]
+        return [self._create_commit_model(commit) for commit in commits]
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         raise NotImplementedError
@@ -439,6 +427,7 @@ class GiteaRepository(Repository):
         sort_by: Literal["commits", "name", "date"] = "commits",
         limit: int | None = None,
     ) -> list[User]:
+        """Get repository contributors."""
         try:
             # Get all commits to analyze contributors
             # since API doesn't provide direct endpoint
@@ -446,49 +435,41 @@ class GiteaRepository(Repository):
         except ApiException as e:
             msg = f"Failed to get contributors: {e!s}"
             raise ResourceNotFoundError(msg) from e
-        else:
-            assert isinstance(commits, list)
-            # Build contributor stats from commits
-            contributors: dict[str, dict[str, Any]] = {}
-            for commit in commits:
-                author = commit.author
-                if not author:
-                    continue
 
-                if author.login not in contributors:
-                    contributors[author.login] = {
-                        "username": author.login,
-                        "name": author.full_name,
-                        "avatar_url": author.avatar_url,
-                        "commits": 0,
-                    }
-                contributors[author.login]["commits"] += 1
+        assert isinstance(commits, list)
+        # Build contributor stats from commits
+        contributors: dict[str, dict[str, Any]] = {}
+        for commit in commits:
+            author = commit.author
+            if not author:
+                continue
 
-            # Convert to list and sort
-            contributor_list = list(contributors.values())
-            if sort_by == "name":
-                contributor_list.sort(key=lambda c: c["username"])
-            elif sort_by == "commits":
-                contributor_list.sort(key=lambda c: c["commits"], reverse=True)
+            if author.login not in contributors:
+                contributors[author.login] = {
+                    "user": author,
+                    "commits": 0,
+                }
+            contributors[author.login]["commits"] += 1
 
-            # Apply limit if specified
-            if limit:
-                contributor_list = contributor_list[:limit]
+        # Convert to list and sort
+        contributor_list = list(contributors.values())
+        if sort_by == "name":
+            contributor_list.sort(key=lambda c: c["user"].login)
+        elif sort_by == "commits":
+            contributor_list.sort(key=lambda c: c["commits"], reverse=True)
 
-            return [
-                User(
-                    username=c["username"],
-                    name=c["name"],
-                    avatar_url=c["avatar_url"],
-                )
-                for c in contributor_list
-            ]
+        # Apply limit if specified
+        if limit:
+            contributor_list = contributor_list[:limit]
+
+        return [self._create_user_model(c["user"]) for c in contributor_list]
 
     def get_latest_release(
         self,
         include_drafts: bool = False,
         include_prereleases: bool = False,
     ) -> Release:
+        """Get the latest repository release."""
         try:
             kwargs = {
                 "draft": include_drafts,
@@ -505,37 +486,9 @@ class GiteaRepository(Repository):
                 msg = "No matching releases found"
                 raise ResourceNotFoundError(msg)
 
-            latest = releases[0]
+            return self._create_release_model(releases[0])
 
-            return Release(
-                tag_name=latest.tag_name,
-                name=latest.name,
-                description=latest.body or "",
-                created_at=latest.created_at,
-                published_at=latest.published_at,
-                draft=latest.draft,
-                prerelease=latest.prerelease,
-                author=User(
-                    username=latest.author.login,
-                    name=latest.author.full_name,
-                    avatar_url=latest.author.avatar_url,
-                )
-                if latest.author
-                else None,
-                assets=[
-                    {
-                        "name": asset.name,
-                        "url": asset.browser_download_url,
-                        "size": asset.size,
-                        "download_count": asset.download_count,
-                    }
-                    for asset in latest.assets
-                ],
-                url=latest.url,
-                target_commitish=latest.target_commitish,
-            )
-
-        except giteapy.ApiException as e:
+        except ApiException as e:
             msg = f"Failed to get latest release: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
@@ -545,6 +498,7 @@ class GiteaRepository(Repository):
         include_prereleases: bool = False,
         limit: int | None = None,
     ) -> list[Release]:
+        """List repository releases."""
         kwargs = {"per_page": limit} if limit else {}
         try:
             results = self._repo_api.repo_list_releases(
@@ -555,75 +509,24 @@ class GiteaRepository(Repository):
         except ApiException as e:
             msg = f"Failed to list releases: {e!s}"
             raise ResourceNotFoundError(msg) from e
-        else:
-            assert isinstance(results, list)
-            return [
-                Release(
-                    tag_name=release.tag_name,
-                    name=release.name,
-                    description=release.body or "",
-                    created_at=release.created_at,
-                    published_at=release.published_at,
-                    draft=release.draft,
-                    prerelease=release.prerelease,
-                    author=User(
-                        username=release.author.login,
-                        name=release.author.full_name,
-                        avatar_url=release.author.avatar_url,
-                    )
-                    if release.author
-                    else None,
-                    assets=[
-                        {
-                            "name": asset.name,
-                            "url": asset.browser_download_url,
-                            "size": asset.size,
-                            "download_count": asset.download_count,
-                        }
-                        for asset in release.assets
-                    ],
-                    url=release.url,
-                    target_commitish=release.target_commitish,
-                )
-                for release in results
-                if (release.draft and include_drafts or not release.draft)
-                and (release.prerelease and include_prereleases or not release.prerelease)
-            ]
+
+        assert isinstance(results, list)
+        return [
+            self._create_release_model(release)
+            for release in results
+            if (release.draft and include_drafts or not release.draft)
+            and (release.prerelease and include_prereleases or not release.prerelease)
+        ]
 
     def get_release(self, tag: str) -> Release:
+        """Get a specific release by tag."""
         try:
             release = self._repo_api.repo_get_release(
                 self._owner,
                 self._name,
                 tag,
             )
-            return Release(
-                tag_name=release.tag_name,
-                name=release.name,
-                description=release.body or "",
-                created_at=release.created_at,
-                published_at=release.published_at,
-                draft=release.draft,
-                prerelease=release.prerelease,
-                author=User(
-                    username=release.author.login,
-                    name=release.author.full_name,
-                    avatar_url=release.author.avatar_url,
-                )
-                if release.author
-                else None,
-                assets=[
-                    {
-                        "name": asset.name,
-                        "url": asset.browser_download_url,
-                        "size": asset.size,
-                        "download_count": asset.download_count,
-                    }
-                    for asset in release.assets
-                ],
-                url=release.url,
-                target_commitish=release.target_commitish,
-            )
+            return self._create_release_model(release)
 
         except ApiException as e:
             msg = f"Release with tag {tag} not found: {e!s}"
