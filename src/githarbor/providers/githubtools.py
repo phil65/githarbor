@@ -10,11 +10,13 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 from github.GithubException import GithubException
 
 from githarbor.core.models import (
+    Branch,
     Commit,
     Issue,
     Label,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -268,3 +270,52 @@ def create_workflow_run_model(run: Any) -> WorkflowRun:
         jobs_count=len(list(run.jobs())),
         logs_url=run.logs_url,
     )
+
+
+def create_tag_model(tag: Any) -> Tag:
+    """Create Tag model from GitHub tag object."""
+    return Tag(
+        name=tag.name,
+        sha=tag.commit.sha if hasattr(tag, "commit") else tag.object.sha,
+        message=tag.message if hasattr(tag, "message") else None,
+        created_at=tag.tagger.date if hasattr(tag, "tagger") else None,
+        author=create_user_model(tag.tagger) if hasattr(tag, "tagger") else None,
+        url=tag.url if hasattr(tag, "url") else None,
+    )
+
+
+def create_branch_model(branch: Any) -> Branch:
+    """Create Branch model from GitHub branch object."""
+    last_commit = branch.commit
+    return Branch(
+        name=branch.name,
+        sha=branch.commit.sha,
+        protected=branch.protected,
+        default=False,  # This needs to be set by the caller
+        protection_rules=(
+            {
+                "required_reviews": branch.get_required_status_checks(),
+                "dismiss_stale_reviews": branch.get_required_pull_request_reviews(),
+                "require_code_owner_reviews": branch.get_required_signatures(),
+            }
+            if branch.protected
+            else None
+        ),
+        last_commit_date=last_commit.commit.author.date,
+        last_commit_message=last_commit.commit.message,
+        last_commit_author=create_user_model(last_commit.author),
+    )
+
+
+def create_file_model(content: Any) -> dict[str, Any]:
+    """Create file info dictionary from GitHub content object."""
+    return {
+        "name": content.name,
+        "path": content.path,
+        "sha": content.sha,
+        "size": content.size,
+        "type": content.type,
+        "url": content.html_url,
+        "download_url": content.download_url,
+        "encoding": content.encoding if hasattr(content, "encoding") else None,
+    }

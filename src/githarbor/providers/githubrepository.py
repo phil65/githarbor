@@ -9,24 +9,27 @@ from github import Auth, Github, NamedUser
 from github.GithubException import GithubException
 
 from githarbor.core.base import Repository
-from githarbor.core.models import (
-    Branch,
-    Commit,
-    Issue,
-    PullRequest,
-    Release,
-    Tag,
-    User,
-    Workflow,
-    WorkflowRun,
-)
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import githubtools
 
 
+HTML_ERROR_CODE = 404
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
+
+    from githarbor.core.models import (
+        Branch,
+        Commit,
+        Issue,
+        PullRequest,
+        Release,
+        Tag,
+        User,
+        Workflow,
+        WorkflowRun,
+    )
 
 
 TOKEN = os.getenv("GITHUB_TOKEN")
@@ -79,25 +82,9 @@ class GitHubRepository(Repository):
     @githubtools.handle_github_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         branch = self._repo.get_branch(name)
-        last_commit = branch.commit
-        return Branch(
-            name=branch.name,
-            sha=branch.commit.sha,
-            protected=branch.protected,
-            default=branch.name == self.default_branch,
-            protection_rules=(
-                {
-                    "required_reviews": branch.get_required_status_checks(),
-                    "dismiss_stale_reviews": (branch.get_required_pull_request_reviews()),
-                    "require_code_owner_reviews": (branch.get_required_signatures()),
-                }
-                if branch.protected
-                else None
-            ),
-            last_commit_date=last_commit.commit.author.date,
-            last_commit_message=last_commit.commit.message,
-            last_commit_author=githubtools.create_user_model(last_commit.author),
-        )
+        model = githubtools.create_branch_model(branch)
+        model.default = branch.name == self.default_branch
+        return model
 
     @githubtools.handle_github_errors("Failed to get pull request {number}")
     def get_pull_request(self, number: int) -> PullRequest:
@@ -340,39 +327,17 @@ class GitHubRepository(Repository):
         try:
             tag = self._repo.get_git_ref(f"tags/{name}")
             tag_obj = self._repo.get_git_tag(tag.object.sha)
-            return Tag(
-                name=name,
-                sha=tag.object.sha,
-                message=tag_obj.message,
-                created_at=tag_obj.tagger.date,
-                author=githubtools.create_user_model(tag_obj.tagger),
-                url=tag.url,
-                # verified=bool(tag_obj.verification.verified),
-            )
+            return githubtools.create_tag_model(tag_obj)
         except GithubException as e:
-            if e.status == 404:  # Might be lightweight tag  # noqa: PLR2004
+            if e.status == HTML_ERROR_CODE:  # Might be lightweight tag
                 commit = self._repo.get_commit(name)
-                return Tag(
-                    name=name,
-                    sha=commit.sha,
-                    created_at=commit.commit.author.date,
-                    author=githubtools.create_user_model(commit.author),
-                    url=commit.html_url,
-                )
+                return githubtools.create_tag_model(commit)
             raise
 
     @githubtools.handle_github_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
         """List all repository tags."""
-        return [
-            Tag(
-                name=tag.name,
-                sha=tag.commit.sha,
-                created_at=tag.commit.author.date if tag.commit else None,
-                url=tag.commit.html_url if tag.commit else None,
-            )
-            for tag in self._repo.get_tags()
-        ]
+        return [githubtools.create_tag_model(tag) for tag in self._repo.get_tags()]
 
     @githubtools.handle_github_errors("Failed to get recent activity")
     def get_recent_activity(
