@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from githarbor.providers.testrepository import DummyRepository
 import importlib.util
 
 if importlib.util.find_spec("github"):
@@ -25,5 +24,4 @@ __all__ = [
     "GiteaRepository",
     "AzureRepository",
     # "BitbucketRepository",
-    "DummyRepository",
 ]

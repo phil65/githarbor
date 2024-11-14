@@ -27,3 +27,7 @@ class ProviderNotConfiguredError(GitHarborError):
 
 class RateLimitError(GitHarborError):
     """Raised when API rate limit is exceeded."""
+
+
+class FeatureNotSupportedError(GitHarborError):
+    """Raised when a feature is not supported by the implementation."""

@@ -15,7 +15,6 @@ from githarbor.core.models import (
     Workflow,
     WorkflowRun,
 )
-from githarbor.providers.testrepository import DummyRepository
 
 
 @pytest.fixture
@@ -118,18 +117,6 @@ def mock_workflow_run():
         updated_at=datetime(2023, 1, 1),
         started_at=datetime(2023, 1, 1),
         completed_at=datetime(2023, 1, 1),
-    )
-
-
-@pytest.fixture
-def mock_repository():
-    return DummyRepository(
-        name="test-repo",
-        description="Test repository",
-        private=False,
-        default_branch="main",
-        created_at=datetime(2023, 1, 1),
-        updated_at=datetime(2023, 1, 1),
     )
 
 

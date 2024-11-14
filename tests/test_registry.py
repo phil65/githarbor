@@ -1,8 +1,21 @@
+from typing import Any, ClassVar
+
 import pytest
 
+from githarbor.core import base
 from githarbor.exceptions import RepositoryNotFoundError
-from githarbor.providers.testrepository import DummyRepository
 from githarbor.registry import RepoRegistry
+
+
+class DummyRepository(base.Repository):
+    url_patterns: ClassVar[list[str]] = ["test.com"]
+
+    def __init__(self, owner, repo, **kwargs: Any):
+        self.kwargs = kwargs
+
+    @classmethod
+    def from_url(cls, url: str, **kwargs: Any) -> base.Repository:
+        return cls("test", "test")
 
 
 def test_register_repo():
@@ -22,7 +35,7 @@ def test_create_repo():
     RepoRegistry._repos = {"test": DummyRepository}
 
     # Create by name
-    repo = RepoRegistry.create("test", token="test-token")
+    repo = RepoRegistry.create("test", owner="test", repo="test", token="test-token")
     assert isinstance(repo, DummyRepository)
     assert repo.kwargs["token"] == "test-token"
 
