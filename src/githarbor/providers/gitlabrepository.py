@@ -339,22 +339,6 @@ class GitLabRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        """List commits for the repository.
-
-        Args:
-            branch: Branch to get commits from. Defaults to default branch.
-            since: Only commits after this date will be returned
-            until: Only commits before this date will be returned
-            path: Only commits containing this file path will be returned
-            author: Filter commits by author name/email
-            max_results: Maximum number of commits to return
-
-        Returns:
-            List of Commit objects
-
-        Raises:
-            ResourceNotFoundError: If commits cannot be retrieved
-        """
         try:
             kwargs: dict[str, Any] = {}
             if branch:
@@ -478,20 +462,7 @@ class GitLabRepository(Repository):
             msg = f"Failed to search commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
-        return [
-            Commit(
-                sha=commit.id,
-                message=commit.message,
-                created_at=self._parse_timestamp(commit.created_at),
-                author=User(
-                    username=commit.author_name,
-                    email=commit.author_email,
-                    name=commit.author_name,
-                ),
-                url=commit.web_url,
-            )
-            for commit in commits
-        ]
+        return [self._create_commit_model(commit) for commit in commits]
 
     def iter_files(
         self,
@@ -579,29 +550,21 @@ class GitLabRepository(Repository):
 
         since = datetime.now() - timedelta(days=days)
         activity: dict[str, int] = {}
-
+        date = since.isoformat()
         try:
             if include_commits:
-                commits = self._repo.commits.list(
-                    since=since.isoformat(),
-                    per_page=100,
-                    get_all=False,
-                )
+                commits = self._repo.commits.list(since=date, per_page=100, get_all=False)
                 activity["commits"] = len(list(commits))
 
             if include_prs:
                 mrs = self._repo.mergerequests.list(
-                    updated_after=since.isoformat(),
-                    per_page=100,
-                    get_all=False,
+                    updated_after=date, per_page=100, get_all=False
                 )
                 activity["pull_requests"] = len(list(mrs))
 
             if include_issues:
                 issues = self._repo.issues.list(
-                    updated_after=since.isoformat(),
-                    per_page=100,
-                    get_all=False,
+                    updated_after=date, per_page=100, get_all=False
                 )
                 activity["issues"] = len(list(issues))
 

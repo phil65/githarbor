@@ -222,6 +222,44 @@ class GitHubRepository(Repository):
             target_commitish=release.target_commitish,
         )
 
+    def _create_workflow_model(self, workflow: Any) -> Workflow:
+        """Create Workflow model from GitHub workflow object."""
+        raw_prefix = f"https://raw.githubusercontent.com/{self._owner}/{self._name}/"
+        return Workflow(
+            id=str(workflow.id),
+            name=workflow.name,
+            path=workflow.path,
+            state=workflow.state,
+            created_at=workflow.created_at,
+            updated_at=workflow.updated_at,
+            description=workflow.name,  # GitHub API doesn't provide separate description
+            triggers=[],  # Would need to parse the workflow file to get triggers
+            disabled=workflow.state.lower() == "disabled",
+            last_run_at=None,  # Not directly available from the API
+            badge_url=workflow.badge_url,
+            definition=f"{raw_prefix}{self.default_branch}/{workflow.path}",
+        )
+
+    def _create_workflow_run_model(self, run: Any) -> WorkflowRun:
+        """Create WorkflowRun model from GitHub workflow run object."""
+        return WorkflowRun(
+            id=str(run.id),
+            name=run.name or run.display_title,
+            workflow_id=str(run.workflow_id),
+            status=run.status,
+            conclusion=run.conclusion,
+            branch=run.head_branch,
+            commit_sha=run.head_sha,
+            url=run.html_url,
+            created_at=run.created_at,
+            updated_at=run.updated_at,
+            started_at=run.run_started_at,
+            completed_at=run.run_attempt_started_at,
+            run_number=run.run_number,
+            jobs_count=len(list(run.jobs())),
+            logs_url=run.logs_url,
+        )
+
     def get_branch(self, name: str) -> Branch:
         try:
             branch = self._repo.get_branch(name)
@@ -300,63 +338,37 @@ class GitHubRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        try:
-            kwargs: dict[str, Any] = {}
-            if since:
-                kwargs["since"] = since
-            if until:
-                kwargs["until"] = until
-            if author:
-                kwargs["author"] = author
-            if path:
-                kwargs["path"] = path
-            if branch:
-                kwargs["sha"] = branch
+        kwargs = {
+            "since": since,
+            "until": until,
+            "author": author,
+            "path": path,
+            "sha": branch,
+        }
+        # Filter out None values
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
+        try:
             commits = self._repo.get_commits(**kwargs)
             results = commits[:max_results] if max_results else commits
-
-            return [self._create_commit_model(c) for c in results]
         except GithubException as e:
             msg = f"Failed to list commits: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
+        return [self._create_commit_model(c) for c in results]
+
     def get_workflow(self, workflow_id: str) -> Workflow:
         try:
             workflow = self._repo.get_workflow(workflow_id)
-            return Workflow(
-                id=str(workflow.id),
-                name=workflow.name,
-                path=workflow.path,
-                state=workflow.state,
-                created_at=workflow.created_at,
-                updated_at=workflow.updated_at,
-            )
+            return self._create_workflow_model(workflow)
         except GithubException as e:
-            msg = f"Workflow {id} not found: {e!s}"
+            msg = f"Workflow {workflow_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
 
     def list_workflows(self) -> list[Workflow]:
         try:
             workflows = self._repo.get_workflows()
-            raw_prefix = f"https://raw.githubusercontent.com/{self._owner}/{self._name}/"
-            return [
-                Workflow(
-                    id=str(w.id),
-                    name=w.name,
-                    path=w.path,
-                    state=w.state,
-                    created_at=w.created_at,
-                    updated_at=w.updated_at,
-                    description=w.name,  # GitHub API doesn't provide separate description
-                    triggers=[],  # Would need to parse the workflow file to get triggers
-                    disabled=w.state.lower() == "disabled",
-                    last_run_at=None,  # Not directly available from the API
-                    badge_url=w.badge_url,
-                    definition=f"{raw_prefix}{self.default_branch}/{w.path}",
-                )
-                for w in workflows
-            ]
+            return [self._create_workflow_model(w) for w in workflows]
         except GithubException as e:
             msg = f"Failed to list workflows: {e!s}"
             raise ResourceNotFoundError(msg) from e
@@ -364,23 +376,7 @@ class GitHubRepository(Repository):
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
         try:
             run = self._repo.get_workflow_run(int(run_id))
-            return WorkflowRun(
-                id=str(run.id),
-                name=run.name or run.display_title,
-                workflow_id=str(run.workflow_id),
-                status=run.status,
-                conclusion=run.conclusion,
-                branch=run.head_branch,
-                commit_sha=run.head_sha,
-                url=run.html_url,
-                created_at=run.created_at,
-                updated_at=run.updated_at,
-                started_at=run.run_started_at,
-                completed_at=run.run_attempt_started_at,
-                run_number=run.run_number,
-                jobs_count=len(list(run.jobs())),
-                logs_url=run.logs_url,
-            )
+            return self._create_workflow_run_model(run)
         except GithubException as e:
             msg = f"Workflow run {run_id} not found: {e!s}"
             raise ResourceNotFoundError(msg) from e
