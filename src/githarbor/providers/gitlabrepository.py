@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 import gitlab
-from gitlab.exceptions import GitlabAuthenticationError, GitlabGetError
+from gitlab.exceptions import GitlabAuthenticationError
 
 from githarbor.core.base import Repository
 from githarbor.core.models import (
@@ -23,6 +23,7 @@ from githarbor.core.models import (
     WorkflowRun,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
+from githarbor.providers import gitlabtools
 
 
 if TYPE_CHECKING:
@@ -255,19 +256,16 @@ class GitLabRepository(Repository):
             target_commitish=getattr(release, "commit", {}).get("id"),
         )
 
+    @gitlabtools.handle_gitlab_errors("Branch {name} not found")
     def get_branch(self, name: str) -> Branch:
-        try:
-            branch = self._repo.branches.get(name)
-            return Branch(
-                name=branch.name,
-                sha=branch.commit["id"],
-                protected=branch.protected,
-                created_at=None,  # GitLab doesn't provide branch creation date
-                updated_at=None,  # GitLab doesn't provide branch update date
-            )
-        except GitlabGetError as e:
-            msg = f"Branch {name} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        branch = self._repo.branches.get(name)
+        return Branch(
+            name=branch.name,
+            sha=branch.commit["id"],
+            protected=branch.protected,
+            created_at=None,  # GitLab doesn't provide branch creation date
+            updated_at=None,  # GitLab doesn't provide branch update date
+        )
 
     def _parse_timestamp(self, timestamp: str) -> datetime:
         """Parse GitLab timestamp string to datetime.
@@ -286,50 +284,34 @@ class GitLabRepository(Repository):
         msg = f"Unable to parse timestamp: {timestamp}"
         raise ValueError(msg)
 
+    @gitlabtools.handle_gitlab_errors("Merge request #{number} not found")
     def get_pull_request(self, number: int) -> PullRequest:
-        try:
-            mr = self._repo.mergerequests.get(number)
-            return self._create_pull_request_model(mr)
-        except GitlabGetError as e:
-            msg = f"Merge request #{number} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        mr = self._repo.mergerequests.get(number)
+        return self._create_pull_request_model(mr)
 
+    @gitlabtools.handle_gitlab_errors("Failed to list merge requests")
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
-        try:
-            mrs = self._repo.mergerequests.list(state=state, all=True)
-        except GitlabGetError as e:
-            msg = f"Failed to list merge requests: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        mrs = self._repo.mergerequests.list(state=state, all=True)
         return [self._create_pull_request_model(mr) for mr in mrs]
 
+    @gitlabtools.handle_gitlab_errors("Issue #{issue_id} not found")
     def get_issue(self, issue_id: int) -> Issue:
-        try:
-            issue = self._repo.issues.get(issue_id)
-            return self._create_issue_model(issue)
-        except GitlabGetError as e:
-            msg = f"Issue #{issue_id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        issue = self._repo.issues.get(issue_id)
+        return self._create_issue_model(issue)
 
+    @gitlabtools.handle_gitlab_errors("Failed to list issues")
     def list_issues(self, state: str | None = None) -> list[Issue]:
         if state == "open":
             state = "opened"
-        try:
-            issues = self._repo.issues.list(state=state, all=True)
-        except GitlabGetError as e:
-            msg = f"Failed to list issues: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        issues = self._repo.issues.list(state=state, all=True)
         return [self._create_issue_model(issue) for issue in issues]
 
+    @gitlabtools.handle_gitlab_errors("Commit {sha} not found")
     def get_commit(self, sha: str) -> Commit:
-        try:
-            commit = self._repo.commits.get(sha)
-            return self._create_commit_model(commit)
-        except GitlabGetError as e:
-            msg = f"Commit {sha} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        commit = self._repo.commits.get(sha)
+        return self._create_commit_model(commit)
 
+    @gitlabtools.handle_gitlab_errors("Failed to list commits")
     def list_commits(
         self,
         branch: str | None = None,
@@ -339,58 +321,44 @@ class GitLabRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        try:
-            kwargs: dict[str, Any] = {}
-            if branch:
-                kwargs["ref_name"] = branch
-            if since:
-                kwargs["since"] = since.isoformat()
-            if until:
-                kwargs["until"] = until.isoformat()
-            if path:
-                kwargs["path"] = path
-            if author:
-                kwargs["author"] = author
-            if max_results:
-                kwargs["per_page"] = max_results
-                kwargs["page"] = 1
-            else:
-                kwargs["all"] = True
+        kwargs: dict[str, Any] = {}
+        if branch:
+            kwargs["ref_name"] = branch
+        if since:
+            kwargs["since"] = since.isoformat()
+        if until:
+            kwargs["until"] = until.isoformat()
+        if path:
+            kwargs["path"] = path
+        if author:
+            kwargs["author"] = author
+        if max_results:
+            kwargs["per_page"] = max_results
+            kwargs["page"] = 1
+        else:
+            kwargs["all"] = True
 
-            commits = self._repo.commits.list(**kwargs)
-        except GitlabGetError as e:
-            msg = f"Failed to list commits: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        commits = self._repo.commits.list(**kwargs)
         # Convert to list to materialize the results
         commits = list(commits)
         return [self._create_commit_model(commit) for commit in commits]
 
+    @gitlabtools.handle_gitlab_errors("Pipeline {workflow_id} not found")
     def get_workflow(self, workflow_id: str) -> Workflow:
-        try:
-            pipeline = self._repo.pipelines.get(workflow_id)
-            return self._create_workflow_model(pipeline)
-        except GitlabGetError as e:
-            msg = f"Pipeline {id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        pipeline = self._repo.pipelines.get(workflow_id)
+        return self._create_workflow_model(pipeline)
 
+    @gitlabtools.handle_gitlab_errors("Failed to list pipelines")
     def list_workflows(self) -> list[Workflow]:
-        try:
-            pipelines = self._repo.pipelines.list()
-        except GitlabGetError as e:
-            msg = f"Failed to list pipelines: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        pipelines = self._repo.pipelines.list()
         return [self._create_workflow_model(pipeline) for pipeline in pipelines]
 
+    @gitlabtools.handle_gitlab_errors("Job {run_id} not found")
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
-        try:
-            job = self._repo.jobs.get(run_id)
-            return self._create_workflow_run_model(job)
-        except GitlabGetError as e:
-            msg = f"Job {id} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        job = self._repo.jobs.get(run_id)
+        return self._create_workflow_run_model(job)
 
+    @gitlabtools.handle_gitlab_errors("Failed to download {path}")
     def download(
         self,
         path: str | os.PathLike[str],
@@ -411,37 +379,25 @@ class GitLabRepository(Repository):
 
         if recursive:
             # For recursive downloads, we need to get all files in the directory
-            try:
-                items = self._repo.repository_tree(path=str(path), recursive=True)
-                for item in items:
-                    if item["type"] == "blob":  # Only download files, not directories
-                        file_path = item["path"]
-                        try:
-                            content = self._repo.files.get(
-                                file_path=file_path, ref=self.default_branch
-                            )
-                            # Create subdirectories if needed
-                            file_dest = dest / file_path
-                            file_dest.parent.mkdir(exist_ok=True, parents=True)
-                            # Save the file content
-                            file_dest.write_bytes(content.decode())
-                        except GitlabGetError:
-                            continue
-            except GitlabGetError as e:
-                msg = f"Failed to download directory {path}: {e!s}"
-                raise ResourceNotFoundError(msg) from e
+            items = self._repo.repository_tree(path=str(path), recursive=True)
+            for item in items:
+                if item["type"] == "blob":  # Only download files, not directories
+                    file_path = item["path"]
+                    content = self._repo.files.get(
+                        file_path=file_path, ref=self.default_branch
+                    )
+                    # Create subdirectories if needed
+                    file_dest = dest / file_path
+                    file_dest.parent.mkdir(exist_ok=True, parents=True)
+                    # Save the file content
+                    file_dest.write_bytes(content.decode())
         else:
             # For single file download
-            try:
-                content = self._repo.files.get(
-                    file_path=str(path), ref=self.default_branch
-                )
-                file_dest = dest / upath.UPath(path).name
-                file_dest.write_bytes(content.decode())
-            except GitlabGetError as e:
-                msg = f"Failed to download file {path}: {e!s}"
-                raise ResourceNotFoundError(msg) from e
+            content = self._repo.files.get(file_path=str(path), ref=self.default_branch)
+            file_dest = dest / upath.UPath(path).name
+            file_dest.write_bytes(content.decode())
 
+    @gitlabtools.handle_gitlab_errors("Failed to search commits")
     def search_commits(
         self,
         query: str,
@@ -449,21 +405,17 @@ class GitLabRepository(Repository):
         path: str | None = None,
         max_results: int | None = None,
     ) -> list[Commit]:
-        try:
-            kwargs: dict[str, Any] = {}
-            if branch:
-                kwargs["ref_name"] = branch
-            if path:
-                kwargs["path"] = path
-            if max_results:
-                kwargs["per_page"] = max_results
-            commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
-        except GitlabGetError as e:
-            msg = f"Failed to search commits: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        kwargs: dict[str, Any] = {}
+        if branch:
+            kwargs["ref_name"] = branch
+        if path:
+            kwargs["path"] = path
+        if max_results:
+            kwargs["per_page"] = max_results
+        commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
         return [self._create_commit_model(commit) for commit in commits]
 
+    @gitlabtools.handle_gitlab_errors("Failed to iter files from {path}")
     def iter_files(
         self,
         path: str = "",
@@ -479,6 +431,7 @@ class GitLabRepository(Repository):
             ):
                 yield item["path"]
 
+    @gitlabtools.handle_gitlab_errors("Failed to get contributors")
     def get_contributors(
         self,
         sort_by: Literal["commits", "name", "date"] = "commits",
@@ -494,9 +447,11 @@ class GitLabRepository(Repository):
         items = [self._create_user_model(c) for c in contributors]
         return [i for i in items if i is not None]
 
+    @gitlabtools.handle_gitlab_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
         return self._repo.languages()
 
+    @gitlabtools.handle_gitlab_errors("Failed to compare branches {base} and {head}")
     def compare_branches(
         self,
         base: str,
@@ -505,14 +460,8 @@ class GitLabRepository(Repository):
         include_files: bool = True,
         include_stats: bool = True,
     ) -> dict[str, Any]:
-        try:
-            comparison = self._repo.compare(base, head)
-        except GitlabGetError as e:
-            msg = f"Failed to compare branches: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        comparison = self._repo.compare(base, head)
         result: dict[str, Any] = {"ahead_by": len(comparison["commits"])}
-
         if include_commits:
             result["commits"] = [
                 Commit(
@@ -538,6 +487,7 @@ class GitLabRepository(Repository):
             }
         return result
 
+    @gitlabtools.handle_gitlab_errors("Failed to get recent activity")
     def get_recent_activity(
         self,
         days: int = 30,
@@ -551,97 +501,78 @@ class GitLabRepository(Repository):
         since = datetime.now() - timedelta(days=days)
         activity: dict[str, int] = {}
         date = since.isoformat()
-        try:
-            if include_commits:
-                commits = self._repo.commits.list(since=date, per_page=100, get_all=False)
-                activity["commits"] = len(list(commits))
+        if include_commits:
+            commits = self._repo.commits.list(since=date, per_page=100, get_all=False)
+            activity["commits"] = len(list(commits))
 
-            if include_prs:
-                mrs = self._repo.mergerequests.list(
-                    updated_after=date, per_page=100, get_all=False
-                )
-                activity["pull_requests"] = len(list(mrs))
+        if include_prs:
+            mrs = self._repo.mergerequests.list(
+                updated_after=date, per_page=100, get_all=False
+            )
+            activity["pull_requests"] = len(list(mrs))
 
-            if include_issues:
-                issues = self._repo.issues.list(
-                    updated_after=date, per_page=100, get_all=False
-                )
-                activity["issues"] = len(list(issues))
-
-        except GitlabGetError as e:
-            msg = f"Failed to get recent activity: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-
+        if include_issues:
+            issues = self._repo.issues.list(
+                updated_after=date, per_page=100, get_all=False
+            )
+            activity["issues"] = len(list(issues))
         return activity
 
+    @gitlabtools.handle_gitlab_errors("Failed to get latest release")
     def get_latest_release(
         self,
         include_drafts: bool = False,
         include_prereleases: bool = False,
     ) -> Release:
-        try:
-            # Get all releases
-            releases = self._repo.releases.list()
+        releases = self._repo.releases.list()
 
-            if not releases:
-                msg = "No releases found"
-                raise ResourceNotFoundError(msg)
+        if not releases:
+            msg = "No releases found"
+            raise ResourceNotFoundError(msg)
 
-            # Filter releases
-            filtered: list[RESTObject] = []
-            for release in releases:
-                # GitLab doesn't have draft releases
-                if not include_prereleases and release.tag_name.startswith((
-                    "alpha",
-                    "beta",
-                    "rc",
-                )):
-                    continue
-                filtered.append(release)
+        # Filter releases
+        filtered: list[RESTObject] = []
+        for release in releases:
+            # GitLab doesn't have draft releases
+            if not include_prereleases and release.tag_name.startswith((
+                "alpha",
+                "beta",
+                "rc",
+            )):
+                continue
+            filtered.append(release)
 
-            if not filtered:
-                msg = "No matching releases found"
-                raise ResourceNotFoundError(msg)
+        if not filtered:
+            msg = "No matching releases found"
+            raise ResourceNotFoundError(msg)
 
-            latest = filtered[0]  # GitLab returns in descending order
-            return self._create_release_model(latest)
-        except gitlab.exceptions.GitlabError as e:
-            msg = f"Failed to get latest release: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        latest = filtered[0]  # GitLab returns in descending order
+        return self._create_release_model(latest)
 
+    @gitlabtools.handle_gitlab_errors("Failed to list releases")
     def list_releases(
         self,
         include_drafts: bool = False,
         include_prereleases: bool = False,
         limit: int | None = None,
     ) -> list[Release]:
-        try:
-            releases: list[Release] = []
-            for release in self._repo.releases.list():
-                if not include_prereleases and release.tag_name.startswith((
-                    "alpha",
-                    "beta",
-                    "rc",
-                )):
-                    continue
-                releases.append(self._create_release_model(release))
-                if limit and len(releases) >= limit:
-                    break
+        releases: list[Release] = []
+        for release in self._repo.releases.list():
+            if not include_prereleases and release.tag_name.startswith((
+                "alpha",
+                "beta",
+                "rc",
+            )):
+                continue
+            releases.append(self._create_release_model(release))
+            if limit and len(releases) >= limit:
+                break
+        return releases
 
-        except gitlab.exceptions.GitlabError as e:
-            msg = f"Failed to list releases: {e!s}"
-            raise ResourceNotFoundError(msg) from e
-        else:
-            return releases
-
+    @gitlabtools.handle_gitlab_errors("Release with tag {tag} not found")
     def get_release(self, tag: str) -> Release:
-        try:
-            release = self._repo.releases.get(tag)
-            return self._create_release_model(release)
-
-        except gitlab.exceptions.GitlabError as e:
-            msg = f"Release with tag {tag} not found: {e!s}"
-            raise ResourceNotFoundError(msg) from e
+        release = self._repo.releases.get(tag)
+        return self._create_release_model(release)
 
 
 if __name__ == "__main__":
