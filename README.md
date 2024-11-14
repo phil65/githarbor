@@ -54,8 +54,8 @@ repo = create_repository(
 )
 ```
 
-!!! tip "Authentication"
-    Always use personal access tokens (PATs) for authentication. Never hardcode tokens in your source code.
+> [!TIP]
+> Always use personal access tokens (PATs) for authentication. Never hardcode tokens in your source code.
 
 ## Working with Repositories
 
@@ -240,8 +240,8 @@ except FeatureNotSupportedError:
     print("This feature is not supported by this repository provider")
 ```
 
-!!! note "Feature Support"
-    Not all features are supported by all platforms. Operations that aren't supported will raise `FeatureNotSupportedError`.
+> [!NOTE]
+> Not all features are supported by all platforms. Operations that aren't supported will raise `FeatureNotSupportedError`.
 
-!!! tip "Rate Limiting"
-    Be mindful of API rate limits when making many requests. Consider implementing retries and delays in your code.
+> [!IMPORTANT]
+> Be mindful of API rate limits when making many requests. Consider implementing retries and delays in your code.
