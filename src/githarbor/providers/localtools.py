@@ -144,7 +144,7 @@ def create_tag_model(
         message = tag.message
 
     return Tag(
-        name=tag.name if hasattr(tag, "name") else tag.tag,
+        name=tag.name if hasattr(tag, "name") else tag.tag,  # type: ignore
         sha=commit.hexsha,
         message=message,
         created_at=created_at,
@@ -163,7 +163,7 @@ def create_user_model(git_actor: git.Actor) -> User:
         User model instance or None if no actor
     """
     return User(
-        username=git_actor.name,
+        username=git_actor.name,  # type: ignore
         name=git_actor.name,
         email=git_actor.email,
     )
@@ -218,7 +218,7 @@ def filter_commits(
             continue
         if author and author not in (commit.author.name, commit.author.email):
             continue
-        if path and not any(path in f.path for f in commit.stats.files):
+        if path and not any(path in f.path for f in commit.stats.files):  # type: ignore
             continue
 
         filtered.append(commit)

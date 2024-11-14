@@ -100,7 +100,8 @@ class LocalRepository(Repository):
     ) -> Iterator[str]:
         tree = self.repo.head.commit.tree if ref is None else self.repo.commit(ref).tree
         for blob in tree.traverse():
-            if blob.type != "blob":  # Skip directories  # type: ignore
+            # Skip dirs
+            if blob.type != "blob":  # type: ignore
                 continue
             file_path = str(blob.path)  # type: ignore
             if (not pattern or fnmatch.fnmatch(file_path, pattern)) and (
@@ -116,7 +117,7 @@ class LocalRepository(Repository):
     @localtools.handle_git_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
         return [
-            localtools.create_tag_model(tag.tag, tag.commit)
+            localtools.create_tag_model(tag.tag, tag.commit)  # type: ignore
             for tag in self.repo.tags  # type: ignore
         ]
 
