@@ -46,26 +46,24 @@ class GiteaRepository(BaseRepository):
         token: str | None = None,
         url: str = "https://gitea.com",
     ):
+        t = token or os.getenv("GITEA_TOKEN")
+        if not t:
+            msg = "Gitea token is required"
+            raise ValueError(msg)
+        configuration = giteapy.Configuration()
+        configuration.host = url.rstrip("/") + "/api/v1"
+        configuration.api_key["token"] = t
+        # configuration.temp_folder_path = ...
+        self._owner = owner
+        self._name = name
         try:
-            t = token or os.getenv("GITEA_TOKEN")
-            if not t:
-                msg = "Gitea token is required"
-                raise ValueError(msg)
-
-            configuration = giteapy.Configuration()
-            configuration.host = url.rstrip("/") + "/api/v1"
-            configuration.api_key["token"] = t
-
             self._api = giteapy.ApiClient(configuration)
             self._org_api = giteapy.OrganizationApi(self._api)
             self._repo_api = giteapy.RepositoryApi(self._api)
             self._issues_api = giteapy.IssueApi(self._api)
             self._user_api = giteapy.UserApi(self._api)
             # Verify access and get repo info
-            self._repo = self._repo_api.repo_get(owner, name)
-            self._owner = owner
-            self._name = name
-
+            self._repo: giteapy.RepositoryApi = self._repo_api.repo_get(owner, name)
         except ApiException as e:
             msg = f"Gitea authentication failed: {e!s}"
             raise AuthenticationError(msg) from e
@@ -122,18 +120,19 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get issue")
     def get_issue(self, issue_id: int) -> Issue:
         """Get a specific issue by ID."""
-        issue = self._issues_api.issue_get_issue(self._owner, self._name, issue_id)
+        issue: giteapy.Issue = self._issues_api.issue_get_issue(
+            self._owner, self._name, issue_id
+        )
         return giteatools.create_issue_model(issue)
 
     @giteatools.handle_api_errors("Failed to list issues")
     def list_issues(self, state: str = "open") -> list[Issue]:
         """List repository issues."""
-        issues = self._issues_api.issue_list_issues(
+        issues: list[giteapy.Issue] = self._issues_api.issue_list_issues(
             self._owner,
             self._name,
             state=state,
         )
-        assert isinstance(issues, list)
         return [giteatools.create_issue_model(issue) for issue in issues]
 
     @giteatools.handle_api_errors("Failed to get commit")
@@ -385,6 +384,4 @@ if __name__ == "__main__":
 
     # Test Gitea API
     gitea = GiteaRepository.from_url(url="https://gitea.com/phil65/test")
-    # print(gitea._repo_api.repo_list_releases("phil65", "test"))
-    releases = gitea.list_releases()
-    print(releases)
+    print(gitea.default_branch)
