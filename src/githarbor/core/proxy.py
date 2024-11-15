@@ -55,6 +55,14 @@ class Repository(BaseRepository):
         """
         return self._repository.default_branch
 
+    def get_user(self) -> User:
+        """Get information about the repository user.
+
+        Returns:
+            User information.
+        """
+        return self._repository.get_user()
+
     def get_branch(self, name: str) -> Branch:
         """Get information about a specific branch.
 

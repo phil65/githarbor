@@ -212,6 +212,11 @@ class GitHubRepository(BaseRepository):
             elif not pattern or fnmatch.fnmatch(content.path, pattern):
                 yield content.path
 
+    @githubtools.handle_github_errors("Failed to get repository owner info")
+    def get_user(self) -> User:
+        """Get user (repository owner) information."""
+        return githubtools.create_user_model(self.user)
+
     @githubtools.handle_github_errors("Failed to get contributors")
     def get_contributors(
         self,

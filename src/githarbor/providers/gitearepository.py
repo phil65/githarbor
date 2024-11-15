@@ -100,6 +100,12 @@ class GiteaRepository(BaseRepository):
         branch = self._repo_api.repo_get_branch(self._owner, self._name, name)
         return giteatools.create_branch_model(branch)
 
+    @giteatools.handle_api_errors("Failed to get repository owner info")
+    def get_user(self) -> User:
+        """Get user (repository owner) information."""
+        user = self._user_api.user_get_current()
+        return giteatools.create_user_model(user)
+
     @giteatools.handle_api_errors("Failed to get pull request")
     def get_pull_request(self, number: int) -> PullRequest:
         """Get a specific pull request by number."""

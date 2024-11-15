@@ -17,6 +17,7 @@ from githarbor.core.models import (
     Issue,
     PullRequest,
     Release,
+    User,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import azuretools
@@ -118,6 +119,42 @@ class AzureRepository(BaseRepository):
     def default_branch(self) -> str:
         """Default branch name."""
         return self._repo.default_branch or "main"
+
+    @azuretools.handle_azure_errors("Failed to get user {username}")
+    def get_user(self, username: str | None = None) -> User:
+        """Get user information.
+
+        If username is not provided, returns the authenticated user.
+
+        Args:
+            username: Optional username to get information for.
+
+        Returns:
+            User model with user information.
+        """
+        # Get the identity client
+        identity_client = self._connection.clients.get_identity_client()
+
+        if username is None:
+            # Get the authenticated user
+            core_client = self._connection.clients.get_core_client()
+            user_info = core_client.get_authorized_user()
+        else:
+            # Search for the specific user
+            user_descriptor = identity_client.read_identities(
+                search_filter=f"General,localAccount,{username}",
+            )
+            if not user_descriptor or not user_descriptor[0]:
+                msg = f"User {username} not found"
+                raise ResourceNotFoundError(msg)
+            user_info = user_descriptor[0]
+
+        return User(
+            username=user_info.properties.get("Account", user_info.unique_name),
+            name=user_info.display_name or user_info.unique_name,
+            email=user_info.properties.get("Mail", ""),
+            avatar_url=user_info.properties.get("Avatar", ""),
+        )
 
     @azuretools.handle_azure_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
