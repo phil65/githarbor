@@ -41,7 +41,7 @@ class BaseRepository:
         return self._owner
 
     @property
-    def default_branch(self):
+    def default_branch(self) -> str:
         """The default branch of this repository."""
         raise NotImplementedError
 
