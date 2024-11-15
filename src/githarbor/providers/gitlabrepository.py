@@ -80,7 +80,7 @@ class GitLabRepository(BaseRepository):
         return self._repo.default_branch
 
     @property
-    def edit_base(self):
+    def edit_base_uri(self):
         return f"edit/{self.default_branch}/"
 
     @gitlabtools.handle_gitlab_errors("Failed to get user info")

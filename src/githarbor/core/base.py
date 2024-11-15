@@ -46,7 +46,7 @@ class BaseRepository:
         raise NotImplementedError
 
     @property
-    def edit_uri(self) -> str | None:
+    def edit_base_uri(self) -> str | None:
         """The edit uri prefix of a repository."""
         return None
 

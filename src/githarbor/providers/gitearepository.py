@@ -89,7 +89,7 @@ class GiteaRepository(BaseRepository):
         return self._repo.default_branch
 
     @property
-    def edit_base(self):
+    def edit_base_uri(self):
         return f"_edit/{self.default_branch}/"
 
     @giteatools.handle_api_errors("Failed to get branch")
