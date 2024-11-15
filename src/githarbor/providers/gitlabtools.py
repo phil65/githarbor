@@ -7,7 +7,7 @@ import functools
 import inspect
 import re
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 import gitlab
 import gitlab.exceptions
@@ -27,6 +27,8 @@ from githarbor.exceptions import ResourceNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from gitlab.base import RESTObject
 
 
 T = TypeVar("T")
@@ -102,25 +104,57 @@ def parse_timestamp(timestamp: str) -> datetime:
     raise ValueError(msg)
 
 
-def create_user_model(gl_user: Any | None) -> User | None:
-    """Create User model from GitLab user object."""
+@overload
+def create_user_model(gl_user: None) -> None: ...
+
+
+@overload
+def create_user_model(gl_user: RESTObject) -> User: ...
+
+
+def create_user_model(gl_user: RESTObject | None) -> User | None:
+    """Create User model from GitLab user object.
+
+    Args:
+        gl_user: GitLab user object or None
+
+    Returns:
+        User model instance or None if input is None
+    """
     if not gl_user:
         return None
+
     return User(
         username=gl_user.username,
         name=gl_user.name,
-        email=gl_user.email,
+        email=getattr(gl_user, "email", None),
         avatar_url=gl_user.avatar_url,
         created_at=parse_timestamp(gl_user.created_at)
         if hasattr(gl_user, "created_at")
         else None,
+        bio=getattr(gl_user, "bio", None),
+        location=getattr(gl_user, "location", None),
+        company=getattr(gl_user, "organization", None),
+        url=gl_user.web_url,
+        followers=getattr(gl_user, "followers_count", 0),
+        following=getattr(gl_user, "following_count", 0),
+        public_repos=getattr(gl_user, "projects_limit", 0),
+        blog=getattr(gl_user, "website_url", None),
+        twitter_username=getattr(gl_user, "twitter", None),
+        hireable=None,  # GitLab doesn't have this field
+        gravatar_id=None,  # GitLab doesn't use gravatar_id
         state=getattr(gl_user, "state", None),
         locked=getattr(gl_user, "locked", None),
-        url=gl_user.web_url,
+        is_admin=getattr(gl_user, "is_admin", False),
+        last_activity_on=parse_timestamp(gl_user.last_activity_on)
+        if hasattr(gl_user, "last_activity_on")
+        else None,
+        linkedin=getattr(gl_user, "linkedin", None),
+        skype=getattr(gl_user, "skype", None),
     )
 
 
-def create_label_model(gl_label: Any) -> Label:
+def create_label_model(gl_label: RESTObject) -> Label:
     """Create Label model from GitLab label object."""
     return Label(
         name=gl_label.name,
@@ -130,7 +164,7 @@ def create_label_model(gl_label: Any) -> Label:
     )
 
 
-def create_commit_model(commit: Any) -> Commit:
+def create_commit_model(commit: RESTObject) -> Commit:
     """Create Commit model from GitLab commit object."""
     return Commit(
         sha=commit.id,

@@ -5,7 +5,7 @@ import inspect
 import logging
 import os
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from github.GithubException import GithubException
 
@@ -26,6 +26,8 @@ from githarbor.exceptions import ResourceNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from github.NamedUser import NamedUser
 
 
 T = TypeVar("T")
@@ -101,7 +103,15 @@ def download_from_github(
     fs.get(files, dest.as_posix(), recursive=recursive)
 
 
-def create_user_model(gh_user: Any) -> User | None:
+@overload
+def create_user_model(gh_user: None) -> None: ...
+
+
+@overload
+def create_user_model(gh_user: NamedUser) -> User: ...
+
+
+def create_user_model(gh_user: NamedUser | None) -> User | None:
     """Create User model from GitHub user object."""
     if not gh_user:
         return None

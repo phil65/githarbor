@@ -48,6 +48,14 @@ class User:
     """Whether user is available for hiring"""
     gravatar_id: str | None = None
     """Gravatar id for this user."""
+    is_admin: bool | None = None
+    """Whether the user has admin privileges."""
+    last_activity_on: datetime | None = None
+    """Date of last activity."""
+    linkedin: str | None = None
+    """LinkedIn username."""
+    skype: str | None = None
+    """Skype username."""
 
 
 @dataclass

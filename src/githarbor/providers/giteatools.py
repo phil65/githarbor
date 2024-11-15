@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, overload
 
 from giteapy.rest import ApiException
 
@@ -57,19 +57,43 @@ def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, 
     return decorator
 
 
+@overload
+def create_user_model(gh_user: None) -> None: ...
+
+
+@overload
+def create_user_model(gh_user: GiteaUser) -> User: ...
+
+
 def create_user_model(gitea_user: GiteaUser) -> User | None:
-    """Create User model from Gitea user object."""
+    """Create User model from Gitea user object.
+
+    Args:
+        gitea_user: Gitea user object to convert
+
+    Returns:
+        Converted User model or None if input is None
+    """
     if not gitea_user:
         return None
+
     return User(
         username=gitea_user.login,
-        name=gitea_user.full_name or gitea_user.login,
+        name=gitea_user.full_name,
         email=gitea_user.email,
         avatar_url=gitea_user.avatar_url,
         created_at=gitea_user.created,
         bio=gitea_user.description,
         location=gitea_user.location,
+        is_admin=gitea_user.is_admin,
+        last_activity_on=gitea_user.last_login,
+        blog=gitea_user.website,
         url=gitea_user.html_url,
+        followers=getattr(gitea_user, "followers_count", None),
+        following=getattr(gitea_user, "following_count", None),
+        public_repos=getattr(gitea_user, "public_repos", None),
+        linkedin=getattr(gitea_user, "linkedin", None),
+        skype=getattr(gitea_user, "skype", None),
     )
 
 
