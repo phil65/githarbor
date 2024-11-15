@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import git
 from git.exc import GitError
+from gitdb.exc import ODBError
 
 from githarbor.core.models import Branch, Commit, Tag, User
 from githarbor.exceptions import ResourceNotFoundError
@@ -57,7 +58,7 @@ def handle_git_errors(
 
             try:
                 return func(*args, **kwargs)
-            except GitError as e:
+            except (GitError, ODBError) as e:
                 msg = error_msg_template.format(**params, error=str(e))
                 raise ResourceNotFoundError(msg) from e
 
