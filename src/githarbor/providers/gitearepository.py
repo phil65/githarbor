@@ -142,7 +142,9 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
         """Get a specific commit by SHA."""
-        commit = self._repo_api.repo_get_single_commit(self._owner, self._name, sha)
+        commit: giteapy.Commit = self._repo_api.repo_get_single_commit(
+            self._owner, self._name, sha
+        )
         return giteatools.create_commit_model(commit)
 
     @giteatools.handle_api_errors("Failed to list commits")
