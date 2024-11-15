@@ -72,10 +72,6 @@ class GitHubRepository(BaseRepository):
         return cls(parts[0], parts[1], token=kwargs.get("token"))
 
     @property
-    def name(self) -> str:
-        return self._name
-
-    @property
     def default_branch(self) -> str:
         return self._repo.default_branch
 

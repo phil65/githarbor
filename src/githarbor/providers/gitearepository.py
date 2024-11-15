@@ -87,10 +87,6 @@ class GiteaRepository(BaseRepository):
         )
 
     @property
-    def name(self) -> str:
-        return self._name
-
-    @property
     def default_branch(self) -> str:
         return self._repo.default_branch
 

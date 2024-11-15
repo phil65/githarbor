@@ -30,6 +30,8 @@ class LocalRepository(BaseRepository):
         try:
             self.path = UPath(path)
             self.repo = git.Repo(self.path)
+            self._name = self.path.name
+            self._owner = self.path.parent.name  # or None?
         except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
             msg = f"Not a valid git repository: {path}"
             raise ResourceNotFoundError(msg) from e
@@ -41,11 +43,6 @@ class LocalRepository(BaseRepository):
     @classmethod
     def supports_url(cls, url: str) -> bool:
         return UPath(url).exists()
-
-    @property
-    def name(self) -> str:
-        """Get repository name from directory name."""
-        return self.path.name
 
     @property
     def default_branch(self) -> str:

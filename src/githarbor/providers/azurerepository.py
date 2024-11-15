@@ -111,11 +111,6 @@ class AzureRepository(BaseRepository):
         )
 
     @property
-    def name(self) -> str:
-        """Repository name."""
-        return self._name
-
-    @property
     def default_branch(self) -> str:
         """Default branch name."""
         return self._repo.default_branch or "main"

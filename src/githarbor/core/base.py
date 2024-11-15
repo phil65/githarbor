@@ -27,11 +27,18 @@ class BaseRepository:
     """Base repository class. All methods raise FeatureNotSupportedError by default."""
 
     url_patterns: ClassVar[list[str]] = []
+    _owner: str = ""
+    _name: str = ""
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of the repository."""
-        raise NotImplementedError
+        return self._name
+
+    @property
+    def owner(self) -> str:
+        """The owner of the repository."""
+        return self._owner
 
     @property
     def default_branch(self):
