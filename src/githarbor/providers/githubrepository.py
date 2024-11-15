@@ -213,7 +213,7 @@ class GitHubRepository(BaseRepository):
                 yield content.path
 
     @githubtools.handle_github_errors("Failed to get repository owner info")
-    def get_user(self) -> User:
+    def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
         return githubtools.create_user_model(self.user)
 

@@ -101,7 +101,7 @@ class GiteaRepository(BaseRepository):
         return giteatools.create_branch_model(branch)
 
     @giteatools.handle_api_errors("Failed to get repository owner info")
-    def get_user(self) -> User:
+    def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
         user = self._user_api.user_get_current()
         return giteatools.create_user_model(user)

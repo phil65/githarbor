@@ -44,7 +44,7 @@ class User:
     """Personal blog of this user"""
     twitter_username: str | None = None
     """X / Twitter username of this user"""
-    hireable: str | None = None
+    hireable: bool | None = None
     """Whether user is available for hiring"""
     gravatar_id: str | None = None
     """Gravatar id for this user."""

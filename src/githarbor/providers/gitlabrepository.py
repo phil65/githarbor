@@ -84,9 +84,9 @@ class GitLabRepository(BaseRepository):
         return self._repo.default_branch
 
     @gitlabtools.handle_gitlab_errors("Failed to get user info")
-    def get_user(self) -> User:
+    def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
-        user = self._gl.users.list(username=self._owner)[0]
+        user = self._gl.users.list(username=self._owner)[0]  # type: ignore
         return gitlabtools.create_user_model(user)
 
     @gitlabtools.handle_gitlab_errors("Branch {name} not found")
@@ -385,4 +385,4 @@ class GitLabRepository(BaseRepository):
 
 if __name__ == "__main__":
     repo = GitLabRepository("phil65", "test")
-    print(repo.get_user())
+    print(repo.get_repo_user())

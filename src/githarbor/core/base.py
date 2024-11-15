@@ -47,8 +47,8 @@ class BaseRepository:
         msg = f"{cls.__name__} does not implement from_url"
         raise FeatureNotSupportedError(msg)
 
-    def get_user(self) -> User:
-        msg = f"{self.__class__.__name__} does not implement get_user"
+    def get_repo_user(self) -> User:
+        msg = f"{self.__class__.__name__} does not implement get_repo_user"
         raise FeatureNotSupportedError(msg)
 
     def get_branch(self, name: str) -> Branch:
