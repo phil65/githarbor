@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import fnmatch
+import functools
+import pathlib
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import git
-from upath import UPath
 
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     import os
 
     from githarbor.core.models import Branch, Commit, Tag
+    from githarbor.core.proxy import Repository
 
 
 class LocalRepository(BaseRepository):
@@ -28,7 +30,7 @@ class LocalRepository(BaseRepository):
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
         try:
-            self.path = UPath(path)
+            self.path = pathlib.Path(path)
             self.repo = git.Repo(self.path)
             self._name = self.path.name
             self._owner = self.path.parent.name  # or None?
@@ -42,7 +44,7 @@ class LocalRepository(BaseRepository):
 
     @classmethod
     def supports_url(cls, url: str) -> bool:
-        return UPath(url).exists()
+        return pathlib.Path(url).exists()
 
     @property
     def default_branch(self) -> str:
@@ -121,6 +123,13 @@ class LocalRepository(BaseRepository):
             localtools.create_tag_model(tag.tag, tag.commit)  # type: ignore
             for tag in self.repo.tags  # type: ignore
         ]
+
+    @functools.cached_property
+    def remote_repository(self) -> Repository:
+        """Get the remote code repository."""
+        from githarbor import create_repository
+
+        return create_repository(self.repo.remotes.origin.url)
 
 
 if __name__ == "__main__":
