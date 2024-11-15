@@ -75,6 +75,10 @@ class GitHubRepository(BaseRepository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
+    @property
+    def edit_base(self):
+        return f"edit/{self.default_branch}/"
+
     @githubtools.handle_github_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         branch = self._repo.get_branch(name)

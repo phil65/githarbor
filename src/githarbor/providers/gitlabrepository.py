@@ -79,6 +79,10 @@ class GitLabRepository(BaseRepository):
     def default_branch(self) -> str:
         return self._repo.default_branch
 
+    @property
+    def edit_base(self):
+        return f"edit/{self.default_branch}/"
+
     @gitlabtools.handle_gitlab_errors("Failed to get user info")
     def get_repo_user(self) -> User:
         """Get user (repository owner) information."""

@@ -45,6 +45,11 @@ class BaseRepository:
         """The default branch of this repository."""
         raise NotImplementedError
 
+    @property
+    def edit_uri(self) -> str | None:
+        """The edit uri prefix of a repository."""
+        return None
+
     @classmethod
     def supports_url(cls, url: str) -> bool:
         return any(pattern in url for pattern in cls.url_patterns)
