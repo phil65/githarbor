@@ -50,9 +50,8 @@ jobs:
           AZURE_TOKEN: ${{ secrets.AZURE_TOKEN }}
 
       - name: Upload test results to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           verbose: true
 

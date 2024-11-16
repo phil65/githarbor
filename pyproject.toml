@@ -10,7 +10,9 @@ build-backend = "hatchling.build"
 [project]
 name = "githarbor"
 description = "Unified client for GitHub, GitLab and BitBucket"
-authors = [{name = "Philipp Temminghoff", email = "philipptemminghoff@googlemail.com"}]
+authors = [
+    { name = "Philipp Temminghoff", email = "philipptemminghoff@googlemail.com" },
+]
 readme = "README.md"
 dynamic = ["version"]
 classifiers = [
@@ -30,8 +32,11 @@ classifiers = [
 ]
 keywords = []
 requires-python = ">=3.12"
-dependencies = []
-license = {file = "LICENSE"}
+dependencies = [
+    
+    # Only add below (Copier)
+]
+license = { file = "LICENSE" }
 
 [project.optional-dependencies]
 github = ["pygithub"]
@@ -53,14 +58,27 @@ all = [
 default-groups = ["dev", "lint", "docs"]
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov", "pyreadline3"]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pyreadline3",
+    "devtools",
+    # Only add below (Copier)
+]
 benchmark = ["pyinstrument"]
 lint = ["ruff", "mypy[faster-cache]"]
-docs = ["mkdocs-mknodes", "mkdocs-material"]
+docs = [
+    "mkdocs-mknodes",
+    "mkdocs-material",
+    # Only add below (Copier)
+]
 
 [project.urls]
 Documentation = "https://phil65.github.io/githarbor/"
 Source = "https://github.com/phil65/githarbor"
+Issues = "https://github.com/phil65/githarbor/issues"
+Discussions = "https://github.com/phil65/githarbor/discussions"
+"Code coverage" = "https://app.codecov.io/gh/phil65/githarbor"
 
 [tool.pytest.ini_options]
 testpaths = "tests/"
@@ -90,6 +108,7 @@ disable_error_code = ["misc", "import"]
 pretty = true
 check_untyped_defs = true
 exclude = ['venv/', '.venv/', 'tests/']
+plugins = []
 
 [tool.ruff]
 line-length = 90
