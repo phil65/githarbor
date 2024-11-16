@@ -38,10 +38,10 @@ jobs:
           args: "format --check"
 
       - name: Static type checking (MyPy)
-        run: uv run mypy src/githarbor/
+        run: uv run --no-group docs mypy src/githarbor/
 
       - name: Run tests
-        run: uv run pytest --cov-report=xml --cov=src/githarbor/ --cov-report=term-missing
+        run: uv run --no-group docs pytest --cov-report=xml --cov=src/githarbor/ --cov-report=term-missing
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
