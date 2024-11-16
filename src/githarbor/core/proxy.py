@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 from githarbor.core.base import BaseRepository
+from githarbor.core.datatypes import NiceReprList
 from githarbor.exceptions import ResourceNotFoundError
 
 
@@ -138,7 +139,7 @@ class Repository(BaseRepository):
         author: str | None = None,
         path: str | None = None,
         max_results: int | None = None,
-    ) -> list[Commit]:
+    ) -> NiceReprList[Commit]:
         """List commits with optional filters.
 
         Args:
@@ -152,7 +153,7 @@ class Repository(BaseRepository):
         Returns:
             List of commits.
         """
-        return self._repository.list_commits(
+        commits = self._repository.list_commits(
             branch=branch,
             since=since,
             until=until,
@@ -160,6 +161,7 @@ class Repository(BaseRepository):
             path=path,
             max_results=max_results,
         )
+        return NiceReprList(commits)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         """Get information about a specific workflow.
