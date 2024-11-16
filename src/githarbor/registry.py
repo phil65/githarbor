@@ -64,6 +64,7 @@ class RepoRegistry:
         Raises:
             RepositoryNotFoundError: If no implementation supports the URL.
         """
+        url = url.removesuffix(".git")
         for repo_class in cls._repos.values():
             if repo_class.supports_url(url):
                 return Repository(repo_class.from_url(url, **kwargs))
