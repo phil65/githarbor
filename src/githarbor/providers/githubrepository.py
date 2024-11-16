@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fnmatch
+import logging
 import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
@@ -47,11 +48,10 @@ class GitHubRepository(BaseRepository):
         """Initialize GitHub repository."""
         try:
             t = token or TOKEN
-            if not t:
-                msg = "GitHub token is required"
-                raise ValueError(msg)
-
-            self._gh = Github(auth=Auth.Token(t))
+            if t is None:
+                logging.info("No GitHub token provided. Stricter rate limit.")
+            auth = Auth.Token(t) if t else None
+            self._gh = Github(auth=auth)
             self._repo = self._gh.get_repo(f"{owner}/{name}")
             self._owner = owner
             self._name = name
