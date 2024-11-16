@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 TOKEN = os.getenv("GITHUB_TOKEN")
+logger = logging.getLogger(__name__)
 
 
 def handle_github_errors(
@@ -98,7 +99,7 @@ def download_from_github(
     dest = upath.UPath(destination)
     dest.mkdir(exist_ok=True, parents=True)
     fs = fsspec.filesystem("github", org=org, repo=repo)
-    logging.info("Copying files from Github: %s", path)
+    logger.info("Copying files from Github: %s", path)
     files = fs.ls(str(path))
     fs.get(files, dest.as_posix(), recursive=recursive)
 

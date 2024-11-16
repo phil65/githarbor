@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from azure.devops.v7_1.work_item_tracking.models import WorkItem as AzureWorkItem
 
 
+logger = logging.getLogger(__name__)
 T = TypeVar("T")
 P = ParamSpec("P")
 TOKEN = os.getenv("AZURE_DEVOPS_PAT")
@@ -119,7 +120,7 @@ def download_from_azure(
     )
     git_client = connection.clients.get_git_client()
 
-    logging.info("Downloading files from Azure DevOps: %s", path)
+    logger.info("Downloading files from Azure DevOps: %s", path)
     content = git_client.get_item_content(
         repository_id=repo,
         path=str(path),

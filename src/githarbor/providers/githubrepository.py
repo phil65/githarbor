@@ -14,8 +14,6 @@ from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import githubtools
 
 
-HTML_ERROR_CODE = 404
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
@@ -33,6 +31,8 @@ if TYPE_CHECKING:
     )
 
 
+logger = logging.getLogger(__name__)
+HTML_ERROR_CODE = 404
 TOKEN = os.getenv("GITHUB_TOKEN")
 
 
@@ -49,7 +49,7 @@ class GitHubRepository(BaseRepository):
         try:
             t = token or TOKEN
             if t is None:
-                logging.info("No GitHub token provided. Stricter rate limit.")
+                logger.info("No GitHub token provided. Stricter rate limit.")
             auth = Auth.Token(t) if t else None
             self._gh = Github(auth=auth)
             self._repo = self._gh.get_repo(f"{owner}/{name}")
