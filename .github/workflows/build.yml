@@ -82,8 +82,8 @@ jobs:
       - name: Build package
         run: uv build
 
-      - name: Release package on PyPI
-        run: uv publish
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Release package on GitHub
         uses: ncipollo/release-action@v1
