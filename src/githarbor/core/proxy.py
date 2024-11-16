@@ -37,7 +37,7 @@ class Repository(BaseRepository):
             repository: Repository instance to forward calls to.
         """
         self._repository = repository
-        self.repository_type = type(self).__name__.removesuffix("Repository")
+        self.repository_type = type(repository).__name__.removesuffix("Repository")
 
     @property
     def owner(self):
