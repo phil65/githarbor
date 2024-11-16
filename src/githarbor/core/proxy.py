@@ -40,6 +40,10 @@ class Repository(BaseRepository):
         self.repository_type = type(self).__name__.removesuffix("Repository")
 
     @property
+    def owner(self):
+        return self._repository.owner
+
+    @property
     def name(self) -> str:
         """Return repository name.
 
@@ -47,6 +51,14 @@ class Repository(BaseRepository):
             Name of the repository.
         """
         return self._repository.name
+
+    @property
+    def edit_base_uri(self):
+        return self._repository.edit_base_uri
+
+    @property
+    def repository(self):
+        return self._repository
 
     @property
     def default_branch(self) -> str:
