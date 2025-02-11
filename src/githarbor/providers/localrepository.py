@@ -7,8 +7,6 @@ import functools
 import pathlib
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import git
-
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
 from githarbor.providers import localtools
@@ -29,6 +27,8 @@ class LocalRepository(BaseRepository):
     url_patterns: ClassVar[list[str]] = []  # Local repos don't have URL patterns
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
+        import git
+
         try:
             self.path = pathlib.Path(path)
             self.repo = git.Repo(self.path)

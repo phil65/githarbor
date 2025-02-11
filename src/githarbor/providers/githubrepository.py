@@ -6,9 +6,6 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from github import Auth, Github, NamedUser
-from github.GithubException import GithubException
-
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import githubtools
@@ -46,6 +43,9 @@ class GitHubRepository(BaseRepository):
 
     def __init__(self, owner: str, name: str, token: str | None = None):
         """Initialize GitHub repository."""
+        from github import Auth, Github, NamedUser
+        from github.GithubException import GithubException
+
         try:
             t = token or TOKEN
             if t is None:
@@ -310,6 +310,8 @@ class GitHubRepository(BaseRepository):
     @githubtools.handle_github_errors("Failed to get tag {name}")
     def get_tag(self, name: str) -> Tag:
         """Get a specific tag by name."""
+        from github.GithubException import GithubException
+
         try:
             tag = self._repo.get_git_ref(f"tags/{name}")
             tag_obj = self._repo.get_git_tag(tag.object.sha)

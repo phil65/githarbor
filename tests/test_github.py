@@ -17,7 +17,7 @@ BRANCH = "main"
 
 @pytest.fixture
 def mock_github():
-    with patch("githarbor.providers.githubrepository.Github") as mock:
+    with patch("github.Github") as mock:
         yield mock
 
 

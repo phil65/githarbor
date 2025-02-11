@@ -5,9 +5,6 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-import gitlab
-from gitlab.exceptions import GitlabAuthenticationError
-
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
     Branch,
@@ -43,6 +40,9 @@ class GitLabRepository(BaseRepository):
         token: str | None = None,
         url: str = "https://gitlab.com",
     ):
+        import gitlab
+        from gitlab.exceptions import GitlabAuthenticationError
+
         try:
             t = token or os.getenv("GITLAB_TOKEN")
             if not t:
@@ -258,7 +258,8 @@ class GitLabRepository(BaseRepository):
 
     @gitlabtools.handle_gitlab_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
-        return self._repo.languages()
+        response = self._repo.languages()
+        return response if isinstance(response, dict) else response.json()
 
     @gitlabtools.handle_gitlab_errors("Failed to compare branches {base} and {head}")
     def compare_branches(

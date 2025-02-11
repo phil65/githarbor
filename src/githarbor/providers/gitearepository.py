@@ -5,8 +5,6 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-import giteapy
-from giteapy.rest import ApiException
 import upath
 
 from githarbor.core.base import BaseRepository
@@ -17,6 +15,8 @@ from githarbor.providers import giteatools
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
+
+    import giteapy
 
     from githarbor.core.models import (
         Branch,
@@ -46,6 +46,9 @@ class GiteaRepository(BaseRepository):
         token: str | None = None,
         url: str = "https://gitea.com",
     ):
+        import giteapy
+        from giteapy.rest import ApiException
+
         t = token or os.getenv("GITEA_TOKEN")
         if not t:
             msg = "Gitea token is required"

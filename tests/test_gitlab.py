@@ -21,7 +21,7 @@ def mock_gitlab_client():
 
 @pytest.fixture
 def gitlab_repo(mock_gitlab_client) -> GitLabRepository:
-    with patch("githarbor.providers.gitlabrepository.gitlab.Gitlab") as mock_gitlab:
+    with patch("gitlab.Gitlab") as mock_gitlab:
         mock_gitlab.return_value = mock_gitlab_client
         provider = GitLabRepository("phil65", "test")
         provider._gl = mock_gitlab_client
