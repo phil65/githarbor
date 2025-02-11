@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from unittest.mock import Mock, patch
 
-from gitlab.v4.objects import requests
 import pytest
 
 from githarbor.providers.gitlabrepository import GitLabRepository
@@ -51,7 +50,9 @@ def test_from_url():
 
 def test_invalid_url():
     """Test creating repository from invalid URL."""
-    with pytest.raises(requests.exceptions.ConnectionError):
+    import gitlab.exceptions
+
+    with pytest.raises(gitlab.exceptions.GitlabParsingError):
         GitLabRepository.from_url("https://invalid-url.com/owner/repo")
 
 
