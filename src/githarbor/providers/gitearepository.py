@@ -349,8 +349,8 @@ class GiteaRepository(BaseRepository):
         return [
             giteatools.create_release_model(release)
             for release in results
-            if (release.draft and include_drafts or not release.draft)
-            and (release.prerelease and include_prereleases or not release.prerelease)
+            if ((release.draft and include_drafts) or not release.draft)
+            and ((release.prerelease and include_prereleases) or not release.prerelease)
         ]
 
     @giteatools.handle_api_errors("Failed to get release")

@@ -19,9 +19,9 @@ if importlib.util.find_spec("azure"):
 #     from githarbor.providers.bitbucketrepository import BitbucketRepository
 
 __all__ = [
+    "AzureRepository",
     "GitHubRepository",
     "GitLabRepository",
     "GiteaRepository",
-    "AzureRepository",
     # "BitbucketRepository",
 ]
