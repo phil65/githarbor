@@ -33,7 +33,6 @@ classifiers = [
 keywords = []
 requires-python = ">=3.12"
 dependencies = [
-    "unidiff>=0.7.5",
     # Only add below (Copier)
     "universal_pathlib",
 ]
@@ -46,6 +45,7 @@ gitlab = ["python-gitlab"]
 azure = ["azure-devops"]
 bitbucket = ["atlassian-python-api"]
 local = ["gitpython"]
+diff = ["unidiff"]
 all = [
     "pygithub",
     "python-gitlab",
@@ -53,6 +53,7 @@ all = [
     "giteapy",
     "azure-devops",
     "gitpython",
+    "unidiff",
 ]
 
 [tool.uv]
