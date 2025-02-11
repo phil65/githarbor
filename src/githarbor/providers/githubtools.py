@@ -386,26 +386,15 @@ def parse_diff(diff_str: str) -> list[FileChange]:
 
         # For deletions, we don't need content
         if mode == "delete":
-            changes.append(
-                FileChange(
-                    path=patched_file.path,
-                    content=None,
-                    mode=mode,
-                )
-            )
+            change = FileChange(path=patched_file.path, content=None, mode="delete")
+            changes.append(change)
             continue
         # Reconstruct the final content
         content_lines = [
             line.value for hunk in patched_file for line in hunk if not line.is_removed
         ]
-
-        changes.append(
-            FileChange(
-                path=patched_file.path,
-                content="".join(content_lines),
-                mode=mode,
-            )
-        )
+        change = FileChange(patched_file.path, content="".join(content_lines), mode=mode)  # type: ignore
+        changes.append(change)
 
     return changes
 

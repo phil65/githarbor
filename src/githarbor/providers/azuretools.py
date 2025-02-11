@@ -9,8 +9,6 @@ import os
 import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
-from azure.devops.exceptions import AzureDevOpsServiceError
-
 from githarbor.core.models import (
     Commit,
     Issue,
@@ -51,6 +49,8 @@ def handle_azure_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
+    from azure.devops.exceptions import AzureDevOpsServiceError
+
     parser = string.Formatter()
     param_names = {
         field_name
@@ -161,12 +161,12 @@ def create_label_model(azure_label: Any) -> Label:
 def create_pull_request_model(pr: GitPullRequest) -> PullRequest:
     """Create PullRequest model from Azure DevOps pull request object."""
     return PullRequest(
-        number=pr.pull_request_id,
-        title=pr.title,
+        number=pr.pull_request_id or 0,
+        title=pr.title or "unknown",
         description=pr.description or "",
         state=pr.status,
-        source_branch=pr.source_ref_name.split("/")[-1],
-        target_branch=pr.target_ref_name.split("/")[-1],
+        source_branch=pr.source_ref_name.split("/")[-1],  # type: ignore
+        target_branch=pr.target_ref_name.split("/")[-1],  # type: ignore
         created_at=pr.creation_date,
         updated_at=None,  # Not directly provided by Azure DevOps
         merged_at=pr.closed_date if pr.status == "completed" else None,

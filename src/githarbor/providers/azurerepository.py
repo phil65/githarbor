@@ -7,9 +7,6 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
-from azure.devops.connection import Connection
-from msrest.authentication import BasicAuthentication
-
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
     Branch,
@@ -59,6 +56,9 @@ class AzureRepository(BaseRepository):
             AuthenticationError: If authentication fails
             ValueError: If token is missing
         """
+        from azure.devops.connection import Connection
+        from msrest.authentication import BasicAuthentication
+
         t = token or os.getenv("AZURE_DEVOPS_PAT")
         if not t:
             msg = "Azure DevOps PAT token is required"
@@ -185,13 +185,13 @@ class AzureRepository(BaseRepository):
     def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
         """List pull requests."""
         # Map state to Azure DevOps status
+        from azure.devops.v7_1.git.models import GitPullRequestSearchCriteria
+
         status_map = {"open": "active", "closed": "completed", "all": "all"}
         azure_status = status_map.get(state, "active")
-
+        criteria = GitPullRequestSearchCriteria(status=azure_status)
         prs = self._git_client.get_pull_requests(
-            self._repo.id,
-            project=self._project,
-            status=azure_status,
+            self._repo.id, search_criteria=criteria, project=self._project
         )
         return [azuretools.create_pull_request_model(pr) for pr in prs]
 
