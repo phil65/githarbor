@@ -8,9 +8,6 @@ import os
 import string
 from typing import TYPE_CHECKING, Any, Literal, ParamSpec, TypeVar, overload
 
-from github.GithubException import GithubException
-import unidiff
-
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -52,6 +49,8 @@ def handle_github_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
+    from github.GithubException import GithubException
+
     # Extract field names from the template string
     parser = string.Formatter()
     param_names = {
@@ -360,6 +359,8 @@ def parse_diff(diff_str: str) -> list[FileChange]:
     Returns:
         List of FileChange objects
     """
+    import unidiff
+
     patch_set = unidiff.PatchSet(diff_str.splitlines(keepends=True))
     changes: list[FileChange] = []
 
@@ -426,6 +427,7 @@ def create_pull_request_from_diff(
         GitHarborError: If PR creation fails
     """
     from github import InputGitTreeElement
+    from github.GithubException import GithubException
 
     try:
         # Get the base branch's last commit

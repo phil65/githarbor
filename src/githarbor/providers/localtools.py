@@ -7,10 +7,6 @@ import inspect
 import string
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-import git
-from git.exc import GitError
-from gitdb.exc import ODBError
-
 from githarbor.core.models import Branch, Commit, Tag, User
 from githarbor.exceptions import ResourceNotFoundError
 
@@ -18,6 +14,8 @@ from githarbor.exceptions import ResourceNotFoundError
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from datetime import datetime
+
+    import git
 
 
 T = TypeVar("T")
@@ -37,6 +35,9 @@ def handle_git_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
+    from git.exc import GitError
+    from gitdb.exc import ODBError
+
     parser = string.Formatter()
     param_names = {
         field_name
@@ -115,7 +116,7 @@ def create_commit_model(commit: git.Commit) -> Commit:
             "total": commit.stats.total["lines"],
         },
         parents=[c.hexsha for c in commit.parents],
-        files_changed=[diff.a_path for diff in commit.diff()],
+        files_changed=[diff.a_path for diff in commit.diff() if diff.a_path],
     )
 
 
@@ -133,6 +134,8 @@ def create_tag_model(
         Tag model instance
     """
     from datetime import UTC, datetime
+
+    import git
 
     # Get author info if tag is annotated
     author = None

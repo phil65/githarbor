@@ -9,9 +9,6 @@ import re
 import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
-import gitlab
-import gitlab.exceptions
-
 from githarbor.core.models import (
     Commit,
     Issue,
@@ -49,6 +46,8 @@ def handle_gitlab_errors(
             ...
     """
     # Extract field names from the template string
+    import gitlab.exceptions
+
     parser = string.Formatter()
     param_names = {
         field_name

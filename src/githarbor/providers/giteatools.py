@@ -3,8 +3,6 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, overload
 
-from giteapy.rest import ApiException
-
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -42,6 +40,7 @@ def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, 
     Args:
         error_msg: Base error message to use in exception
     """
+    from giteapy.rest import ApiException
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
@@ -58,14 +57,14 @@ def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, 
 
 
 @overload
-def create_user_model(gh_user: None) -> None: ...
+def create_user_model(gitea_user: None) -> None: ...
 
 
 @overload
-def create_user_model(gh_user: GiteaUser) -> User: ...
+def create_user_model(gitea_user: GiteaUser) -> User: ...
 
 
-def create_user_model(gitea_user: GiteaUser) -> User | None:
+def create_user_model(gitea_user: GiteaUser | None) -> User | None:
     """Create User model from Gitea user object.
 
     Args:
