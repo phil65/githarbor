@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import functools
 import inspect
 import logging
 import os
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, ParamSpec, TypeVar, overload
 
 from github.GithubException import GithubException
+import unidiff
 
 from githarbor.core.models import (
     Branch,
@@ -21,13 +23,14 @@ from githarbor.core.models import (
     Workflow,
     WorkflowRun,
 )
-from githarbor.exceptions import ResourceNotFoundError
+from githarbor.exceptions import GitHarborError, ResourceNotFoundError
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from github.NamedUser import NamedUser
+    from github.Repository import Repository
 
 
 T = TypeVar("T")
@@ -334,3 +337,195 @@ def create_file_model(content: Any) -> dict[str, Any]:
         "download_url": content.download_url,
         "encoding": content.encoding if hasattr(content, "encoding") else None,
     }
+
+
+@dataclass
+class FileChange:
+    """Represents a file change in a diff."""
+
+    path: str
+    content: str | None  # None means file deletion
+    mode: Literal["add", "modify", "delete"]
+    old_path: str | None = None  # For renamed files
+
+
+def parse_diff(diff_str: str) -> list[FileChange]:
+    """Parse a unified diff string into a list of file changes.
+
+    Uses the unidiff library for robust diff parsing.
+
+    Args:
+        diff_str: Unified diff string
+
+    Returns:
+        List of FileChange objects
+    """
+    patch_set = unidiff.PatchSet(diff_str.splitlines(keepends=True))
+    changes: list[FileChange] = []
+
+    for patched_file in patch_set:
+        if patched_file.is_rename:
+            # Handle renamed files
+            changes.append(
+                FileChange(
+                    path=patched_file.target_file,
+                    old_path=patched_file.source_file,
+                    content=patched_file.target_file[1:],  # Remove leading /
+                    mode="modify",
+                )
+            )
+            continue
+
+        # Determine the change type
+        if patched_file.is_added_file:
+            mode = "add"
+        elif patched_file.is_removed_file:
+            mode = "delete"
+        else:
+            mode = "modify"
+
+        # For deletions, we don't need content
+        if mode == "delete":
+            changes.append(
+                FileChange(
+                    path=patched_file.path,
+                    content=None,
+                    mode=mode,
+                )
+            )
+            continue
+        # Reconstruct the final content
+        content_lines = [
+            line.value for hunk in patched_file for line in hunk if not line.is_removed
+        ]
+
+        changes.append(
+            FileChange(
+                path=patched_file.path,
+                content="".join(content_lines),
+                mode=mode,
+            )
+        )
+
+    return changes
+
+
+def create_pull_request_from_diff(
+    repo: Repository,
+    base_branch: str,
+    head_branch: str,
+    title: str,
+    body: str,
+    diff: str,
+) -> dict[str, Any]:
+    """Create a pull request from a diff string.
+
+    Uses the unidiff library for robust diff parsing.
+
+    Args:
+        repo: GitHub repository object
+        base_branch: Target branch for the PR
+        head_branch: Source branch for the PR
+        title: Pull request title
+        body: Pull request description
+        diff: Diff as a string
+
+    Returns:
+        Dictionary with status and url/error message
+
+    Raises:
+        GitHarborError: If PR creation fails
+    """
+    from github import InputGitTreeElement
+
+    try:
+        # Get the base branch's last commit
+        base_ref = repo.get_git_ref(f"heads/{base_branch}")
+        base_commit = repo.get_git_commit(base_ref.object.sha)
+
+        # Create a new branch
+        try:
+            head_ref = repo.get_git_ref(f"heads/{head_branch}")
+            msg = f"Branch {head_branch} already exists"
+            raise GitHarborError(msg)
+        except GithubException:
+            head_ref = repo.create_git_ref(
+                ref=f"refs/heads/{head_branch}",
+                sha=base_ref.object.sha,
+            )
+
+        # Parse the diff and apply changes
+        changes = parse_diff(diff)
+
+        # Create blobs and trees for the changes
+        new_tree: list[InputGitTreeElement] = []
+        for change in changes:
+            if change.mode == "delete":
+                # For deletions, we add a null SHA
+                new_tree.append(
+                    InputGitTreeElement(
+                        path=change.path,
+                        mode="100644",
+                        type="blob",
+                        sha=None,
+                    )
+                )
+                continue
+
+            if change.content is not None:
+                # Create blob for the file content
+                blob = repo.create_git_blob(
+                    content=change.content,
+                    encoding="utf-8",
+                )
+
+                if change.old_path:
+                    # For renamed files, we need to remove the old path
+                    new_tree.append(
+                        InputGitTreeElement(
+                            path=change.old_path,
+                            mode="100644",
+                            type="blob",
+                            sha=None,
+                        )
+                    )
+
+                new_tree.append(
+                    InputGitTreeElement(
+                        path=change.path,
+                        mode="100644",
+                        type="blob",
+                        sha=blob.sha,
+                    )
+                )
+
+        # Create a new tree
+        base_tree = repo.get_git_tree(base_commit.tree.sha)
+        tree = repo.create_git_tree(new_tree, base_tree)
+
+        # Create a commit
+        commit = repo.create_git_commit(
+            message=f"Changes for {title}",
+            tree=tree,
+            parents=[base_commit],
+        )
+
+        # Update the reference
+        head_ref.edit(commit.sha, force=True)
+
+        # Create the pull request
+        pr = repo.create_pull(
+            title=title,
+            body=body,
+            base=base_branch,
+            head=head_branch,
+        )
+    except Exception as e:
+        msg = f"Failed to create pull request: {e!s}"
+        raise GitHarborError(msg) from e
+    else:
+        return {
+            "status": "success",
+            "url": pr.html_url,
+            "number": pr.number,
+        }

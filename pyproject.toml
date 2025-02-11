@@ -33,7 +33,7 @@ classifiers = [
 keywords = []
 requires-python = ">=3.12"
 dependencies = [
-
+    "unidiff>=0.7.5",
     # Only add below (Copier)
     "universal_pathlib",
 ]

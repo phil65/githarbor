@@ -325,6 +325,35 @@ class GitHubRepository(BaseRepository):
         """List all repository tags."""
         return [githubtools.create_tag_model(tag) for tag in self._repo.get_tags()]
 
+    def create_pull_request_from_diff(
+        self,
+        base_branch: str,
+        head_branch: str,
+        title: str,
+        body: str,
+        diff: str,
+    ) -> dict[str, str]:
+        """Create a pull request from a diff string.
+
+        Args:
+            base_branch: Target branch for the PR
+            head_branch: Source branch for the PR
+            title: Pull request title
+            body: Pull request description
+            diff: Diff as a string
+
+        Returns:
+            Dictionary with status and url/error message
+        """
+        return githubtools.create_pull_request_from_diff(
+            repo=self._repo,
+            base_branch=base_branch,
+            head_branch=head_branch,
+            title=title,
+            body=body,
+            diff=diff,
+        )
+
 
 if __name__ == "__main__":
     repo = GitHubRepository.from_url("https://github.com/phil65/mknodes")
