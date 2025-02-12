@@ -391,10 +391,8 @@ def parse_diff(diff_str: str) -> list[FileChange]:
             changes.append(change)
             continue
         # Reconstruct the final content
-        content_lines = [
-            line.value for hunk in patched_file for line in hunk if not line.is_removed
-        ]
-        change = FileChange(patched_file.path, content="".join(content_lines), mode=mode)  # type: ignore
+        lines = [ln.value for hunk in patched_file for ln in hunk if not ln.is_removed]
+        change = FileChange(patched_file.path, content="".join(lines), mode=mode)  # type: ignore
         changes.append(change)
 
     return changes
@@ -440,10 +438,8 @@ def create_pull_request_from_diff(
             msg = f"Branch {head_branch} already exists"
             raise GitHarborError(msg)
         except GithubException:
-            head_ref = repo.create_git_ref(
-                ref=f"refs/heads/{head_branch}",
-                sha=base_ref.object.sha,
-            )
+            ref = f"refs/heads/{head_branch}"
+            head_ref = repo.create_git_ref(ref=ref, sha=base_ref.object.sha)
 
         # Parse the diff and apply changes
         changes = parse_diff(diff)
@@ -453,53 +449,43 @@ def create_pull_request_from_diff(
         for change in changes:
             if change.mode == "delete":
                 # For deletions, we add a null SHA
-                new_tree.append(
-                    InputGitTreeElement(
-                        path=change.path,
-                        mode="100644",
-                        type="blob",
-                        sha=None,
-                    )
+                elem = InputGitTreeElement(
+                    path=change.path,
+                    mode="100644",
+                    type="blob",
+                    sha=None,
                 )
+                new_tree.append(elem)
                 continue
 
             if change.content is not None:
                 # Create blob for the file content
-                blob = repo.create_git_blob(
-                    content=change.content,
-                    encoding="utf-8",
-                )
+                blob = repo.create_git_blob(content=change.content, encoding="utf-8")
 
                 if change.old_path:
                     # For renamed files, we need to remove the old path
-                    new_tree.append(
-                        InputGitTreeElement(
-                            path=change.old_path,
-                            mode="100644",
-                            type="blob",
-                            sha=None,
-                        )
-                    )
-
-                new_tree.append(
-                    InputGitTreeElement(
-                        path=change.path,
+                    elem = InputGitTreeElement(
+                        path=change.old_path,
                         mode="100644",
                         type="blob",
-                        sha=blob.sha,
+                        sha=None,
                     )
+                    new_tree.append(elem)
+                elem = InputGitTreeElement(
+                    path=change.path,
+                    mode="100644",
+                    type="blob",
+                    sha=blob.sha,
                 )
+                new_tree.append(elem)
 
         # Create a new tree
         base_tree = repo.get_git_tree(base_commit.tree.sha)
         tree = repo.create_git_tree(new_tree, base_tree)
 
         # Create a commit
-        commit = repo.create_git_commit(
-            message=f"Changes for {title}",
-            tree=tree,
-            parents=[base_commit],
-        )
+        msg = f"Changes for {title}"
+        commit = repo.create_git_commit(msg, tree=tree, parents=[base_commit])
 
         # Update the reference
         head_ref.edit(commit.sha, force=True)
@@ -515,8 +501,4 @@ def create_pull_request_from_diff(
         msg = f"Failed to create pull request: {e!s}"
         raise GitHarborError(msg) from e
     else:
-        return {
-            "status": "success",
-            "url": pr.html_url,
-            "number": pr.number,
-        }
+        return {"status": "success", "url": pr.html_url, "number": pr.number}

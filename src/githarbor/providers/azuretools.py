@@ -7,7 +7,7 @@ import inspect
 import logging
 import os
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
     Commit,
@@ -134,6 +134,14 @@ def download_from_azure(
 
     file_dest = dest / upath.UPath(path).name
     file_dest.write_bytes(content)
+
+
+@overload
+def create_user_model(azure_user: None) -> None: ...
+
+
+@overload
+def create_user_model(azure_user: Any) -> User: ...
 
 
 def create_user_model(azure_user: Any) -> User | None:
