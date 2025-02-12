@@ -22,7 +22,7 @@ from githarbor.exceptions import (
 )
 from githarbor.repositories import create_repository
 
-__version__ = "0.4.7"
+__version__ = "0.4.8"
 
 __all__ = [
     "AuthenticationError",
