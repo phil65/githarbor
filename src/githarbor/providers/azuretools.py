@@ -49,8 +49,6 @@ def handle_azure_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
-    from azure.devops.exceptions import AzureDevOpsServiceError
-
     parser = string.Formatter()
     param_names = {
         field_name
@@ -61,6 +59,8 @@ def handle_azure_errors(
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            from azure.devops.exceptions import AzureDevOpsServiceError
+
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()

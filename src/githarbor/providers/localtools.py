@@ -35,9 +35,6 @@ def handle_git_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
-    from git.exc import GitError
-    from gitdb.exc import ODBError
-
     parser = string.Formatter()
     param_names = {
         field_name
@@ -48,6 +45,9 @@ def handle_git_errors(
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            from git.exc import GitError
+            from gitdb.exc import ODBError
+
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()

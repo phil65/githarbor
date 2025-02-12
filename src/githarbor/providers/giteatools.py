@@ -40,11 +40,12 @@ def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, 
     Args:
         error_msg: Base error message to use in exception
     """
-    from giteapy.rest import ApiException
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            from giteapy.rest import ApiException
+
             try:
                 return func(*args, **kwargs)
             except ApiException as e:

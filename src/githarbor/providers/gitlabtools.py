@@ -46,8 +46,6 @@ def handle_gitlab_errors(
             ...
     """
     # Extract field names from the template string
-    import gitlab.exceptions
-
     parser = string.Formatter()
     param_names = {
         field_name
@@ -58,6 +56,8 @@ def handle_gitlab_errors(
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            import gitlab.exceptions
+
             # Extract parameter values from args/kwargs based on function signature
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)

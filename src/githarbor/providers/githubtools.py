@@ -49,8 +49,6 @@ def handle_github_errors(
         def get_branch(self, branch_name: str) -> Branch:
             ...
     """
-    from github.GithubException import GithubException
-
     # Extract field names from the template string
     parser = string.Formatter()
     param_names = {
@@ -62,6 +60,8 @@ def handle_github_errors(
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            from github.GithubException import GithubException
+
             # Extract parameter values from args/kwargs based on function signature
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
