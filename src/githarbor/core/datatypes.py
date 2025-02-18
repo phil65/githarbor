@@ -1,3 +1,5 @@
+"""Data types for Githarbor."""
+
 from __future__ import annotations
 
 import reprlib

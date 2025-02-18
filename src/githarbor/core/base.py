@@ -1,3 +1,5 @@
+"""Base repository class. All methods raise FeatureNotSupportedError by default."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
