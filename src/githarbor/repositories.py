@@ -16,6 +16,11 @@ if importlib.util.find_spec("github"):
 
     RepoRegistry.register("github")(GitHubRepository)
 
+if importlib.util.find_spec("aiogithubapi"):
+    from githarbor.providers.aiogithubapirepository import AioGitHubRepository
+
+    RepoRegistry.register("aiogithubapi")(AioGitHubRepository)
+
 if importlib.util.find_spec("gitlab"):
     from githarbor.providers.gitlabrepository import GitLabRepository
 

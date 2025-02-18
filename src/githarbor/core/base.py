@@ -197,3 +197,147 @@ class BaseRepository:
     def list_tags(self) -> list[Tag]:
         msg = f"{self.__class__.__name__} does not implement list_tags"
         raise FeatureNotSupportedError(msg)
+
+    async def get_repo_user_async(self) -> User:
+        """Get repository owner information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_repo_user_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_branch_async(self, name: str) -> Branch:
+        """Get branch information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_branch_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_pull_request_async(self, number: int) -> PullRequest:
+        """Get pull request information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_pull_request_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_pull_requests_async(self, state: str = "open") -> list[PullRequest]:
+        """List pull requests asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_pull_requests_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_issue_async(self, issue_id: int) -> Issue:
+        """Get issue information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_issue_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_issues_async(self, state: str = "open") -> list[Issue]:
+        """List issues asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_issues_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_commit_async(self, sha: str) -> Commit:
+        """Get commit information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_commit_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_commits_async(
+        self,
+        branch: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        author: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        """List commits asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_commits_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_workflow_async(self, workflow_id: str) -> Workflow:
+        """Get workflow information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_workflow_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_workflows_async(self) -> list[Workflow]:
+        """List workflows asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_workflows_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_workflow_run_async(self, run_id: str) -> WorkflowRun:
+        """Get workflow run information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_workflow_run_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def download_async(
+        self,
+        path: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        recursive: bool = False,
+    ) -> None:
+        """Download repository content asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement download_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def search_commits_async(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        """Search commits asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement search_commits_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_contributors_async(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        """Get repository contributors asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_contributors_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_languages_async(self) -> dict[str, int]:
+        """Get repository language statistics asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_languages_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def compare_branches_async(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        """Compare two branches asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement compare_branches_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_latest_release_async(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        """Get latest release asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_latest_release_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_releases_async(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        """List releases asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_releases_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_release_async(self, tag: str) -> Release:
+        """Get release by tag asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_release_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_tag_async(self, name: str) -> Tag:
+        """Get tag information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_tag_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_tags_async(self) -> list[Tag]:
+        """List all tags asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_tags_async"
+        raise FeatureNotSupportedError(msg)
