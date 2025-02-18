@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any, Literal
 
 from githarbor.core.base import BaseRepository
@@ -525,3 +526,199 @@ class Repository(BaseRepository):
                 )
 
             return activity
+
+    async def get_repo_user_async(self) -> User:
+        """See get_repo_user."""
+        if self._repository.is_async:
+            return await self._repository.get_repo_user()  # type: ignore
+        return await asyncio.to_thread(self._repository.get_repo_user)
+
+    async def get_branch_async(self, name: str) -> Branch:
+        """See get_branch."""
+        if self._repository.is_async:
+            return await self._repository.get_branch(name)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_branch, name)
+
+    async def get_pull_request_async(self, number: int) -> PullRequest:
+        """See get_pull_request."""
+        if self._repository.is_async:
+            return await self._repository.get_pull_request(number)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_pull_request, number)
+
+    async def list_pull_requests_async(self, state: str = "open") -> list[PullRequest]:
+        """See list_pull_requests."""
+        if self._repository.is_async:
+            return await self._repository.list_pull_requests(state)  # type: ignore
+        return await asyncio.to_thread(self._repository.list_pull_requests, state)
+
+    async def get_issue_async(self, issue_id: int) -> Issue:
+        """See get_issue."""
+        if self._repository.is_async:
+            return await self._repository.get_issue(issue_id)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_issue, issue_id)
+
+    async def list_issues_async(self, state: str = "open") -> list[Issue]:
+        """See list_issues."""
+        if self._repository.is_async:
+            return await self._repository.list_issues(state)  # type: ignore
+        return await asyncio.to_thread(self._repository.list_issues, state)
+
+    async def get_commit_async(self, sha: str) -> Commit:
+        """See get_commit."""
+        if self._repository.is_async:
+            return await self._repository.get_commit(sha)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_commit, sha)
+
+    async def list_commits_async(
+        self,
+        branch: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        author: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        """See list_commits."""
+        if self._repository.is_async:
+            return await self._repository.list_commits(  # type: ignore
+                branch, since, until, author, path, max_results
+            )
+        return await asyncio.to_thread(
+            self._repository.list_commits,
+            branch,
+            since,
+            until,
+            author,
+            path,
+            max_results,
+        )
+
+    async def get_workflow_async(self, workflow_id: str) -> Workflow:
+        """See get_workflow."""
+        if self._repository.is_async:
+            return await self._repository.get_workflow(workflow_id)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_workflow, workflow_id)
+
+    async def list_workflows_async(self) -> list[Workflow]:
+        """See list_workflows."""
+        if self._repository.is_async:
+            return await self._repository.list_workflows()  # type: ignore
+        return await asyncio.to_thread(self._repository.list_workflows)
+
+    async def get_workflow_run_async(self, run_id: str) -> WorkflowRun:
+        """See get_workflow_run."""
+        if self._repository.is_async:
+            return await self._repository.get_workflow_run(run_id)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_workflow_run, run_id)
+
+    async def download_async(
+        self,
+        path: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        recursive: bool = False,
+    ) -> None:
+        """See download."""
+        if self._repository.is_async:
+            await self._repository.download(path, destination, recursive)  # type: ignore
+        await asyncio.to_thread(self._repository.download, path, destination, recursive)
+
+    async def search_commits_async(
+        self,
+        query: str,
+        branch: str | None = None,
+        path: str | None = None,
+        max_results: int | None = None,
+    ) -> list[Commit]:
+        """See search_commits."""
+        if self._repository.is_async:
+            return await self._repository.search_commits(  # type: ignore
+                query, branch, path, max_results
+            )
+        return await asyncio.to_thread(
+            self._repository.search_commits, query, branch, path, max_results
+        )
+
+    async def get_contributors_async(
+        self,
+        sort_by: Literal["commits", "name", "date"] = "commits",
+        limit: int | None = None,
+    ) -> list[User]:
+        """See get_contributors."""
+        if self._repository.is_async:
+            return await self._repository.get_contributors(sort_by, limit)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_contributors, sort_by, limit)
+
+    async def get_languages_async(self) -> dict[str, int]:
+        """See get_languages."""
+        if self._repository.is_async:
+            return await self._repository.get_languages()  # type: ignore
+        return await asyncio.to_thread(self._repository.get_languages)
+
+    async def compare_branches_async(
+        self,
+        base: str,
+        head: str,
+        include_commits: bool = True,
+        include_files: bool = True,
+        include_stats: bool = True,
+    ) -> dict[str, Any]:
+        """See compare_branches."""
+        if self._repository.is_async:
+            return await self._repository.compare_branches(  # type: ignore
+                base, head, include_commits, include_files, include_stats
+            )
+        return await asyncio.to_thread(
+            self._repository.compare_branches,
+            base,
+            head,
+            include_commits,
+            include_files,
+            include_stats,
+        )
+
+    async def get_latest_release_async(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+    ) -> Release:
+        """See get_latest_release."""
+        if self._repository.is_async:
+            return await self._repository.get_latest_release(  # type: ignore
+                include_drafts, include_prereleases
+            )
+        return await asyncio.to_thread(
+            self._repository.get_latest_release, include_drafts, include_prereleases
+        )
+
+    async def list_releases_async(
+        self,
+        include_drafts: bool = False,
+        include_prereleases: bool = False,
+        limit: int | None = None,
+    ) -> list[Release]:
+        """See list_releases."""
+        if self._repository.is_async:
+            return await self._repository.list_releases(  # type: ignore
+                include_drafts, include_prereleases, limit
+            )
+        return await asyncio.to_thread(
+            self._repository.list_releases, include_drafts, include_prereleases, limit
+        )
+
+    async def get_release_async(self, tag: str) -> Release:
+        """See get_release."""
+        if self._repository.is_async:
+            return await self._repository.get_release(tag)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_release, tag)
+
+    async def get_tag_async(self, name: str) -> Tag:
+        """See get_tag."""
+        if self._repository.is_async:
+            return await self._repository.get_tag(name)  # type: ignore
+        return await asyncio.to_thread(self._repository.get_tag, name)
+
+    async def list_tags_async(self) -> list[Tag]:
+        """See list_tags."""
+        if self._repository.is_async:
+            return await self._repository.list_tags()  # type: ignore
+        return await asyncio.to_thread(self._repository.list_tags)

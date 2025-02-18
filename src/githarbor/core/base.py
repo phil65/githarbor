@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 class BaseRepository:
     """Base repository class. All methods raise FeatureNotSupportedError by default."""
 
+    is_async: ClassVar[bool] = False
     url_patterns: ClassVar[list[str]] = []
     _owner: str = ""
     _name: str = ""
