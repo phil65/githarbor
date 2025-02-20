@@ -337,6 +337,64 @@ get_tag = make_sync(get_tag_async)
 list_tags = make_sync(list_tags_async)
 
 
+def setup_env(env: Any) -> None:
+    """Used as extension point for the jinjarope environment.
+
+    Args:
+        env: The jinjarope environment to extend
+    """
+    funcs = {
+        # Async functions
+        "get_repo_user_async": get_repo_user_async,
+        "get_branch_async": get_branch_async,
+        "get_pull_request_async": get_pull_request_async,
+        "list_pull_requests_async": list_pull_requests_async,
+        "get_issue_async": get_issue_async,
+        "list_issues_async": list_issues_async,
+        "get_commit_async": get_commit_async,
+        "list_commits_async": list_commits_async,
+        "get_workflow_async": get_workflow_async,
+        "list_workflows_async": list_workflows_async,
+        "get_workflow_run_async": get_workflow_run_async,
+        "download_from_repo_async": download_async,
+        "search_commits_async": search_commits_async,
+        "get_contributors_async": get_contributors_async,
+        "get_languages_async": get_languages_async,
+        "compare_branches_async": compare_branches_async,
+        "get_latest_release_async": get_latest_release_async,
+        "list_releases_async": list_releases_async,
+        "get_release_async": get_release_async,
+        "get_tag_async": get_tag_async,
+        "list_tags_async": list_tags_async,
+        # Sync functions
+        "get_repo_user": get_repo_user,
+        "get_branch": get_branch,
+        "get_pull_request": get_pull_request,
+        "list_pull_requests": list_pull_requests,
+        "get_issue": get_issue,
+        "list_issues": list_issues,
+        "get_commit": get_commit,
+        "list_commits": list_commits,
+        "get_workflow": get_workflow,
+        "list_workflows": list_workflows,
+        "get_workflow_run": get_workflow_run,
+        "download_from_repo": download,
+        "search_commits": search_commits,
+        "get_contributors": get_contributors,
+        "get_languages": get_languages,
+        "compare_branches": compare_branches,
+        "get_latest_release": get_latest_release,
+        "list_releases": list_releases,
+        "get_release": get_release,
+        "get_tag": get_tag,
+        "list_tags": list_tags,
+    }
+
+    # Register as both globals and filters
+    env.globals |= funcs
+    env.filters |= funcs
+
+
 if __name__ == "__main__":
 
     async def main():

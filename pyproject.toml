@@ -58,6 +58,9 @@ all = [
     "unidiff",
 ]
 
+[project.entry-points."jinjarope.environment"]
+llmling_agent = "githarbor.functional:setup_env"
+
 [tool.uv]
 default-groups = ["dev", "lint", "docs"]
 
