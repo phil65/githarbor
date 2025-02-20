@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import upath
 
-from githarbor.core.base import BaseRepository
+from githarbor.core.base import BaseRepository, IssueState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import giteatools
 
@@ -135,7 +135,7 @@ class GiteaRepository(BaseRepository):
         return giteatools.create_issue_model(issue)
 
     @giteatools.handle_api_errors("Failed to list issues")
-    def list_issues(self, state: str = "open") -> list[Issue]:
+    def list_issues(self, state: IssueState = "open") -> list[Issue]:
         """List repository issues."""
         issues: list[giteapy.Issue] = self._issues_api.issue_list_issues(
             self._owner,

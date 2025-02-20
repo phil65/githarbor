@@ -7,7 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository
+from githarbor.core.base import BaseRepository, IssueState
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -202,7 +202,7 @@ class AzureRepository(BaseRepository):
         return azuretools.create_issue_model(work_item)
 
     @azuretools.handle_azure_errors("Failed to list issues")
-    def list_issues(self, state: str = "open") -> list[Issue]:
+    def list_issues(self, state: IssueState = "open") -> list[Issue]:
         """List issues (work items in Azure DevOps)."""
         # Build WIQL query based on state
         state_map = {"open": "Active", "closed": "Closed", "all": ""}

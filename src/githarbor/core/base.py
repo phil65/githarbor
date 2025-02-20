@@ -24,6 +24,8 @@ if TYPE_CHECKING:
         WorkflowRun,
     )
 
+IssueState = Literal["open", "closed", "all"]
+
 
 class BaseRepository:
     """Base repository class. All methods raise FeatureNotSupportedError by default."""
@@ -86,7 +88,7 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement get_issue"
         raise FeatureNotSupportedError(msg)
 
-    def list_issues(self, state: str = "open") -> list[Issue]:
+    def list_issues(self, state: IssueState = "open") -> list[Issue]:
         msg = f"{self.__class__.__name__} does not implement list_issues"
         raise FeatureNotSupportedError(msg)
 
@@ -223,7 +225,7 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement get_issue_async"
         raise FeatureNotSupportedError(msg)
 
-    async def list_issues_async(self, state: str = "open") -> list[Issue]:
+    async def list_issues_async(self, state: IssueState = "open") -> list[Issue]:
         """List issues asynchronously."""
         msg = f"{self.__class__.__name__} does not implement list_issues_async"
         raise FeatureNotSupportedError(msg)

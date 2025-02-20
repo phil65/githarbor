@@ -12,7 +12,7 @@ from aiogithubapi.exceptions import (
     GitHubNotFoundException,
 )
 
-from githarbor.core.base import BaseRepository
+from githarbor.core.base import BaseRepository, IssueState
 from githarbor.exceptions import (
     AuthenticationError,
     ResourceNotFoundError,
@@ -112,7 +112,7 @@ class AioGitHubRepository(BaseRepository):
             msg = f"Issue #{issue_id} not found"
             raise ResourceNotFoundError(msg) from e
 
-    async def list_issues_async(self, state: str = "open") -> list[Issue]:
+    async def list_issues_async(self, state: IssueState = "open") -> list[Issue]:
         """List repository issues."""
         response = await self._gh.repos.issues.list(
             f"{self._owner}/{self._name}",

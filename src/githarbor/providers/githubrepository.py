@@ -6,7 +6,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository
+from githarbor.core.base import BaseRepository, IssueState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import githubtools
 
@@ -102,7 +102,7 @@ class GitHubRepository(BaseRepository):
         return githubtools.create_issue_model(issue)
 
     @githubtools.handle_github_errors("Failed to list issues")
-    def list_issues(self, state: str = "open") -> list[Issue]:
+    def list_issues(self, state: IssueState = "open") -> list[Issue]:
         issues = self._repo.get_issues(state=state)
         return [githubtools.create_issue_model(issue) for issue in issues]
 

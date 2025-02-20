@@ -5,7 +5,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository
+from githarbor.core.base import BaseRepository, IssueState
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -116,9 +116,9 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_issue_model(issue)
 
     @gitlabtools.handle_gitlab_errors("Failed to list issues")
-    def list_issues(self, state: str | None = None) -> list[Issue]:
+    def list_issues(self, state: IssueState = "open") -> list[Issue]:
         if state == "open":
-            state = "opened"
+            state = "opened"  # type: ignore
         issues = self._repo.issues.list(state=state, all=True)
         return [gitlabtools.create_issue_model(issue) for issue in issues]
 
