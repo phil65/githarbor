@@ -74,7 +74,10 @@ def create_user_model(ghk_user: None) -> None: ...
 
 @overload
 def create_user_model(
-    ghk_user: ghk_models.SimpleUser | ghk_models.PrivateUser | ghk_models.PublicUser,
+    ghk_user: ghk_models.SimpleUser
+    | ghk_models.PrivateUser
+    | ghk_models.PublicUser
+    | ghk_models.GitUser,
 ) -> User: ...
 
 
@@ -82,6 +85,7 @@ def create_user_model(
     ghk_user: ghk_models.SimpleUser
     | ghk_models.PrivateUser
     | ghk_models.PublicUser
+    | ghk_models.GitUser
     | None,
 ) -> User | None:
     """Convert GitHubKit user model to GitHarbor User model."""
@@ -102,7 +106,13 @@ def create_user_model(
         if hasattr(ghk_user, "email") and ghk_user.email is not UNSET
         else None
     )
-
+    if isinstance(ghk_user, ghk_models.GitUser):
+        return User(
+            username=name or "unknown",
+            name=name,
+            email=email,
+            created_at=ghk_user.date,
+        )
     user = User(
         username=ghk_user.login,
         name=name,
@@ -211,7 +221,6 @@ def create_pull_request_model(
     """Convert GitHubKit pull request model to GitHarbor PullRequest model."""
     from githubkit.versions.latest import models as ghk_models
 
-    is_full_pr = isinstance(ghk_pr, ghk_models.PullRequest)
     return PullRequest(
         number=ghk_pr.number,
         title=ghk_pr.title,
@@ -229,13 +238,27 @@ def create_pull_request_model(
             # create_label_model(label) for label in ghk_pr.labels if hasattr(label, "id")
         ],
         url=ghk_pr.html_url,
-        merged_by=create_user_model(ghk_pr.merged_by) if is_full_pr else None,
-        review_comments_count=ghk_pr.review_comments if is_full_pr else None,
-        commits_count=ghk_pr.commits if is_full_pr else None,
-        additions=ghk_pr.additions if is_full_pr else None,
-        deletions=ghk_pr.deletions if is_full_pr else None,
-        changed_files=ghk_pr.changed_files if is_full_pr else None,
-        mergeable=ghk_pr.mergeable if is_full_pr else None,
+        merged_by=create_user_model(ghk_pr.merged_by)
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        review_comments_count=ghk_pr.review_comments
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        commits_count=ghk_pr.commits
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        additions=ghk_pr.additions
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        deletions=ghk_pr.deletions
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        changed_files=ghk_pr.changed_files
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
+        mergeable=ghk_pr.mergeable
+        if isinstance(ghk_pr, ghk_models.PullRequest)
+        else None,
     )
 
 
@@ -263,14 +286,54 @@ def create_issue_model(ghk_issue: ghk_models.Issue) -> Issue:
     )
 
 
-def create_commit_model(ghk_commit: ghk_models.Commit) -> Commit:
-    """Convert GitHubKit commit model to GitHarbor Commit model."""
-    from githubkit.utils import UNSET
+@overload
+def create_commit_model(ghk_commit: None) -> None: ...
+
+
+@overload
+def create_commit_model(
+    ghk_commit: ghk_models.Commit | ghk_models.CommitSearchResultItemPropCommit,
+) -> Commit: ...
+
+
+def create_commit_model(
+    ghk_commit: (ghk_models.Commit | ghk_models.CommitSearchResultItemPropCommit | None),
+) -> Commit | None:
+    """Create Commit model from GitHubKit commit object."""
     from githubkit.versions.latest import models as ghk_models
 
-    commit_data = ghk_commit.commit
+    if not ghk_commit:
+        return None
 
-    # Get author - must be non-None
+    from githubkit.utils import UNSET
+
+    # Handle CommitSearchResultItemPropCommit differently
+    if isinstance(ghk_commit, ghk_models.CommitSearchResultItemPropCommit):
+        return Commit(
+            sha="",  # No sha in this type
+            message=ghk_commit.message,
+            author=User(
+                username=ghk_commit.author.name or "",
+                name=ghk_commit.author.name or "",
+                email=ghk_commit.author.email or "",
+            ),
+            created_at=ghk_commit.author.date,
+            committer=create_user_model(ghk_commit.committer)
+            if ghk_commit.committer
+            else None,
+            url=ghk_commit.url,
+            stats={},  # No stats in this type
+            parents=[],  # No parents in this type
+            verified=bool(
+                ghk_commit.verification.verified
+                if ghk_commit.verification is not UNSET and ghk_commit.verification
+                else False
+            ),
+            files_changed=[],  # No files in this type
+        )
+
+    # Original handling for regular Commit type
+    commit_data = ghk_commit.commit
     author = (
         create_user_model(ghk_commit.author)
         if not isinstance(ghk_commit.author, ghk_models.EmptyObject)
@@ -281,7 +344,6 @@ def create_commit_model(ghk_commit: ghk_models.Commit) -> Commit:
         )
     )
 
-    # Get stats carefully
     stats = ghk_commit.stats
     stats_dict = {
         "additions": 0,
@@ -299,9 +361,11 @@ def create_commit_model(ghk_commit: ghk_models.Commit) -> Commit:
     return Commit(
         sha=ghk_commit.sha,
         message=commit_data.message,
-        author=author,  # type: ignore
-        created_at=commit_data.author.date if commit_data.author else None,  # type: ignore
-        committer=create_user_model(ghk_commit.committer),  # type: ignore
+        author=author,
+        created_at=commit_data.author.date if commit_data.author else None,
+        committer=create_user_model(ghk_commit.committer)
+        if not isinstance(ghk_commit.committer, ghk_models.EmptyObject)
+        else None,
         url=ghk_commit.html_url,
         stats=stats_dict,
         parents=[p.sha for p in ghk_commit.parents],
@@ -339,10 +403,19 @@ def create_release_model(ghk_release: ghk_models.Release) -> Release:
     )
 
 
-def create_tag_model(ghk_tag: ghk_models.Tag) -> Tag:
+def create_tag_model(ghk_tag: ghk_models.Tag | ghk_models.GitTag) -> Tag:
     """Convert GitHubKit tag model to GitHarbor Tag model."""
+    from githubkit.versions.latest import models as ghk_models
+
+    if isinstance(ghk_tag, ghk_models.Tag):
+        return Tag(
+            name=ghk_tag.name,
+            sha=ghk_tag.commit.sha,
+            url=None,  # Not available in the Tag model
+        )
     return Tag(
-        name=ghk_tag.name,
-        sha=ghk_tag.commit.sha,
-        url=None,  # Not available in the Tag model
+        name=ghk_tag.tag,
+        sha=ghk_tag.sha,
+        url=ghk_tag.url,
+        message=ghk_tag.message,
     )

@@ -208,9 +208,9 @@ class Commit:
     """Unique identifier for the commit."""
     message: str
     """Commit message."""
-    author: User
+    author: User | None = None
     """User who authored the commit."""
-    created_at: datetime
+    created_at: datetime | None = None
     """Date and time when the commit was authored."""
     committer: User | None = None
     """User who committed the changes."""
