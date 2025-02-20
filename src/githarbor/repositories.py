@@ -4,6 +4,7 @@ import importlib.util
 from typing import TYPE_CHECKING, Any
 
 from githarbor.exceptions import RepositoryNotFoundError
+from githarbor.providers.githubkitprovider import GitHubKitRepository
 from githarbor.registry import RepoRegistry
 
 
@@ -35,6 +36,11 @@ if importlib.util.find_spec("azure"):
     from githarbor.providers.azurerepository import AzureRepository
 
     RepoRegistry.register("azure")(AzureRepository)
+
+if importlib.util.find_spec("githubkit"):
+    from githarbor.providers.githubkitprovider import GitHubKitRepository
+
+    RepoRegistry.register("githubkit")(GitHubKitRepository)
 
 # if importlib.util.find_spec("atlassian"):
 #     from githarbor.providers.bitbucketrepository import BitbucketRepository
