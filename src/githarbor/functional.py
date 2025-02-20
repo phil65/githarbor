@@ -39,86 +39,81 @@ def make_sync(async_func: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
-async def get_repo_user_async(
-    url: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> User:
-    """Get repository owner information."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_repo_user_async(url: str) -> User:
+    """Get repository owner information.
+
+    Args:
+        url: Repository URL
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_repo_user_async()
 
 
-async def get_branch_async(
-    url: str,
-    name: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Branch:
-    """Get branch information."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_branch_async(url: str, name: str) -> Branch:
+    """Get information about a specific repository branch.
+
+    Args:
+        url: Repository URL
+        name: Branch name
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_branch_async(name)
 
 
-async def get_pull_request_async(
-    url: str,
-    number: int,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> PullRequest:
-    """Get pull request by number."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_pull_request_async(url: str, number: int) -> PullRequest:
+    """Get information about a specific pull request.
+
+    Args:
+        url: Repository URL
+        number: Pull request number
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_pull_request_async(number)
 
 
 async def list_pull_requests_async(
-    url: str,
-    *,
-    state: PullRequestState = "open",
-    token: str | None = None,
-    force_new: bool = False,
+    url: str, *, state: PullRequestState = "open"
 ) -> list[PullRequest]:
-    """List repository pull requests."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """List repository pull requests.
+
+    Args:
+        url: Repository URL
+        state: Pull request state filter ('open', 'closed', 'all')
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_pull_requests_async(state)
 
 
-async def get_issue_async(
-    url: str,
-    issue_id: int,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Issue:
-    """Get issue by ID."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_issue_async(url: str, issue_id: int) -> Issue:
+    """Get information about a specific issue.
+
+    Args:
+        url: Repository URL
+        issue_id: Issue number
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_issue_async(issue_id)
 
 
-async def list_issues_async(
-    url: str,
-    *,
-    state: IssueState = "open",
-    token: str | None = None,
-    force_new: bool = False,
-) -> list[Issue]:
-    """List repository issues."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def list_issues_async(url: str, *, state: IssueState = "open") -> list[Issue]:
+    """List repository issues.
+
+    Args:
+        url: Repository URL
+        state: Issue state filter ('open', 'closed', 'all')
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_issues_async(state)
 
 
-async def get_commit_async(
-    url: str,
-    sha: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Commit:
-    """Get commit by SHA."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_commit_async(url: str, sha: str) -> Commit:
+    """Get information about a specific commit.
+
+    Args:
+        url: Repository URL
+        sha: Commit SHA
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_commit_async(sha)
 
 
@@ -131,11 +126,19 @@ async def list_commits_async(
     author: str | None = None,
     path: str | None = None,
     max_results: int | None = None,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> list[Commit]:
-    """List repository commits."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """List repository commits with optional filters.
+
+    Args:
+        url: Repository URL
+        branch: Filter by branch name
+        since: Only show commits after this date
+        until: Only show commits before this date
+        author: Filter by author
+        path: Filter by file path
+        max_results: Maximum number of results
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_commits_async(
         branch=branch,
         since=since,
@@ -146,38 +149,35 @@ async def list_commits_async(
     )
 
 
-async def get_workflow_async(
-    url: str,
-    workflow_id: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Workflow:
-    """Get workflow by ID."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_workflow_async(url: str, workflow_id: str) -> Workflow:
+    """Get information about a specific workflow.
+
+    Args:
+        url: Repository URL
+        workflow_id: Workflow identifier
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_workflow_async(workflow_id)
 
 
-async def list_workflows_async(
-    url: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> list[Workflow]:
-    """List repository workflows."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def list_workflows_async(url: str) -> list[Workflow]:
+    """List repository workflows.
+
+    Args:
+        url: Repository URL
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_workflows_async()
 
 
-async def get_workflow_run_async(
-    url: str,
-    run_id: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> WorkflowRun:
-    """Get workflow run by ID."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_workflow_run_async(url: str, run_id: str) -> WorkflowRun:
+    """Get information about a specific workflow run.
+
+    Args:
+        url: Repository URL
+        run_id: Workflow run identifier
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_workflow_run_async(run_id)
 
 
@@ -187,11 +187,16 @@ async def download_async(
     destination: str | os.PathLike[str],
     *,
     recursive: bool = False,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> None:
-    """Download repository content."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """Download repository content.
+
+    Args:
+        url: Repository URL
+        path: Path to download
+        destination: Where to save the downloaded content
+        recursive: Whether to download recursively
+    """
+    repo = RepoRegistry.get(url)
     await repo.download_async(path, destination, recursive)
 
 
@@ -202,11 +207,17 @@ async def search_commits_async(
     branch: str | None = None,
     path: str | None = None,
     max_results: int | None = None,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> list[Commit]:
-    """Search repository commits."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """Search repository commits.
+
+    Args:
+        url: Repository URL
+        query: Search query string
+        branch: Filter by branch name
+        path: Filter by file path
+        max_results: Maximum number of results
+    """
+    repo = RepoRegistry.get(url)
     return await repo.search_commits_async(query, branch, path, max_results)
 
 
@@ -215,22 +226,25 @@ async def get_contributors_async(
     *,
     sort_by: Literal["commits", "name", "date"] = "commits",
     limit: int | None = None,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> list[User]:
-    """Get repository contributors."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """Get repository contributors.
+
+    Args:
+        url: Repository URL
+        sort_by: How to sort the contributors
+        limit: Maximum number of contributors to return
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_contributors_async(sort_by, limit)
 
 
-async def get_languages_async(
-    url: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> dict[str, int]:
-    """Get repository language statistics."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_languages_async(url: str) -> dict[str, int]:
+    """Get repository language statistics.
+
+    Args:
+        url: Repository URL
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_languages_async()
 
 
@@ -242,11 +256,18 @@ async def compare_branches_async(
     include_commits: bool = True,
     include_files: bool = True,
     include_stats: bool = True,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> dict[str, Any]:
-    """Compare two branches."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """Compare two branches.
+
+    Args:
+        url: Repository URL
+        base: Base branch name
+        head: Head branch name
+        include_commits: Whether to include commit information
+        include_files: Whether to include changed files
+        include_stats: Whether to include statistics
+    """
+    repo = RepoRegistry.get(url)
     return await repo.compare_branches_async(
         base, head, include_commits, include_files, include_stats
     )
@@ -257,11 +278,15 @@ async def get_latest_release_async(
     *,
     include_drafts: bool = False,
     include_prereleases: bool = False,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> Release:
-    """Get latest release."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """Get latest repository release.
+
+    Args:
+        url: Repository URL
+        include_drafts: Whether to include draft releases
+        include_prereleases: Whether to include pre-releases
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_latest_release_async(include_drafts, include_prereleases)
 
 
@@ -271,46 +296,48 @@ async def list_releases_async(
     include_drafts: bool = False,
     include_prereleases: bool = False,
     limit: int | None = None,
-    token: str | None = None,
-    force_new: bool = False,
 ) -> list[Release]:
-    """List releases."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+    """List repository releases.
+
+    Args:
+        url: Repository URL
+        include_drafts: Whether to include draft releases
+        include_prereleases: Whether to include pre-releases
+        limit: Maximum number of releases to return
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_releases_async(include_drafts, include_prereleases, limit)
 
 
-async def get_release_async(
-    url: str,
-    tag: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Release:
-    """Get release by tag."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_release_async(url: str, tag: str) -> Release:
+    """Get release by tag.
+
+    Args:
+        url: Repository URL
+        tag: Release tag name
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_release_async(tag)
 
 
-async def get_tag_async(
-    url: str,
-    name: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> Tag:
-    """Get tag by name."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def get_tag_async(url: str, name: str) -> Tag:
+    """Get tag information.
+
+    Args:
+        url: Repository URL
+        name: Tag name
+    """
+    repo = RepoRegistry.get(url)
     return await repo.get_tag_async(name)
 
 
-async def list_tags_async(
-    url: str,
-    *,
-    token: str | None = None,
-    force_new: bool = False,
-) -> list[Tag]:
-    """List repository tags."""
-    repo = RepoRegistry.get(url, token=token, force_new=force_new)
+async def list_tags_async(url: str) -> list[Tag]:
+    """List repository tags.
+
+    Args:
+        url: Repository URL
+    """
+    repo = RepoRegistry.get(url)
     return await repo.list_tags_async()
 
 
