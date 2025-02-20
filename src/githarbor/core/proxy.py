@@ -76,6 +76,8 @@ class Repository(BaseRepository):
         Returns:
             User information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_repo_user_async())
         return self._repository.get_repo_user()
 
     def get_branch(self, name: str) -> Branch:
@@ -87,6 +89,8 @@ class Repository(BaseRepository):
         Returns:
             Branch information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_branch_async(name))
         return self._repository.get_branch(name)
 
     def get_pull_request(self, number: int) -> PullRequest:
@@ -98,6 +102,8 @@ class Repository(BaseRepository):
         Returns:
             Pull request information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_pull_request_async(number))
         return self._repository.get_pull_request(number)
 
     def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
@@ -109,6 +115,8 @@ class Repository(BaseRepository):
         Returns:
             List of pull requests.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.list_pull_requests_async(state))
         return self._repository.list_pull_requests(state)
 
     def get_issue(self, issue_id: int) -> Issue:
@@ -120,6 +128,8 @@ class Repository(BaseRepository):
         Returns:
             Issue information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_issue_async(issue_id))
         return self._repository.get_issue(issue_id)
 
     def list_issues(self, state: IssueState = "open") -> list[Issue]:
@@ -131,6 +141,8 @@ class Repository(BaseRepository):
         Returns:
             List of issues.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.list_issues_async(state))
         return self._repository.list_issues(state)
 
     def get_commit(self, sha: str) -> Commit:
@@ -142,6 +154,8 @@ class Repository(BaseRepository):
         Returns:
             Commit information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_commit_async(sha))
         return self._repository.get_commit(sha)
 
     def list_commits(
@@ -166,15 +180,29 @@ class Repository(BaseRepository):
         Returns:
             List of commits.
         """
-        commits = self._repository.list_commits(
-            branch=branch,
-            since=since,
-            until=until,
-            author=author,
-            path=path,
-            max_results=max_results,
+        if self._repository.is_async:
+            return NiceReprList(
+                asyncio.run(
+                    self._repository.list_commits_async(
+                        branch=branch,
+                        since=since,
+                        until=until,
+                        author=author,
+                        path=path,
+                        max_results=max_results,
+                    )
+                )
+            )
+        return NiceReprList(
+            self._repository.list_commits(
+                branch=branch,
+                since=since,
+                until=until,
+                author=author,
+                path=path,
+                max_results=max_results,
+            )
         )
-        return NiceReprList(commits)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
         """Get information about a specific workflow.
@@ -185,6 +213,8 @@ class Repository(BaseRepository):
         Returns:
             Workflow information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_workflow_async(workflow_id))
         return self._repository.get_workflow(workflow_id)
 
     def list_workflows(self) -> list[Workflow]:
@@ -193,6 +223,8 @@ class Repository(BaseRepository):
         Returns:
             List of workflows.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.list_workflows_async())
         return self._repository.list_workflows()
 
     def get_workflow_run(self, run_id: str) -> WorkflowRun:
@@ -204,6 +236,8 @@ class Repository(BaseRepository):
         Returns:
             Workflow run information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_workflow_run_async(run_id))
         return self._repository.get_workflow_run(run_id)
 
     def download(
@@ -219,7 +253,11 @@ class Repository(BaseRepository):
             destination: Where to save the downloaded content.
             recursive: Whether to download recursively.
         """
-        self._repository.download(path, destination, recursive)
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.download_async(path, destination, recursive)
+            )
+        return self._repository.download(path, destination, recursive)
 
     def search_commits(
         self,
@@ -241,17 +279,25 @@ class Repository(BaseRepository):
         Returns:
             List of matching commits
         """
-        try:
-            return self._repository.search_commits(query, branch, path, max_results)
-        except NotImplementedError:
-            # Get all commits and filter manually
-            commits = self.list_commits(branch=branch, path=path)
-            matches = [
-                commit for commit in commits if query.lower() in commit.message.lower()
-            ]
-            if max_results:
-                matches = matches[:max_results]
-            return matches
+        if self._repository.is_async:
+            return NiceReprList(
+                asyncio.run(
+                    self._repository.search_commits_async(
+                        query=query,
+                        branch=branch,
+                        path=path,
+                        max_results=max_results,
+                    )
+                )
+            )
+        return NiceReprList(
+            self._repository.search_commits(
+                query=query,
+                branch=branch,
+                path=path,
+                max_results=max_results,
+            )
+        )
 
     def iter_files(
         self,
@@ -313,6 +359,8 @@ class Repository(BaseRepository):
         Returns:
             List of contributors.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_contributors_async(sort_by, limit))
         return self._repository.get_contributors(sort_by, limit)
 
     def get_languages(self) -> dict[str, int]:
@@ -321,6 +369,8 @@ class Repository(BaseRepository):
         Returns:
             Dictionary mapping language names to byte counts.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_languages_async())
         return self._repository.get_languages()
 
     def compare_branches(
@@ -346,6 +396,12 @@ class Repository(BaseRepository):
             Dictionary containing comparison information
         """
         try:
+            if self._repository.is_async:
+                return asyncio.run(
+                    self._repository.compare_branches_async(
+                        base, head, include_commits, include_files, include_stats
+                    )
+                )
             return self._repository.compare_branches(
                 base, head, include_commits, include_files, include_stats
             )
@@ -408,6 +464,12 @@ class Repository(BaseRepository):
             ResourceNotFoundError: If no matching releases are found
         """
         try:
+            if self._repository.is_async:
+                return asyncio.run(
+                    self._repository.get_latest_release_async(
+                        include_drafts, include_prereleases
+                    )
+                )
             return self._repository.get_latest_release(
                 include_drafts, include_prereleases
             )
@@ -438,6 +500,12 @@ class Repository(BaseRepository):
         Returns:
             List of releases.
         """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.list_releases_async(
+                    include_drafts, include_prereleases, limit
+                )
+            )
         return self._repository.list_releases(include_drafts, include_prereleases, limit)
 
     def get_release(self, tag: str) -> Release:
@@ -449,6 +517,8 @@ class Repository(BaseRepository):
         Returns:
             Release information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_release_async(tag))
         return self._repository.get_release(tag)
 
     def get_tag(self, name: str) -> Tag:
@@ -460,6 +530,8 @@ class Repository(BaseRepository):
         Returns:
             Tag information.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.get_tag_async(name))
         return self._repository.get_tag(name)
 
     def list_tags(self) -> list[Tag]:
@@ -468,6 +540,8 @@ class Repository(BaseRepository):
         Returns:
             List of tags.
         """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.list_tags_async())
         return self._repository.list_tags()
 
     def get_recent_activity(
