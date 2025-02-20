@@ -154,15 +154,15 @@ class PullRequest:
     """PR comments."""
     merged_by: User | None = None
     """User who merged the PR."""
-    review_comments_count: int = 0
+    review_comments_count: int | None = None
     """Number of review comments."""
-    commits_count: int = 0
+    commits_count: int | None = None
     """Number of commits."""
-    additions: int = 0
+    additions: int | None = None
     """Lines added."""
-    deletions: int = 0
+    deletions: int | None = None
     """Lines deleted."""
-    changed_files: int = 0
+    changed_files: int | None = None
     """Number of files changed."""
     mergeable: bool | None = None
     """Whether PR can be merged."""

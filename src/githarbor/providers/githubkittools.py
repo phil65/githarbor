@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     from githubkit.versions.latest import models as ghk_models
 
+
 T = TypeVar("T")
 P = ParamSpec("P")
 
@@ -73,12 +74,15 @@ def create_user_model(ghk_user: None) -> None: ...
 
 @overload
 def create_user_model(
-    ghk_user: ghk_models.SimpleUser | ghk_models.PrivateUser,
+    ghk_user: ghk_models.SimpleUser | ghk_models.PrivateUser | ghk_models.PublicUser,
 ) -> User: ...
 
 
 def create_user_model(
-    ghk_user: ghk_models.SimpleUser | ghk_models.PrivateUser | None,
+    ghk_user: ghk_models.SimpleUser
+    | ghk_models.PrivateUser
+    | ghk_models.PublicUser
+    | None,
 ) -> User | None:
     """Convert GitHubKit user model to GitHarbor User model."""
     from githubkit.utils import UNSET
@@ -201,8 +205,13 @@ def create_workflow_run_model(ghk_run: ghk_models.WorkflowRun) -> WorkflowRun:
     )
 
 
-def create_pull_request_model(ghk_pr: ghk_models.PullRequest) -> PullRequest:
+def create_pull_request_model(
+    ghk_pr: ghk_models.PullRequest | ghk_models.PullRequestSimple,
+) -> PullRequest:
     """Convert GitHubKit pull request model to GitHarbor PullRequest model."""
+    from githubkit.versions.latest import models as ghk_models
+
+    is_full_pr = isinstance(ghk_pr, ghk_models.PullRequest)
     return PullRequest(
         number=ghk_pr.number,
         title=ghk_pr.title,
@@ -219,14 +228,14 @@ def create_pull_request_model(ghk_pr: ghk_models.PullRequest) -> PullRequest:
         labels=[
             # create_label_model(label) for label in ghk_pr.labels if hasattr(label, "id")
         ],
-        merged_by=create_user_model(ghk_pr.merged_by),
-        review_comments_count=ghk_pr.review_comments,
-        commits_count=ghk_pr.commits,
-        additions=ghk_pr.additions,
-        deletions=ghk_pr.deletions,
-        changed_files=ghk_pr.changed_files,
-        mergeable=ghk_pr.mergeable,
         url=ghk_pr.html_url,
+        merged_by=create_user_model(ghk_pr.merged_by) if is_full_pr else None,
+        review_comments_count=ghk_pr.review_comments if is_full_pr else None,
+        commits_count=ghk_pr.commits if is_full_pr else None,
+        additions=ghk_pr.additions if is_full_pr else None,
+        deletions=ghk_pr.deletions if is_full_pr else None,
+        changed_files=ghk_pr.changed_files if is_full_pr else None,
+        mergeable=ghk_pr.mergeable if is_full_pr else None,
     )
 
 
