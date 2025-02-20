@@ -75,7 +75,7 @@ def create_user_model(user: GitHubBaseUserModel | GitHubUserModel | None) -> Use
         "following": getattr(user, "following", None),
         "public_repos": getattr(user, "public_repos", None),
     }
-    return User(**data)
+    return User(**data)  # pyright: ignore
 
 
 def create_label_model(label: GitHubLabelModel) -> Label:

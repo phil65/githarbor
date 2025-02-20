@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import functools
 import inspect
 import string
@@ -107,11 +108,12 @@ def create_user_model(
         else None
     )
     if isinstance(ghk_user, ghk_models.GitUser):
+        date = ghk_user.date
         return User(
             username=name or "unknown",
             name=name,
             email=email,
-            created_at=ghk_user.date,
+            created_at=datetime.fromisoformat(date) if date else None,
         )
     user = User(
         username=ghk_user.login,
@@ -357,12 +359,16 @@ def create_commit_model(
             stats_dict["deletions"] = stats.deletions or 0
         if stats.total is not UNSET:
             stats_dict["total"] = stats.total or 0
-
+    created_at = (
+        datetime.fromisoformat(commit_data.author.date)
+        if commit_data.author and commit_data.author.date is not UNSET
+        else None
+    )
     return Commit(
         sha=ghk_commit.sha,
         message=commit_data.message,
         author=author,
-        created_at=commit_data.author.date if commit_data.author else None,
+        created_at=created_at,
         committer=create_user_model(ghk_commit.committer)
         if not isinstance(ghk_commit.committer, ghk_models.EmptyObject)
         else None,
