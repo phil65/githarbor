@@ -5,7 +5,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository, IssueState
+from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -106,7 +106,7 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_pull_request_model(mr)
 
     @gitlabtools.handle_gitlab_errors("Failed to list merge requests")
-    def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+    def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         mrs = self._repo.mergerequests.list(state=state, all=True)
         return [gitlabtools.create_pull_request_model(mr) for mr in mrs]
 

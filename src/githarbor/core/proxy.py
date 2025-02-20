@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Literal
 
-from githarbor.core.base import BaseRepository, IssueState
+from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.core.datatypes import NiceReprList
 from githarbor.exceptions import ResourceNotFoundError
 
@@ -100,7 +100,7 @@ class Repository(BaseRepository):
         """
         return self._repository.get_pull_request(number)
 
-    def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+    def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests.
 
         Args:
@@ -545,7 +545,10 @@ class Repository(BaseRepository):
             return await self._repository.get_pull_request_async(number)  # type: ignore
         return await asyncio.to_thread(self._repository.get_pull_request, number)
 
-    async def list_pull_requests_async(self, state: str = "open") -> list[PullRequest]:
+    async def list_pull_requests_async(
+        self,
+        state: PullRequestState = "open",
+    ) -> list[PullRequest]:
         """See list_pull_requests."""
         if self._repository.is_async:
             return await self._repository.list_pull_requests_async(state)  # type: ignore

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     )
 
 IssueState = Literal["open", "closed", "all"]
+PullRequestState = Literal["open", "closed", "all"]
 
 
 class BaseRepository:
@@ -80,7 +81,7 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement get_pull_request"
         raise FeatureNotSupportedError(msg)
 
-    def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+    def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         msg = f"{self.__class__.__name__} does not implement list_pull_requests"
         raise FeatureNotSupportedError(msg)
 
@@ -215,7 +216,10 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement get_pull_request_async"
         raise FeatureNotSupportedError(msg)
 
-    async def list_pull_requests_async(self, state: str = "open") -> list[PullRequest]:
+    async def list_pull_requests_async(
+        self,
+        state: PullRequestState = "open",
+    ) -> list[PullRequest]:
         """List pull requests asynchronously."""
         msg = f"{self.__class__.__name__} does not implement list_pull_requests_async"
         raise FeatureNotSupportedError(msg)

@@ -7,7 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository, IssueState
+from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -182,7 +182,7 @@ class AzureRepository(BaseRepository):
         return azuretools.create_pull_request_model(pr)
 
     @azuretools.handle_azure_errors("Failed to list pull requests")
-    def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+    def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
         # Map state to Azure DevOps status
         from azure.devops.v7_1.git.models import GitPullRequestSearchCriteria

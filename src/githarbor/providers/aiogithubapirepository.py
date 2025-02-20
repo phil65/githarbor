@@ -12,7 +12,7 @@ from aiogithubapi.exceptions import (
     GitHubNotFoundException,
 )
 
-from githarbor.core.base import BaseRepository, IssueState
+from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import (
     AuthenticationError,
     ResourceNotFoundError,
@@ -137,7 +137,9 @@ class AioGitHubRepository(BaseRepository):
             msg = f"Failed to get pull request #{number}: {e}"
             raise ResourceNotFoundError(msg) from e
 
-    async def list_pull_requests_async(self, state: str = "open") -> list[PullRequest]:
+    async def list_pull_requests_async(
+        self, state: PullRequestState = "open"
+    ) -> list[PullRequest]:
         """List pull requests."""
         response = await self._gh.repos.pulls.list(
             f"{self._owner}/{self._name}",

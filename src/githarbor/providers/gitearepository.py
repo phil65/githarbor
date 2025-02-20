@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import upath
 
-from githarbor.core.base import BaseRepository, IssueState
+from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers import giteatools
 
@@ -116,7 +116,7 @@ class GiteaRepository(BaseRepository):
         return giteatools.create_pull_request_model(pr)
 
     @giteatools.handle_api_errors("Failed to list pull requests")
-    def list_pull_requests(self, state: str = "open") -> list[PullRequest]:
+    def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
         prs = self._repo_api.repo_list_pull_requests(
             self._owner,
