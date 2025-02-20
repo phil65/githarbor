@@ -69,7 +69,7 @@ class GitHubRepository(BaseRepository):
             msg = f"Invalid GitHub URL: {url}"
             raise ValueError(msg)
 
-        return cls(parts[0], parts[1], token=kwargs.get("token"))
+        return cls(parts[0], parts[1].removesuffix(".git"), token=kwargs.get("token"))
 
     @property
     def default_branch(self) -> str:
