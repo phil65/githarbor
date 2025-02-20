@@ -20,19 +20,19 @@ class DummyRepository(base.BaseRepository):
 
 def test_register_repo():
     # Clear existing registrations
-    RepoRegistry._repos = {}  # Changed from _repos to _repos
+    RepoRegistry._repo_classes = {}  # Changed from _repos to _repos
 
     @RepoRegistry.register("test")
     class DummyRepositoryRegistered(DummyRepository):
         pass
 
-    assert "test" in RepoRegistry._repos
-    assert RepoRegistry._repos["test"] == DummyRepositoryRegistered
+    assert "test" in RepoRegistry._repo_classes
+    assert RepoRegistry._repo_classes["test"] == DummyRepositoryRegistered
 
 
 def test_create_repo():
     # Register test repo
-    RepoRegistry._repos = {"test": DummyRepository}
+    RepoRegistry._repo_classes = {"test": DummyRepository}
 
     # Create by name
     repo = RepoRegistry.create("test", owner="test", repo="test", token="test-token")
@@ -46,7 +46,7 @@ def test_create_repo():
 
 def test_from_url():
     # Register test repo
-    RepoRegistry._repos = {"test": DummyRepository}
+    RepoRegistry._repo_classes = {"test": DummyRepository}
 
     # Create from URL
     repo = RepoRegistry.from_url("https://test.com/owner/repo", token="test-token")
@@ -59,7 +59,7 @@ def test_from_url():
 
 def test_get_repo_class_for_url():
     # Register test repo
-    RepoRegistry._repos = {"test": DummyRepository}
+    RepoRegistry._repo_classes = {"test": DummyRepository}
 
     # Get repo class
     repo_class = RepoRegistry.get_repo_class_for_url("https://test.com/owner/repo")
@@ -70,9 +70,9 @@ def test_get_repo_class_for_url():
     assert repo_class is None
 
 
-def test_get_registered_repos():
+def test_get_registered_repo_classes():
     # Register test repos
-    RepoRegistry._repos = {"test1": DummyRepository, "test2": DummyRepository}
+    RepoRegistry._repo_classes = {"test1": DummyRepository, "test2": DummyRepository}
 
-    repos = RepoRegistry.get_registered_repos()
+    repos = RepoRegistry.get_registered_repo_classes()
     assert set(repos) == {"test1", "test2"}
