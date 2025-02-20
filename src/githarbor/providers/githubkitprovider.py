@@ -118,7 +118,7 @@ class GitHubKitRepository(BaseRepository):
         """List pull requests."""
         resp = await self._gh.rest.pulls.async_list(self._owner, self._name, state=state)
         data = resp.parsed_data
-        return [githubkittools.create_pull_request_model(pr) for pr in data]
+        return [githubkittools.create_pull_request_model(pr) for pr in data]  # type: ignore
 
     @githubkittools.handle_githubkit_errors("Failed to get issue {issue_id}")
     async def get_issue_async(self, issue_id: int) -> Issue:
@@ -135,7 +135,7 @@ class GitHubKitRepository(BaseRepository):
             state=state,
         )
         data = resp.parsed_data
-        return [githubkittools.create_issue_model(issue) for issue in data]
+        return [githubkittools.create_issue_model(issue) for issue in data]  # type: ignore
 
     @githubkittools.handle_githubkit_errors("Failed to get commit {sha}")
     async def get_commit_async(self, sha: str) -> Commit:

@@ -361,7 +361,9 @@ def create_commit_model(
             stats_dict["total"] = stats.total or 0
     created_at = (
         datetime.fromisoformat(commit_data.author.date)
-        if commit_data.author and commit_data.author.date is not UNSET
+        if commit_data.author
+        and commit_data.author.date
+        and commit_data.author.date is not UNSET
         else None
     )
     return Commit(
