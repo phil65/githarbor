@@ -5,8 +5,8 @@ import os
 import pytest
 
 from githarbor.exceptions import RepositoryNotFoundError
-from githarbor.providers.githubrepository import GitHubRepository
-from githarbor.providers.gitlabrepository import GitLabRepository
+from githarbor.providers.github_provider import GitHubRepository
+from githarbor.providers.gitlab_provider import GitLabRepository
 from githarbor.repositories import create_repository
 
 

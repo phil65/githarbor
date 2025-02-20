@@ -13,11 +13,8 @@ from aiogithubapi.exceptions import (
 )
 
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
-from githarbor.exceptions import (
-    AuthenticationError,
-    ResourceNotFoundError,
-)
-from githarbor.providers import aiogithubapitools
+from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
+from githarbor.providers.aiogithubapi_provider import utils as aiogithubapitools
 
 
 if TYPE_CHECKING:

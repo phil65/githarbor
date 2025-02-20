@@ -4,7 +4,6 @@ import importlib.util
 from typing import TYPE_CHECKING, Any
 
 from githarbor.exceptions import RepositoryNotFoundError
-from githarbor.providers.githubkitprovider import GitHubKitRepository
 from githarbor.registry import RepoRegistry
 
 
@@ -13,37 +12,37 @@ if TYPE_CHECKING:
 
 
 if importlib.util.find_spec("github"):
-    from githarbor.providers.githubrepository import GitHubRepository
+    from githarbor.providers.github_provider.repository import GitHubRepository
 
     RepoRegistry.register("github")(GitHubRepository)
 
 if importlib.util.find_spec("aiogithubapi"):
-    from githarbor.providers.aiogithubapirepository import AioGitHubRepository
+    from githarbor.providers.aiogithubapi_provider.repository import AioGitHubRepository
 
     RepoRegistry.register("aiogithubapi")(AioGitHubRepository)
 
 if importlib.util.find_spec("gitlab"):
-    from githarbor.providers.gitlabrepository import GitLabRepository
+    from githarbor.providers.gitlab_provider.repository import GitLabRepository
 
     RepoRegistry.register("gitlab")(GitLabRepository)
 
 if importlib.util.find_spec("giteapy"):
-    from githarbor.providers.gitearepository import GiteaRepository
+    from githarbor.providers.gitea_provider.repository import GiteaRepository
 
     RepoRegistry.register("gitea")(GiteaRepository)
 
 if importlib.util.find_spec("azure"):
-    from githarbor.providers.azurerepository import AzureRepository
+    from githarbor.providers.azure_provider.repository import AzureRepository
 
     RepoRegistry.register("azure")(AzureRepository)
 
 if importlib.util.find_spec("githubkit"):
-    from githarbor.providers.githubkitprovider import GitHubKitRepository
+    from githarbor.providers.githubkit_provider.repository import GitHubKitRepository
 
     RepoRegistry.register("githubkit")(GitHubKitRepository)
 
 # if importlib.util.find_spec("atlassian"):
-#     from githarbor.providers.bitbucketrepository import BitbucketRepository
+#     from githarbor.providers.bitbucket_provider.repository import BitbucketRepository
 
 #     RepoRegistry.register("bitbucket")(BitbucketRepository)
 
@@ -51,7 +50,7 @@ if importlib.util.find_spec("githubkit"):
 if importlib.util.find_spec("git"):
     # registered last so that it's the fallback, since we allow upaths this would
     # also pick up all other URLs.
-    from githarbor.providers.localrepository import LocalRepository
+    from githarbor.providers.local_provider.repository import LocalRepository
 
     RepoRegistry.register("local")(LocalRepository)
 

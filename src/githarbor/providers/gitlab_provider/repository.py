@@ -18,7 +18,7 @@ from githarbor.core.models import (
     WorkflowRun,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
-from githarbor.providers import gitlabtools
+from githarbor.providers.gitlab_provider import utils as gitlabtools
 
 
 if TYPE_CHECKING:

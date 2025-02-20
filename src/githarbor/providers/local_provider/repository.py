@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
-from githarbor.providers import localtools
+from githarbor.providers.local_provider import utils as localtools
 
 
 if TYPE_CHECKING:

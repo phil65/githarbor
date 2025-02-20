@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from githarbor.exceptions import ResourceNotFoundError
-from githarbor.providers.githubrepository import GitHubRepository
+from githarbor.providers.github_provider import GitHubRepository
 
 
 TOKEN = os.getenv("GITHUB_TOKEN")

@@ -17,7 +17,7 @@ from githarbor.core.models import (
     User,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
-from githarbor.providers import azuretools
+from githarbor.providers.azure_provider import utils as azuretools
 
 
 if TYPE_CHECKING:
@@ -310,3 +310,7 @@ class AzureRepository(BaseRepository):
 
         latest_tag = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)[0]
         return azuretools.create_release_model(latest_tag)
+
+
+if __name__ == "__main__":
+    pass

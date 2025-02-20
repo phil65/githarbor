@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from githarbor.providers.gitlabrepository import GitLabRepository
+from githarbor.providers.gitlab_provider import GitLabRepository
 
 
 TOKEN = os.getenv("GITHUB_TOKEN")

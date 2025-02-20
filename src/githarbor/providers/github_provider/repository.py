@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
-from githarbor.providers import githubtools
+from githarbor.providers.github_provider import utils as githubtools
 
 
 if TYPE_CHECKING:

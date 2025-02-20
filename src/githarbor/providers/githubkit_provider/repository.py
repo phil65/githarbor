@@ -10,7 +10,7 @@ from githubkit.exception import GitHubException
 
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import ResourceNotFoundError
-from githarbor.providers import githubkittools
+from githarbor.providers.githubkit_provider import utils as githubkittools
 
 
 if TYPE_CHECKING:

@@ -11,7 +11,7 @@ import upath
 
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
-from githarbor.providers import giteatools
+from githarbor.providers.gitea_provider import utils as giteatools
 
 
 if TYPE_CHECKING:
