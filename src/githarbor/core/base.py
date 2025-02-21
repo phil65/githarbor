@@ -347,3 +347,65 @@ class BaseRepository:
         """List all tags asynchronously."""
         msg = f"{self.__class__.__name__} does not implement list_tags_async"
         raise FeatureNotSupportedError(msg)
+
+
+class BaseOwner:
+    """Base class for repository owners."""
+
+    is_async: ClassVar[bool] = False
+    url_patterns: ClassVar[list[str]] = []
+
+    def list_repositories(self) -> list[BaseRepository]:
+        msg = f"{self.__class__.__name__} does not implement list_repositories"
+        raise FeatureNotSupportedError(msg)
+
+    def create_repository(
+        self,
+        name: str,
+        description: str = "",
+        private: bool = False,
+    ) -> BaseRepository:
+        msg = f"{self.__class__.__name__} does not implement create_repository"
+        raise FeatureNotSupportedError(msg)
+
+    def get_user(self) -> User:
+        msg = f"{self.__class__.__name__} does not implement get_user"
+        raise FeatureNotSupportedError(msg)
+
+    def delete_repository(self, name: str) -> None:
+        msg = f"{self.__class__.__name__} does not implement delete_repository"
+        raise FeatureNotSupportedError(msg)
+
+    async def list_repositories_async(self) -> list[BaseRepository]:
+        """List repositories asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_repositories_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def create_repository_async(
+        self,
+        name: str,
+        description: str = "",
+        private: bool = False,
+    ) -> BaseRepository:
+        """Create repository asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement create_repository_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def get_user_async(self) -> User:
+        """Get user information asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement get_user_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def delete_repository_async(self, name: str) -> None:
+        """Delete repository asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement delete_repository_async"
+        raise FeatureNotSupportedError(msg)
+
+    @classmethod
+    def supports_url(cls, url: str) -> bool:
+        return any(pattern in url for pattern in cls.url_patterns)
+
+    @classmethod
+    def from_url(cls, url: str, **kwargs: Any) -> BaseOwner:
+        msg = f"{cls.__name__} does not implement from_url"
+        raise FeatureNotSupportedError(msg)

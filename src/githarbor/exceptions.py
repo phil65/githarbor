@@ -31,3 +31,7 @@ class RateLimitError(GitHarborError):
 
 class FeatureNotSupportedError(GitHarborError):
     """Raised when a feature is not supported by the implementation."""
+
+
+class OwnerNotFoundError(GitHarborError):
+    """Raised when an owner cannot be found."""

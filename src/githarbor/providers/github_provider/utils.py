@@ -26,6 +26,7 @@ from githarbor.exceptions import GitHarborError, ResourceNotFoundError
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from github.AuthenticatedUser import AuthenticatedUser
     from github.NamedUser import NamedUser
     from github.Repository import Repository
 
@@ -111,11 +112,13 @@ def create_user_model(gh_user: None) -> None: ...
 
 
 @overload
-def create_user_model(gh_user: NamedUser) -> User: ...
+def create_user_model(gh_user: NamedUser | AuthenticatedUser) -> User: ...
 
 
-def create_user_model(gh_user: NamedUser | None) -> User | None:
+def create_user_model(gh_user: NamedUser | AuthenticatedUser | None) -> User | None:
     """Create User model from GitHub user object."""
+    from github.NamedUser import NamedUser
+
     if not gh_user:
         return None
     return User(
@@ -132,7 +135,9 @@ def create_user_model(gh_user: NamedUser | None) -> User | None:
         following=gh_user.following,
         public_repos=gh_user.public_repos,
         blog=gh_user.blog,
-        twitter_username=gh_user.twitter_username,
+        twitter_username=gh_user.twitter_username
+        if isinstance(gh_user, NamedUser)
+        else None,
         hireable=gh_user.hireable,
         gravatar_id=gh_user.gravatar_id,
     )

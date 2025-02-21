@@ -6,18 +6,23 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from weakref import WeakValueDictionary
 
 from githarbor.core.proxy import Repository
+from githarbor.core.user_proxy import Owner
 from githarbor.exceptions import RepositoryNotFoundError
 
 
 if TYPE_CHECKING:
-    from githarbor.core.base import BaseRepository
+    from githarbor.core.base import BaseOwner, BaseRepository
 
 
 class RepoRegistry:
     """Registry for repository implementations."""
 
     _repo_classes: ClassVar[dict[str, type[BaseRepository]]] = {}
-    _instances: ClassVar[WeakValueDictionary[str, Repository]] = WeakValueDictionary()
+    _owner_classes: ClassVar[dict[str, type[BaseOwner]]] = {}
+    _repo_instances: ClassVar[WeakValueDictionary[str, Repository]] = (
+        WeakValueDictionary()
+    )
+    _owner_instances: ClassVar[WeakValueDictionary[str, Owner]] = WeakValueDictionary()
 
     @classmethod
     def register(cls, name: str):
@@ -58,11 +63,11 @@ class RepoRegistry:
         # Generate cache key from URL and relevant kwargs
         cache_key = f"{url}:{hash(frozenset(kwargs.items()))}"
 
-        if cache_key in cls._instances:
-            return cls._instances[cache_key]
+        if cache_key in cls._repo_instances:
+            return cls._repo_instances[cache_key]
 
         repo = cls.from_url(url, **kwargs)
-        cls._instances[cache_key] = repo
+        cls._repo_instances[cache_key] = repo
         return repo
 
     @classmethod
@@ -118,7 +123,41 @@ class RepoRegistry:
     @classmethod
     def clear_cache(cls) -> None:
         """Clear the instance cache."""
-        cls._instances.clear()
+        cls._repo_instances.clear()
+
+    @classmethod
+    def register_owner(cls, name: str):
+        """Decorator to register an owner class."""
+
+        def decorator(owner_class: type[BaseOwner]) -> type[BaseOwner]:
+            cls._owner_classes[name] = owner_class
+            return owner_class
+
+        return decorator
+
+    @classmethod
+    def get_owner(cls, url: str, **kwargs: Any) -> Owner:
+        """Get cached owner instance or create new one."""
+        cache_key = f"{url}:{hash(frozenset(kwargs.items()))}"
+
+        if cache_key in cls._owner_instances:
+            return cls._owner_instances[cache_key]
+
+        owner = cls.owner_from_url(url, **kwargs)
+        cls._owner_instances[cache_key] = owner
+        return owner
+
+    @classmethod
+    def owner_from_url(cls, url: str, **kwargs: Any) -> Owner:
+        """Create an owner instance from a URL."""
+        url = url.removesuffix(".git")
+        for owner_class in cls._owner_classes.values():
+            if owner_class.supports_url(url):
+                base_owner = owner_class.from_url(url, **kwargs)
+                return Owner(base_owner)
+
+        msg = f"No owner implementation found for URL: {url}"
+        raise RepositoryNotFoundError(msg)
 
 
 registry = RepoRegistry()

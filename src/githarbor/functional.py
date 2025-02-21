@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from datetime import datetime
     import os
 
-    from githarbor.core.base import IssueState, PullRequestState
+    from githarbor.core.base import BaseRepository, IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
         Commit,
@@ -341,6 +341,55 @@ async def list_tags_async(url: str) -> list[Tag]:
     return await repo.list_tags_async()
 
 
+async def list_repositories_async(url: str) -> list[BaseRepository]:
+    """List repositories owned by user/organization.
+
+    Args:
+        url: Owner URL
+    """
+    owner = RepoRegistry.get_owner(url)
+    return await owner.list_repositories_async()
+
+
+async def create_repository_async(
+    url: str,
+    name: str,
+    description: str = "",
+    private: bool = False,
+) -> BaseRepository:
+    """Create a new repository.
+
+    Args:
+        url: Owner URL
+        name: Repository name
+        description: Repository description
+        private: Whether to create a private repository
+    """
+    owner = RepoRegistry.get_owner(url)
+    return await owner.create_repository_async(name, description, private)
+
+
+async def get_user_async(url: str) -> User:
+    """Get user information.
+
+    Args:
+        url: User URL
+    """
+    owner = RepoRegistry.get_owner(url)
+    return await owner.get_user_async()
+
+
+async def delete_repository_async(url: str, name: str) -> None:
+    """Delete a repository.
+
+    Args:
+        url: Owner URL
+        name: Repository name to delete
+    """
+    owner = RepoRegistry.get_owner(url)
+    await owner.delete_repository_async(name)
+
+
 get_repo_user = make_sync(get_repo_user_async)
 get_branch = make_sync(get_branch_async)
 get_pull_request = make_sync(get_pull_request_async)
@@ -362,6 +411,10 @@ list_releases = make_sync(list_releases_async)
 get_release = make_sync(get_release_async)
 get_tag = make_sync(get_tag_async)
 list_tags = make_sync(list_tags_async)
+list_repositories = make_sync(list_repositories_async)
+create_repository = make_sync(create_repository_async)
+get_user = make_sync(get_user_async)
+delete_repository = make_sync(delete_repository_async)
 
 
 def setup_env(env: Any) -> None:
@@ -393,6 +446,11 @@ def setup_env(env: Any) -> None:
         "get_release_async": get_release_async,
         "get_tag_async": get_tag_async,
         "list_tags_async": list_tags_async,
+        # Owner functions - async
+        "list_repositories_async": list_repositories_async,
+        "create_repository_async": create_repository_async,
+        "get_user_async": get_user_async,
+        "delete_repository_async": delete_repository_async,
         # Sync functions
         "get_repo_user": get_repo_user,
         "get_branch": get_branch,
@@ -415,6 +473,11 @@ def setup_env(env: Any) -> None:
         "get_release": get_release,
         "get_tag": get_tag,
         "list_tags": list_tags,
+        # Owner functions - sync
+        "list_repositories": list_repositories,
+        "create_repository": create_repository,
+        "get_user": get_user,
+        "delete_repository": delete_repository,
     }
 
     # Register as both globals and filters
