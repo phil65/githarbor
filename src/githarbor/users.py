@@ -21,6 +21,11 @@ if importlib.util.find_spec("aiogithubapi"):
 
     RepoRegistry.register_owner("aiogithubapi")(AioGitHubOwner)
 
+if importlib.util.find_spec("githubkit"):
+    from githarbor.providers.githubkit_provider.owner import GitHubKitOwner
+
+    RepoRegistry.register_owner("githubkit")(GitHubKitOwner)
+
 
 def create_owner(url: str, **kwargs: Any) -> Owner:
     """Create a proxy-wrapped owner instance from a URL.
