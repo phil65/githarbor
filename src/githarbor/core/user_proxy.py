@@ -26,6 +26,9 @@ class Owner(BaseOwner):
         self._owner = owner
         self.owner_type = type(owner).__name__.removesuffix("Owner")
 
+    def __repr__(self):
+        return f"<{self.owner_type} {self.owner.name}>"
+
     @property
     def owner(self) -> BaseOwner:
         """Return wrapped owner instance."""

@@ -33,11 +33,17 @@ class GitHubOwner(BaseOwner):
                 logger.info("No GitHub token provided. Stricter rate limit.")
             auth = Auth.Token(t) if t else None
             self._gh = Github(auth=auth)
-            self._user = self._gh.get_user(username)
+            self._name = username
+            self._user = self._gh.get_user()
             assert isinstance(self._user, AuthenticatedUser)
         except GithubException as e:
             msg = f"GitHub authentication failed: {e!s}"
             raise AuthenticationError(msg) from e
+
+    @property
+    def name(self) -> str:
+        """The name of the owner."""
+        return self._name
 
     @classmethod
     def from_url(cls, url: str, **kwargs: Any) -> GitHubOwner:
@@ -92,3 +98,15 @@ class GitHubOwner(BaseOwner):
                 msg = f"Repository {name} not found"
                 raise ResourceNotFoundError(msg) from e
             raise
+
+
+if __name__ == "__main__":
+
+    async def main():
+        provider = GitHubOwner("phil65")
+        repos = provider.list_repositories()
+        print(repos)
+
+    import asyncio
+
+    asyncio.run(main())

@@ -354,10 +354,16 @@ class BaseOwner:
 
     is_async: ClassVar[bool] = False
     url_patterns: ClassVar[list[str]] = []
+    _name: str = ""
 
     def list_repositories(self) -> list[BaseRepository]:
         msg = f"{self.__class__.__name__} does not implement list_repositories"
         raise FeatureNotSupportedError(msg)
+
+    @property
+    def name(self) -> str:
+        """The name of the repository."""
+        return self._name
 
     def create_repository(
         self,

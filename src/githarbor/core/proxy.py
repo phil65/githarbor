@@ -40,6 +40,9 @@ class Repository(BaseRepository):
         self._repository = repository
         self.repository_type = type(repository).__name__.removesuffix("Repository")
 
+    def __repr__(self):
+        return f"<{self.repository_type} {self.owner}/{self.name}>"
+
     @property
     def owner(self):
         return self._repository.owner

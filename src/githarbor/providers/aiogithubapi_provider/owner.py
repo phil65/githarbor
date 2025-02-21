@@ -38,11 +38,16 @@ class AioGitHubOwner(BaseOwner):
                 msg = "GitHub token is required"
                 raise ValueError(msg)
             self._gh = GitHubAPI(token=token)
-            self._username = username
+            self._name = username
 
         except GitHubAuthenticationException as e:
             msg = f"GitHub authentication failed: {e}"
             raise AuthenticationError(msg) from e
+
+    @property
+    def name(self) -> str:
+        """The name of the owner."""
+        return self._name
 
     @classmethod
     def from_url(cls, url: str, **kwargs: Any) -> AioGitHubOwner:
@@ -116,7 +121,7 @@ class AioGitHubOwner(BaseOwner):
         from aiogithubapi.exceptions import GitHubAuthenticationException
 
         try:
-            response = await self._gh.users.get(self._username)
+            response = await self._gh.users.get(self._name)
             assert response.data
             return aiogithubapitools.create_user_model(response.data)
         except GitHubAuthenticationException as e:
@@ -136,7 +141,7 @@ class AioGitHubOwner(BaseOwner):
         try:
             kwargs = {GitHubRequestKwarg.METHOD: HttpMethod.DELETE}
             await self._gh.generic(
-                endpoint=f"/repos/{self._username}/{name}",
+                endpoint=f"/repos/{self._name}/{name}",
                 **kwargs,  # type: ignore
             )
         except GitHubAuthenticationException as e:
