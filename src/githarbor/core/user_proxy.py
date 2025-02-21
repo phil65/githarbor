@@ -9,6 +9,8 @@ from githarbor.core.base import BaseOwner, BaseRepository
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from githarbor.core.models import User
 
 
@@ -118,3 +120,21 @@ class Owner(BaseOwner):
         if self._owner.is_async:
             await self._owner.delete_repository_async(name)
         await asyncio.to_thread(self._owner.delete_repository, name)
+
+    def get_sync_methods(self) -> list[Callable]:
+        """Return list of all synchronous methods."""
+        return [
+            self.list_repositories,
+            self.create_repository,
+            self.get_user,
+            self.delete_repository,
+        ]
+
+    def get_async_methods(self) -> list[Callable]:
+        """Return list of all asynchronous methods."""
+        return [
+            self.list_repositories_async,
+            self.create_repository_async,
+            self.get_user_async,
+            self.delete_repository_async,
+        ]

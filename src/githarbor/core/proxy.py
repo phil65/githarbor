@@ -11,7 +11,7 @@ from githarbor.exceptions import ResourceNotFoundError
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from datetime import datetime
     import os
 
@@ -799,3 +799,55 @@ class Repository(BaseRepository):
         if self._repository.is_async:
             return await self._repository.list_tags_async()  # type: ignore
         return await asyncio.to_thread(self._repository.list_tags)
+
+    def get_sync_methods(self) -> list[Callable]:
+        """Return list of all synchronous methods."""
+        return [
+            self.get_repo_user,
+            self.get_branch,
+            self.get_pull_request,
+            self.list_pull_requests,
+            self.get_issue,
+            self.list_issues,
+            self.get_commit,
+            self.list_commits,
+            self.get_workflow,
+            self.list_workflows,
+            self.get_workflow_run,
+            self.download,
+            self.search_commits,
+            self.get_contributors,
+            self.get_languages,
+            self.compare_branches,
+            self.get_latest_release,
+            self.list_releases,
+            self.get_release,
+            self.get_tag,
+            self.list_tags,
+        ]
+
+    def get_async_methods(self) -> list[Callable]:
+        """Return list of all asynchronous methods."""
+        return [
+            self.get_repo_user_async,
+            self.get_branch_async,
+            self.get_pull_request_async,
+            self.list_pull_requests_async,
+            self.get_issue_async,
+            self.list_issues_async,
+            self.get_commit_async,
+            self.list_commits_async,
+            self.get_workflow_async,
+            self.list_workflows_async,
+            self.get_workflow_run_async,
+            self.download_async,
+            self.search_commits_async,
+            self.get_contributors_async,
+            self.get_languages_async,
+            self.compare_branches_async,
+            self.get_latest_release_async,
+            self.list_releases_async,
+            self.get_release_async,
+            self.get_tag_async,
+            self.list_tags_async,
+        ]
