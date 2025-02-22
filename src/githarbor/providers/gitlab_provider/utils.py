@@ -9,7 +9,10 @@ import re
 import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
+from gitlab.v4.objects import ProjectBranch
+
 from githarbor.core.models import (
+    Branch,
     Commit,
     Issue,
     Label,
@@ -101,6 +104,31 @@ def parse_timestamp(timestamp: str) -> datetime:
             continue
     msg = f"Unable to parse timestamp: {timestamp}"
     raise ValueError(msg)
+
+
+def create_branch_model(branch: ProjectBranch) -> Branch:
+    """Create Branch model from GitLab ProjectBranch object."""
+    return Branch(
+        name=branch.name,
+        sha=branch.commit["id"],
+        protected=branch.protected,
+        default=False,  # GitLab doesn't provide this in branch object
+        created_at=None,  # GitLab doesn't provide this
+        updated_at=None,  # GitLab doesn't provide this
+        last_commit_date=parse_timestamp(branch.commit["created_at"]),
+        last_commit_message=branch.commit["message"],
+        last_commit_author=User(
+            username=branch.commit["author_name"],
+            name=branch.commit["author_name"],
+            email=branch.commit["author_email"],
+        ),
+        protection_rules={
+            "can_push": branch.developers_can_push,
+            "can_merge": branch.developers_can_merge,
+        }
+        if branch.protected
+        else None,
+    )
 
 
 @overload

@@ -343,6 +343,27 @@ class GitHubKitRepository(BaseRepository):
         )
         return githubkittools.create_pull_request_model(response.parsed_data)
 
+    @githubkittools.handle_githubkit_errors("Failed to create branch")
+    async def create_branch_async(
+        self,
+        name: str,
+        base_commit: str,
+    ) -> Branch:
+        """Create a new branch at the specified commit."""
+        await self._gh.rest.git.async_create_ref(
+            owner=self._owner,
+            repo=self._name,
+            ref=f"refs/heads/{name}",
+            sha=base_commit,
+        )
+        # Get the branch to return proper Branch model
+        response = await self._gh.rest.repos.async_get_branch(
+            owner=self._owner,
+            repo=self._name,
+            branch=name,
+        )
+        return githubkittools.create_branch_model(response.parsed_data)
+
 
 if __name__ == "__main__":
 

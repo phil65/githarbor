@@ -374,6 +374,22 @@ class GitHubRepository(BaseRepository):
             diff=diff,
         )
 
+    @githubtools.handle_github_errors("Failed to create branch")
+    def create_branch(
+        self,
+        name: str,
+        base_commit: str,
+    ) -> Branch:
+        """Create a new branch at the specified commit."""
+        # Create reference with full ref name
+        _ref = self._repo.create_git_ref(
+            ref=f"refs/heads/{name}",
+            sha=base_commit,
+        )
+        # Get the branch to return proper Branch model
+        branch = self._repo.get_branch(name)
+        return githubtools.create_branch_model(branch)
+
 
 if __name__ == "__main__":
     repo = GitHubRepository.from_url("https://github.com/phil65/mknodes")

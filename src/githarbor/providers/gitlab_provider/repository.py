@@ -402,6 +402,19 @@ class GitLabRepository(BaseRepository):
         })
         return gitlabtools.create_pull_request_model(mr)
 
+    @gitlabtools.handle_gitlab_errors("Failed to create branch")
+    def create_branch(
+        self,
+        name: str,
+        base_commit: str,
+    ) -> Branch:
+        """Create a new branch at the specified commit."""
+        branch = self._repo.branches.create({
+            "branch": name,
+            "ref": base_commit,
+        })
+        return gitlabtools.create_branch_model(branch)
+
 
 if __name__ == "__main__":
     repo = GitLabRepository("phil65", "test")
