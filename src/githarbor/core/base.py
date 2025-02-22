@@ -413,7 +413,8 @@ class BaseRepository:
         draft: bool = False,
     ) -> PullRequest:
         """Create a pull request from a diff string asynchronously."""
-        msg = f"{self.__class__.__name__} does not implement create_pull_request_from_diff_async"
+        fn_name = "create_pull_request_from_diff_async"
+        msg = f"{self.__class__.__name__} does not implement {fn_name}"
         raise FeatureNotSupportedError(msg)
 
 
