@@ -413,7 +413,7 @@ class GitLabRepository(BaseRepository):
             "branch": name,
             "ref": base_commit,
         })
-        return gitlabtools.create_branch_model(branch)
+        return gitlabtools.create_branch_model(branch)  # type: ignore
 
 
 if __name__ == "__main__":
