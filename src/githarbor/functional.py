@@ -478,6 +478,7 @@ def setup_env(env: Any) -> None:
         "get_release_async": get_release_async,
         "get_tag_async": get_tag_async,
         "list_tags_async": list_tags_async,
+        "create_pull_request_async": create_pull_request_async,
         # Owner functions - async
         "list_repositories_async": list_repositories_async,
         "create_repository_async": create_repository_async,
@@ -508,6 +509,7 @@ def setup_env(env: Any) -> None:
         # Owner functions - sync
         "list_repositories": list_repositories,
         "create_repository": create_repository,
+        "create_pull_request": create_pull_request,
         "get_user": get_user,
         "delete_repository": delete_repository,
     }
