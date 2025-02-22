@@ -345,34 +345,106 @@ class GitHubRepository(BaseRepository):
         )
         return githubtools.create_pull_request_model(pr)
 
+    @githubtools.handle_github_errors("Failed to create pull request from diff")
     def create_pull_request_from_diff(
         self,
-        base_branch: str,
-        head_branch: str,
         title: str,
         body: str,
+        base_branch: str,
         diff: str,
-    ) -> dict[str, str]:
-        """Create a pull request from a diff string.
+        head_branch: str | None = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request from a diff string."""
+        from datetime import datetime
+        import uuid
 
-        Args:
-            base_branch: Target branch for the PR
-            head_branch: Source branch for the PR
-            title: Pull request title
-            body: Pull request description
-            diff: Diff as a string
+        from github import InputGitTreeElement
+        from github.GithubException import GithubException
 
-        Returns:
-            Dictionary with status and url/error message
-        """
-        return githubtools.create_pull_request_from_diff(
-            repo=self._repo,
-            base_branch=base_branch,
-            head_branch=head_branch,
+        from githarbor.core.filechanges import parse_diff
+        from githarbor.exceptions import GitHarborError
+
+        # Generate unique branch name if not provided
+        if head_branch is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            head_branch = f"patch/{timestamp}_{unique_id}"
+
+        # Get the base branch's last commit
+        base_ref = self._repo.get_git_ref(f"refs/heads/{base_branch}")
+        base_commit = self._repo.get_git_commit(base_ref.object.sha)
+
+        # Create a new branch
+        try:
+            head_ref = self._repo.get_git_ref(f"refs/heads/{head_branch}")
+            msg = f"Branch {head_branch} already exists"
+            raise GitHarborError(msg)
+        except GithubException:
+            ref = f"refs/heads/{head_branch}"
+            head_ref = self._repo.create_git_ref(ref=ref, sha=base_ref.object.sha)
+
+        # Parse the diff and apply changes
+        changes = parse_diff(diff)
+
+        # Create blobs and trees for the changes
+        new_tree: list[InputGitTreeElement] = []
+        for change in changes:
+            if change.mode == "delete":
+                # For deletions, we add a null SHA
+                elem = InputGitTreeElement(
+                    path=change.path,
+                    mode="100644",
+                    type="blob",
+                    sha=None,
+                )
+                new_tree.append(elem)
+                continue
+
+            if change.content is not None:
+                # Create blob for the file content
+                blob = self._repo.create_git_blob(
+                    content=change.content, encoding="utf-8"
+                )
+
+                if change.old_path:
+                    # For renamed files, we need to remove the old path
+                    elem = InputGitTreeElement(
+                        path=change.old_path,
+                        mode="100644",
+                        type="blob",
+                        sha=None,
+                    )
+                    new_tree.append(elem)
+
+                elem = InputGitTreeElement(
+                    path=change.path,
+                    mode="100644",
+                    type="blob",
+                    sha=blob.sha,
+                )
+                new_tree.append(elem)
+
+        # Create a new tree
+        base_tree = self._repo.get_git_tree(base_commit.tree.sha)
+        tree = self._repo.create_git_tree(new_tree, base_tree)
+
+        # Create a commit
+        msg = f"Changes for {title}"
+        commit = self._repo.create_git_commit(msg, tree=tree, parents=[base_commit])
+
+        # Update the reference
+        head_ref.edit(commit.sha, force=True)
+
+        # Create the pull request
+        pr = self._repo.create_pull(
             title=title,
             body=body,
-            diff=diff,
+            base=base_branch,
+            head=head_branch,
+            draft=draft,
         )
+        return githubtools.create_pull_request_model(pr)
 
     @githubtools.handle_github_errors("Failed to create branch")
     def create_branch(

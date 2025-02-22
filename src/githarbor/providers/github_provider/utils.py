@@ -7,7 +7,6 @@ import os
 import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
-from githarbor.core.filechanges import parse_diff
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -20,7 +19,7 @@ from githarbor.core.models import (
     Workflow,
     WorkflowRun,
 )
-from githarbor.exceptions import GitHarborError, ResourceNotFoundError
+from githarbor.exceptions import ResourceNotFoundError
 
 
 if TYPE_CHECKING:
@@ -28,7 +27,6 @@ if TYPE_CHECKING:
 
     from github.AuthenticatedUser import AuthenticatedUser
     from github.NamedUser import NamedUser
-    from github.Repository import Repository
 
 
 T = TypeVar("T")
@@ -341,109 +339,3 @@ def create_file_model(content: Any) -> dict[str, Any]:
         "download_url": content.download_url,
         "encoding": content.encoding if hasattr(content, "encoding") else None,
     }
-
-
-def create_pull_request_from_diff(
-    repo: Repository,
-    base_branch: str,
-    head_branch: str,
-    title: str,
-    body: str,
-    diff: str,
-) -> dict[str, Any]:
-    """Create a pull request from a diff string.
-
-    Uses the unidiff library for robust diff parsing.
-
-    Args:
-        repo: GitHub repository object
-        base_branch: Target branch for the PR
-        head_branch: Source branch for the PR
-        title: Pull request title
-        body: Pull request description
-        diff: Diff as a string
-
-    Returns:
-        Dictionary with status and url/error message
-
-    Raises:
-        GitHarborError: If PR creation fails
-    """
-    from github import InputGitTreeElement
-    from github.GithubException import GithubException
-
-    try:
-        # Get the base branch's last commit
-        base_ref = repo.get_git_ref(f"heads/{base_branch}")
-        base_commit = repo.get_git_commit(base_ref.object.sha)
-
-        # Create a new branch
-        try:
-            head_ref = repo.get_git_ref(f"heads/{head_branch}")
-            msg = f"Branch {head_branch} already exists"
-            raise GitHarborError(msg)
-        except GithubException:
-            ref = f"refs/heads/{head_branch}"
-            head_ref = repo.create_git_ref(ref=ref, sha=base_ref.object.sha)
-
-        # Parse the diff and apply changes
-        changes = parse_diff(diff)
-
-        # Create blobs and trees for the changes
-        new_tree: list[InputGitTreeElement] = []
-        for change in changes:
-            if change.mode == "delete":
-                # For deletions, we add a null SHA
-                elem = InputGitTreeElement(
-                    path=change.path,
-                    mode="100644",
-                    type="blob",
-                    sha=None,
-                )
-                new_tree.append(elem)
-                continue
-
-            if change.content is not None:
-                # Create blob for the file content
-                blob = repo.create_git_blob(content=change.content, encoding="utf-8")
-
-                if change.old_path:
-                    # For renamed files, we need to remove the old path
-                    elem = InputGitTreeElement(
-                        path=change.old_path,
-                        mode="100644",
-                        type="blob",
-                        sha=None,
-                    )
-                    new_tree.append(elem)
-                elem = InputGitTreeElement(
-                    path=change.path,
-                    mode="100644",
-                    type="blob",
-                    sha=blob.sha,
-                )
-                new_tree.append(elem)
-
-        # Create a new tree
-        base_tree = repo.get_git_tree(base_commit.tree.sha)
-        tree = repo.create_git_tree(new_tree, base_tree)
-
-        # Create a commit
-        msg = f"Changes for {title}"
-        commit = repo.create_git_commit(msg, tree=tree, parents=[base_commit])
-
-        # Update the reference
-        head_ref.edit(commit.sha, force=True)
-
-        # Create the pull request
-        pr = repo.create_pull(
-            title=title,
-            body=body,
-            base=base_branch,
-            head=head_branch,
-        )
-    except Exception as e:
-        msg = f"Failed to create pull request: {e!s}"
-        raise GitHarborError(msg) from e
-    else:
-        return {"status": "success", "url": pr.html_url, "number": pr.number}
