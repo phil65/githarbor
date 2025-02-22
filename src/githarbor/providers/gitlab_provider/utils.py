@@ -9,8 +9,6 @@ import re
 import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
-from gitlab.v4.objects import ProjectBranch
-
 from githarbor.core.models import (
     Branch,
     Commit,
@@ -29,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from gitlab.base import RESTObject
+    from gitlab.v4.objects import ProjectBranch
 
 
 T = TypeVar("T")
