@@ -585,6 +585,32 @@ class Repository(BaseRepository):
             return asyncio.run(self._repository.list_tags_async())
         return self._repository.list_tags()
 
+    def create_branch(
+        self,
+        name: str,
+        base_commit: str,
+    ) -> Branch:
+        """Create a new branch at the specified commit.
+
+        Args:
+            name: Name of the branch to create
+            base_commit: SHA of the commit to base the branch on
+
+        Returns:
+            Created branch
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.create_branch_async(
+                    name=name,
+                    base_commit=base_commit,
+                )
+            )
+        return self._repository.create_branch(
+            name=name,
+            base_commit=base_commit,
+        )
+
     def get_recent_activity(
         self,
         days: int = 30,
@@ -861,6 +887,31 @@ class Repository(BaseRepository):
             draft=draft,
         )
 
+    async def create_branch_async(
+        self,
+        name: str,
+        base_commit: str,
+    ) -> Branch:
+        """Create a new branch at the specified commit asynchronously.
+
+        Args:
+            name: Name of the branch to create
+            base_commit: SHA of the commit to base the branch on
+
+        Returns:
+            Created branch
+        """
+        if self._repository.is_async:
+            return await self._repository.create_branch_async(
+                name=name,
+                base_commit=base_commit,
+            )
+        return await asyncio.to_thread(
+            self._repository.create_branch,
+            name=name,
+            base_commit=base_commit,
+        )
+
     async def list_tags_async(self) -> list[Tag]:
         """See list_tags."""
         if self._repository.is_async:
@@ -871,6 +922,7 @@ class Repository(BaseRepository):
         """Return list of all synchronous methods."""
         return [
             self.get_repo_user,
+            self.create_branch,
             self.get_branch,
             self.create_pull_request,
             self.get_pull_request,
@@ -898,6 +950,7 @@ class Repository(BaseRepository):
         """Return list of all asynchronous methods."""
         return [
             self.get_repo_user_async,
+            self.create_branch_async,
             self.get_branch_async,
             self.create_pull_request_async,
             self.get_pull_request_async,

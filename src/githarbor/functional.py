@@ -421,8 +421,31 @@ async def create_pull_request_async(
     )
 
 
+async def create_branch_async(
+    url: str,
+    name: str,
+    base_commit: str,
+) -> Branch:
+    """Create a new branch at the specified commit.
+
+    Args:
+        url: Repository URL
+        name: Name of the branch to create
+        base_commit: SHA of the commit to base the branch on
+
+    Returns:
+        Created branch
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.create_branch_async(
+        name=name,
+        base_commit=base_commit,
+    )
+
+
 get_repo_user = make_sync(get_repo_user_async)
 get_branch = make_sync(get_branch_async)
+create_branch = make_sync(create_branch_async)
 get_pull_request = make_sync(get_pull_request_async)
 list_pull_requests = make_sync(list_pull_requests_async)
 get_issue = make_sync(get_issue_async)
@@ -459,6 +482,7 @@ def setup_env(env: Any) -> None:
         # Async functions
         "get_repo_user_async": get_repo_user_async,
         "get_branch_async": get_branch_async,
+        "create_branch_async": create_branch_async,
         "get_pull_request_async": get_pull_request_async,
         "list_pull_requests_async": list_pull_requests_async,
         "get_issue_async": get_issue_async,
@@ -487,6 +511,7 @@ def setup_env(env: Any) -> None:
         # Sync functions
         "get_repo_user": get_repo_user,
         "get_branch": get_branch,
+        "create_branch": create_branch,
         "get_pull_request": get_pull_request,
         "list_pull_requests": list_pull_requests,
         "get_issue": get_issue,
