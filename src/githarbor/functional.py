@@ -390,6 +390,37 @@ async def delete_repository_async(url: str, name: str) -> None:
     await owner.delete_repository_async(name)
 
 
+async def create_pull_request_async(
+    url: str,
+    title: str,
+    body: str,
+    head_branch: str,
+    base_branch: str,
+    draft: bool = False,
+) -> PullRequest:
+    """Create a new pull request.
+
+    Args:
+        url: Repository URL
+        title: Pull request title
+        body: Pull request description
+        head_branch: Source branch containing the changes
+        base_branch: Target branch for the changes
+        draft: Whether to create a draft pull request
+
+    Returns:
+        Newly created pull request
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.create_pull_request_async(
+        title=title,
+        body=body,
+        head_branch=head_branch,
+        base_branch=base_branch,
+        draft=draft,
+    )
+
+
 get_repo_user = make_sync(get_repo_user_async)
 get_branch = make_sync(get_branch_async)
 get_pull_request = make_sync(get_pull_request_async)
@@ -411,6 +442,7 @@ list_releases = make_sync(list_releases_async)
 get_release = make_sync(get_release_async)
 get_tag = make_sync(get_tag_async)
 list_tags = make_sync(list_tags_async)
+create_pull_request = make_sync(create_pull_request_async)
 list_repositories = make_sync(list_repositories_async)
 create_repository = make_sync(create_repository_async)
 get_user = make_sync(get_user_async)

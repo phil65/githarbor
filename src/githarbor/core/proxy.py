@@ -537,6 +537,44 @@ class Repository(BaseRepository):
             return asyncio.run(self._repository.get_tag_async(name))
         return self._repository.get_tag(name)
 
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a new pull request.
+
+        Args:
+            title: Pull request title
+            body: Pull request description
+            head_branch: Source branch containing the changes
+            base_branch: Target branch for the changes
+            draft: Whether to create a draft pull request
+
+        Returns:
+            Newly created pull request
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.create_pull_request_async(
+                    title=title,
+                    body=body,
+                    head_branch=head_branch,
+                    base_branch=base_branch,
+                    draft=draft,
+                )
+            )
+        return self._repository.create_pull_request(
+            title=title,
+            body=body,
+            head_branch=head_branch,
+            base_branch=base_branch,
+            draft=draft,
+        )
+
     def list_tags(self) -> list[Tag]:
         """List all tags.
 
@@ -797,6 +835,32 @@ class Repository(BaseRepository):
             return await self._repository.get_tag_async(name)  # type: ignore
         return await asyncio.to_thread(self._repository.get_tag, name)
 
+    async def create_pull_request_async(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        """See create_pull_request."""
+        if self._repository.is_async:
+            return await self._repository.create_pull_request_async(
+                title=title,
+                body=body,
+                head_branch=head_branch,
+                base_branch=base_branch,
+                draft=draft,
+            )
+        return await asyncio.to_thread(
+            self._repository.create_pull_request,
+            title=title,
+            body=body,
+            head_branch=head_branch,
+            base_branch=base_branch,
+            draft=draft,
+        )
+
     async def list_tags_async(self) -> list[Tag]:
         """See list_tags."""
         if self._repository.is_async:
@@ -808,6 +872,7 @@ class Repository(BaseRepository):
         return [
             self.get_repo_user,
             self.get_branch,
+            self.create_pull_request,
             self.get_pull_request,
             self.list_pull_requests,
             self.get_issue,
@@ -834,6 +899,7 @@ class Repository(BaseRepository):
         return [
             self.get_repo_user_async,
             self.get_branch_async,
+            self.create_pull_request_async,
             self.get_pull_request_async,
             self.list_pull_requests_async,
             self.get_issue_async,

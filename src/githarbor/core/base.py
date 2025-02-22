@@ -201,6 +201,17 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement list_tags"
         raise FeatureNotSupportedError(msg)
 
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        msg = f"{self.__class__.__name__} does not implement create_pull_request"
+        raise FeatureNotSupportedError(msg)
+
     async def get_repo_user_async(self) -> User:
         """Get repository owner information asynchronously."""
         msg = f"{self.__class__.__name__} does not implement get_repo_user_async"
@@ -346,6 +357,17 @@ class BaseRepository:
     async def list_tags_async(self) -> list[Tag]:
         """List all tags asynchronously."""
         msg = f"{self.__class__.__name__} does not implement list_tags_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def create_pull_request_async(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        msg = f"{self.__class__.__name__} does not implement create_pull_request_async"
         raise FeatureNotSupportedError(msg)
 
 
