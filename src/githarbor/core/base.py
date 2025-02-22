@@ -221,6 +221,21 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement create_branch"
         raise FeatureNotSupportedError(msg)
 
+    def create_pull_request_from_diff(
+        self,
+        title: str,
+        body: str,
+        base_branch: str,
+        diff: str,
+        head_branch: str | None = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request from a diff string."""
+        msg = (
+            f"{self.__class__.__name__} does not implement create_pull_request_from_diff"
+        )
+        raise FeatureNotSupportedError(msg)
+
     async def get_repo_user_async(self) -> User:
         """Get repository owner information asynchronously."""
         msg = f"{self.__class__.__name__} does not implement get_repo_user_async"
@@ -386,6 +401,19 @@ class BaseRepository:
     ) -> Branch:
         """Create a new branch at the specified commit asynchronously."""
         msg = f"{self.__class__.__name__} does not implement create_branch_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def create_pull_request_from_diff_async(
+        self,
+        title: str,
+        body: str,
+        base_branch: str,
+        diff: str,
+        head_branch: str | None = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request from a diff string asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement create_pull_request_from_diff_async"
         raise FeatureNotSupportedError(msg)
 
 

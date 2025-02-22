@@ -611,6 +611,48 @@ class Repository(BaseRepository):
             base_commit=base_commit,
         )
 
+    def create_pull_request_from_diff(
+        self,
+        title: str,
+        body: str,
+        base_branch: str,
+        diff: str,
+        head_branch: str | None = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request from a diff string.
+
+        Args:
+            title: Pull request title
+            body: Pull request description
+            base_branch: Target branch for the changes
+            diff: Git diff string
+            head_branch: Name of the branch to create. Auto-generated if not provided.
+            draft: Whether to create a draft pull request
+
+        Returns:
+            Created pull request
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.create_pull_request_from_diff_async(
+                    title=title,
+                    body=body,
+                    base_branch=base_branch,
+                    diff=diff,
+                    head_branch=head_branch,
+                    draft=draft,
+                )
+            )
+        return self._repository.create_pull_request_from_diff(
+            title=title,
+            body=body,
+            base_branch=base_branch,
+            diff=diff,
+            head_branch=head_branch,
+            draft=draft,
+        )
+
     def get_recent_activity(
         self,
         days: int = 30,
@@ -918,6 +960,47 @@ class Repository(BaseRepository):
             return await self._repository.list_tags_async()  # type: ignore
         return await asyncio.to_thread(self._repository.list_tags)
 
+    async def create_pull_request_from_diff_async(
+        self,
+        title: str,
+        body: str,
+        base_branch: str,
+        diff: str,
+        head_branch: str | None = None,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request from a diff string asynchronously.
+
+        Args:
+            title: Pull request title
+            body: Pull request description
+            base_branch: Target branch for the changes
+            diff: Git diff string
+            head_branch: Name of the branch to create. Auto-generated if not provided.
+            draft: Whether to create a draft pull request
+
+        Returns:
+            Created pull request
+        """
+        if self._repository.is_async:
+            return await self._repository.create_pull_request_from_diff_async(
+                title=title,
+                body=body,
+                base_branch=base_branch,
+                diff=diff,
+                head_branch=head_branch,
+                draft=draft,
+            )
+        return await asyncio.to_thread(
+            self._repository.create_pull_request_from_diff,
+            title=title,
+            body=body,
+            base_branch=base_branch,
+            diff=diff,
+            head_branch=head_branch,
+            draft=draft,
+        )
+
     def get_sync_methods(self) -> list[Callable]:
         """Return list of all synchronous methods."""
         return [
@@ -925,6 +1008,7 @@ class Repository(BaseRepository):
             self.create_branch,
             self.get_branch,
             self.create_pull_request,
+            self.create_pull_request_from_diff,
             self.get_pull_request,
             self.list_pull_requests,
             self.get_issue,
@@ -953,6 +1037,7 @@ class Repository(BaseRepository):
             self.create_branch_async,
             self.get_branch_async,
             self.create_pull_request_async,
+            self.create_pull_request_from_diff_async,
             self.get_pull_request_async,
             self.list_pull_requests_async,
             self.get_issue_async,

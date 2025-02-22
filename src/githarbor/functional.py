@@ -421,6 +421,40 @@ async def create_pull_request_async(
     )
 
 
+async def create_pull_request_from_diff_async(
+    url: str,
+    title: str,
+    body: str,
+    base_branch: str,
+    diff: str,
+    head_branch: str | None = None,
+    draft: bool = False,
+) -> PullRequest:
+    """Create a pull request from a diff string.
+
+    Args:
+        url: Repository URL
+        title: Pull request title
+        body: Pull request description
+        base_branch: Target branch for the changes
+        diff: Git diff string
+        head_branch: Name of the branch to create. Auto-generated if not provided.
+        draft: Whether to create a draft pull request
+
+    Returns:
+        Created pull request
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.create_pull_request_from_diff_async(
+        title=title,
+        body=body,
+        base_branch=base_branch,
+        diff=diff,
+        head_branch=head_branch,
+        draft=draft,
+    )
+
+
 async def create_branch_async(
     url: str,
     name: str,
@@ -466,6 +500,7 @@ get_release = make_sync(get_release_async)
 get_tag = make_sync(get_tag_async)
 list_tags = make_sync(list_tags_async)
 create_pull_request = make_sync(create_pull_request_async)
+create_pull_request_from_diff = make_sync(create_pull_request_async)
 list_repositories = make_sync(list_repositories_async)
 create_repository = make_sync(create_repository_async)
 get_user = make_sync(get_user_async)
@@ -478,66 +513,71 @@ def setup_env(env: Any) -> None:
     Args:
         env: The jinjarope environment to extend
     """
-    funcs = {
-        # Async functions
-        "get_repo_user_async": get_repo_user_async,
-        "get_branch_async": get_branch_async,
-        "create_branch_async": create_branch_async,
-        "get_pull_request_async": get_pull_request_async,
-        "list_pull_requests_async": list_pull_requests_async,
-        "get_issue_async": get_issue_async,
-        "list_issues_async": list_issues_async,
-        "get_commit_async": get_commit_async,
-        "list_commits_async": list_commits_async,
-        "get_workflow_async": get_workflow_async,
-        "list_workflows_async": list_workflows_async,
-        "get_workflow_run_async": get_workflow_run_async,
-        "download_from_repo_async": download_async,
-        "search_commits_async": search_commits_async,
-        "get_contributors_async": get_contributors_async,
-        "get_languages_async": get_languages_async,
-        "compare_branches_async": compare_branches_async,
-        "get_latest_release_async": get_latest_release_async,
-        "list_releases_async": list_releases_async,
-        "get_release_async": get_release_async,
-        "get_tag_async": get_tag_async,
-        "list_tags_async": list_tags_async,
-        "create_pull_request_async": create_pull_request_async,
-        # Owner functions - async
-        "list_repositories_async": list_repositories_async,
-        "create_repository_async": create_repository_async,
-        "get_user_async": get_user_async,
-        "delete_repository_async": delete_repository_async,
-        # Sync functions
-        "get_repo_user": get_repo_user,
-        "get_branch": get_branch,
-        "create_branch": create_branch,
-        "get_pull_request": get_pull_request,
-        "list_pull_requests": list_pull_requests,
-        "get_issue": get_issue,
-        "list_issues": list_issues,
-        "get_commit": get_commit,
-        "list_commits": list_commits,
-        "get_workflow": get_workflow,
-        "list_workflows": list_workflows,
-        "get_workflow_run": get_workflow_run,
-        "download_from_repo": download,
-        "search_commits": search_commits,
-        "get_contributors": get_contributors,
-        "get_languages": get_languages,
-        "compare_branches": compare_branches,
-        "get_latest_release": get_latest_release,
-        "list_releases": list_releases,
-        "get_release": get_release,
-        "get_tag": get_tag,
-        "list_tags": list_tags,
-        # Owner functions - sync
-        "list_repositories": list_repositories,
-        "create_repository": create_repository,
-        "create_pull_request": create_pull_request,
-        "get_user": get_user,
-        "delete_repository": delete_repository,
-    }
+    methods = [
+        # Async methods
+        get_repo_user_async,
+        get_branch_async,
+        create_branch_async,
+        get_pull_request_async,
+        list_pull_requests_async,
+        get_issue_async,
+        list_issues_async,
+        get_commit_async,
+        list_commits_async,
+        get_workflow_async,
+        list_workflows_async,
+        get_workflow_run_async,
+        download_async,
+        search_commits_async,
+        get_contributors_async,
+        get_languages_async,
+        compare_branches_async,
+        get_latest_release_async,
+        list_releases_async,
+        get_release_async,
+        get_tag_async,
+        list_tags_async,
+        create_pull_request_async,
+        create_pull_request_from_diff_async,
+        list_repositories_async,
+        create_repository_async,
+        get_user_async,
+        delete_repository_async,
+        # Sync methods
+        get_repo_user,
+        get_branch,
+        create_branch,
+        get_pull_request,
+        list_pull_requests,
+        get_issue,
+        list_issues,
+        get_commit,
+        list_commits,
+        get_workflow,
+        list_workflows,
+        get_workflow_run,
+        download,
+        search_commits,
+        get_contributors,
+        get_languages,
+        compare_branches,
+        get_latest_release,
+        list_releases,
+        get_release,
+        get_tag,
+        list_tags,
+        create_pull_request,
+        create_pull_request_from_diff,
+        list_repositories,
+        create_repository,
+        get_user,
+        delete_repository,
+    ]
+
+    funcs = {func.__name__: func for func in methods}
+    # Special case for download which has a different name in the interface
+    funcs["download_from_repo"] = download
+    funcs["download_from_repo_async"] = download_async
 
     # Register as both globals and filters
     env.globals |= funcs
