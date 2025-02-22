@@ -383,6 +383,25 @@ class GitLabRepository(BaseRepository):
             for tag in self._repo.tags.list()
         ]
 
+    @gitlabtools.handle_gitlab_errors("Failed to create merge request")
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        mr = self._repo.mergerequests.create({
+            "title": title,
+            "description": body,
+            "source_branch": head_branch,
+            "target_branch": base_branch,
+            # GitLab uses "work_in_progress" instead of "draft"
+            "work_in_progress": draft,
+        })
+        return gitlabtools.create_pull_request_model(mr)
+
 
 if __name__ == "__main__":
     repo = GitLabRepository("phil65", "test")

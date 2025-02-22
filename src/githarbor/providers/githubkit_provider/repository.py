@@ -323,6 +323,26 @@ class GitHubKitRepository(BaseRepository):
         resp = await self._gh.rest.repos.async_list_tags(self._owner, self._name)
         return [githubkittools.create_tag_model(tag) for tag in resp.parsed_data]
 
+    @githubkittools.handle_githubkit_errors("Failed to create pull request")
+    async def create_pull_request_async(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        response = await self._gh.rest.pulls.async_create(
+            owner=self._owner,
+            repo=self._name,
+            title=title,
+            body=body,
+            head=head_branch,
+            base=base_branch,
+            draft=draft,
+        )
+        return githubkittools.create_pull_request_model(response.parsed_data)
+
 
 if __name__ == "__main__":
 

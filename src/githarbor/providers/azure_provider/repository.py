@@ -311,6 +311,32 @@ class AzureRepository(BaseRepository):
         latest_tag = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)[0]
         return azuretools.create_release_model(latest_tag)
 
+    @azuretools.handle_azure_errors("Failed to create pull request")
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        """Create a pull request."""
+        from azure.devops.v7_1.git.models import GitPullRequest
+
+        request = GitPullRequest(
+            source_ref_name=f"refs/heads/{head_branch}",
+            target_ref_name=f"refs/heads/{base_branch}",
+            title=title,
+            description=body,
+            is_draft=draft,
+        )
+        pr = self._git_client.create_pull_request(
+            request,
+            repository_id=self._repo.id,
+            project=self._project,
+        )
+        return azuretools.create_pull_request_model(pr)
+
 
 if __name__ == "__main__":
     pass

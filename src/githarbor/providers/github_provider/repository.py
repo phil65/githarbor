@@ -327,6 +327,24 @@ class GitHubRepository(BaseRepository):
         """List all repository tags."""
         return [githubtools.create_tag_model(tag) for tag in self._repo.get_tags()]
 
+    @githubtools.handle_github_errors("Failed to create pull request")
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        pr = self._repo.create_pull(
+            title=title,
+            body=body,
+            head=head_branch,
+            base=base_branch,
+            draft=draft,
+        )
+        return githubtools.create_pull_request_model(pr)
+
     def create_pull_request_from_diff(
         self,
         base_branch: str,

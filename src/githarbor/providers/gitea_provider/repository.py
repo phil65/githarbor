@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import logging
 import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
@@ -13,6 +14,8 @@ from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.gitea_provider import utils as giteatools
 
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -388,6 +391,31 @@ class GiteaRepository(BaseRepository):
         include_stats: bool = True,
     ) -> dict[str, Any]:
         raise NotImplementedError
+
+    @giteatools.handle_api_errors("Failed to create pull request")
+    def create_pull_request(
+        self,
+        title: str,
+        body: str,
+        head_branch: str,
+        base_branch: str,
+        draft: bool = False,
+    ) -> PullRequest:
+        # Gitea doesn't support draft PRs, so we'll ignore that parameter
+        if draft:
+            logger.warning("Gitea does not support draft pull requests")
+
+        pr = self._repo_api.repo_create_pull_request(
+            owner=self._owner,
+            repo=self._name,
+            body={
+                "title": title,
+                "body": body,
+                "head": head_branch,
+                "base": base_branch,
+            },
+        )
+        return giteatools.create_pull_request_model(pr)
 
 
 if __name__ == "__main__":
