@@ -106,6 +106,35 @@ async def list_issues_async(url: str, *, state: IssueState = "open") -> list[Iss
     return await repo.list_issues_async(state)
 
 
+async def create_issue_async(
+    url: str,
+    title: str,
+    body: str,
+    *,
+    labels: list[str] | None = None,
+    assignees: list[str] | None = None,
+) -> Issue:
+    """Create a new issue.
+
+    Args:
+        url: Repository URL
+        title: Issue title
+        body: Issue description/content
+        labels: List of label names to apply
+        assignees: List of usernames to assign
+
+    Returns:
+        Newly created issue
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.create_issue_async(
+        title=title,
+        body=body,
+        labels=labels,
+        assignees=assignees,
+    )
+
+
 async def get_commit_async(url: str, sha: str) -> Commit:
     """Get information about a specific commit.
 
@@ -484,6 +513,7 @@ get_pull_request = make_sync(get_pull_request_async)
 list_pull_requests = make_sync(list_pull_requests_async)
 get_issue = make_sync(get_issue_async)
 list_issues = make_sync(list_issues_async)
+create_issue = make_sync(create_issue_async)
 get_commit = make_sync(get_commit_async)
 list_commits = make_sync(list_commits_async)
 get_workflow = make_sync(get_workflow_async)
@@ -522,6 +552,7 @@ def setup_env(env: Any) -> None:
         list_pull_requests_async,
         get_issue_async,
         list_issues_async,
+        create_issue_async,
         get_commit_async,
         list_commits_async,
         get_workflow_async,
@@ -551,6 +582,7 @@ def setup_env(env: Any) -> None:
         list_pull_requests,
         get_issue,
         list_issues,
+        create_issue,
         get_commit,
         list_commits,
         get_workflow,

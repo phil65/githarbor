@@ -93,6 +93,17 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement list_issues"
         raise FeatureNotSupportedError(msg)
 
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        msg = f"{self.__class__.__name__} does not implement create_issue"
+        raise FeatureNotSupportedError(msg)
+
     def get_commit(self, sha: str) -> Commit:
         msg = f"{self.__class__.__name__} does not implement get_commit"
         raise FeatureNotSupportedError(msg)
@@ -267,6 +278,17 @@ class BaseRepository:
     async def list_issues_async(self, state: IssueState = "open") -> list[Issue]:
         """List issues asynchronously."""
         msg = f"{self.__class__.__name__} does not implement list_issues_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def create_issue_async(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement create_issue_async"
         raise FeatureNotSupportedError(msg)
 
     async def get_commit_async(self, sha: str) -> Commit:

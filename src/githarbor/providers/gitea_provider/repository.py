@@ -147,6 +147,31 @@ class GiteaRepository(BaseRepository):
         )
         return [giteatools.create_issue_model(issue) for issue in issues]
 
+    @giteatools.handle_api_errors("Failed to create issue")
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        params: dict[str, Any] = {
+            "title": title,
+            "body": body,
+        }
+        if labels:
+            params["labels"] = labels
+        if assignees:
+            params["assignees"] = assignees
+
+        issue = self._issues_api.issue_create_issue(
+            owner=self._owner,
+            repo=self._name,
+            body=params,
+        )
+        return giteatools.create_issue_model(issue)
+
     @giteatools.handle_api_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
         """Get a specific commit by SHA."""

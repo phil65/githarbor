@@ -13,7 +13,6 @@ from githarbor.core.models import (
     Commit,
     Issue,
     PullRequest,
-    Release,
     User,
 )
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
@@ -222,6 +221,49 @@ class AzureRepository(BaseRepository):
         )
         return [azuretools.create_issue_model(wi) for wi in work_items]
 
+    @azuretools.handle_azure_errors("Failed to create issue")
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        work_item = self._work_client.create_work_item(
+            project=self._project,
+            type="Issue",
+            document={
+                "System.Title": title,
+                "System.Description": body,
+            },
+        )
+        # if labels:
+        #     for label in labels:
+        #         self._work_client.add_work_item_label(
+        #             work_item.id,
+        #             label,
+        #             project=self._project,
+        #         )
+        # if assignees:
+        #     # Azure needs user ids instead of usernames
+        #     for username in assignees:
+        #         user = self._connection.identity_client.read_identities(
+        #             search_filter=f"General,localAccount,{username}",
+        #         )[0]
+        #         self._work_client.update_work_item(
+        #             work_item.id,
+        #             [
+        #                 {
+        #                     "op": "add",
+        #                     "path": "/fields/System.AssignedTo",
+        #                     "value": user.id,
+        #                 }
+        #             ],
+        #             project=self._project,
+        #         )
+        return azuretools.create_issue_model(work_item)
+
     @azuretools.handle_azure_errors("Failed to get commit {sha}")
     def get_commit(self, sha: str) -> Commit:
         """Get commit by SHA."""
@@ -267,7 +309,7 @@ class AzureRepository(BaseRepository):
         return azuretools.download_from_azure(
             organization=self._owner,
             project=self._project,
-            repo=self._repo.id,
+            repo=self._repo.id,  # type: ignore
             path=path,
             destination=destination,
             recursive=recursive,
@@ -293,23 +335,24 @@ class AzureRepository(BaseRepository):
             if not pattern or fnmatch.fnmatch(item.path, pattern):
                 yield item.path
 
-    @azuretools.handle_azure_errors("Failed to get latest release")
-    def get_latest_release(
-        self,
-        include_drafts: bool = False,
-        include_prereleases: bool = False,
-    ) -> Release:
-        """Get latest release (mapped from Git tags)."""
-        tags = self._git_client.get_tags(
-            repository_id=self._repo.id,
-            project=self._project,
-        )
-        if not tags:
-            msg = "No releases found"
-            raise ResourceNotFoundError(msg)
+    # @azuretools.handle_azure_errors("Failed to get latest release")
+    # def get_latest_release(
+    #     self,
+    #     include_drafts: bool = False,
+    #     include_prereleases: bool = False,
+    # ) -> Release:
+    #     """Get latest release (mapped from Git tags)."""
+    #     tags = self._git_client.get_tags(
+    #         repository_id=self._repo.id,
+    #         project=self._project,
+    #     )
+    #     if not tags:
+    #         msg = "No releases found"
+    #         raise ResourceNotFoundError(msg)
 
-        latest_tag = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)[0]
-        return azuretools.create_release_model(latest_tag)
+    #     latest_tags = sorted(tags, key=lambda t: t.commit.committer.date, reverse=True)
+    #     latest_tag = latest_tags[0]
+    #     return azuretools.create_release_model(latest_tag)
 
     @azuretools.handle_azure_errors("Failed to create pull request")
     def create_pull_request(

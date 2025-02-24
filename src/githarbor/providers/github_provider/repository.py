@@ -106,6 +106,23 @@ class GitHubRepository(BaseRepository):
         issues = self._repo.get_issues(state=state)
         return [githubtools.create_issue_model(issue) for issue in issues]
 
+    @githubtools.handle_github_errors("Failed to create issue")
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        issue = self._repo.create_issue(
+            title=title,
+            body=body,
+            labels=labels or [],
+            assignees=assignees or [],
+        )
+        return githubtools.create_issue_model(issue)
+
     @githubtools.handle_github_errors("Failed to get commit {sha}")
     def get_commit(self, sha: str) -> Commit:
         commit = self._repo.get_commit(sha)

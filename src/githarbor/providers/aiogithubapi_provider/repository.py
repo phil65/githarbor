@@ -119,6 +119,32 @@ class AioGitHubRepository(BaseRepository):
             aiogithubapitools.create_issue_model(issue) for issue in response.data or []
         ]
 
+    async def create_issue_async(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        from aiogithubapi import GitHubRequestKwarg
+        from aiogithubapi.github import HttpMethod
+
+        data = {
+            "title": title,
+            "body": body,
+            "labels": labels or [],
+            "assignees": assignees or [],
+        }
+        kwargs = {GitHubRequestKwarg.METHOD: HttpMethod.POST}
+        response = await self._gh.generic(
+            endpoint=f"/repos/{self._owner}/{self._name}/issues",
+            data=data,
+            **kwargs,  # type: ignore
+        )
+        assert response.data
+        return aiogithubapitools.create_issue_model(response.data)
+
     async def get_pull_request_async(self, number: int) -> PullRequest:
         """Get pull request by number."""
         try:

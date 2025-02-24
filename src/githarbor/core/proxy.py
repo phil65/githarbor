@@ -148,6 +148,40 @@ class Repository(BaseRepository):
             return asyncio.run(self._repository.list_issues_async(state))
         return self._repository.list_issues(state)
 
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create an issue.
+
+        Args:
+            title: Issue title
+            body: Issue description/content
+            labels: List of label names to apply
+            assignees: List of usernames to assign
+
+        Returns:
+            Created issue
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.create_issue_async(
+                    title=title,
+                    body=body,
+                    labels=labels,
+                    assignees=assignees,
+                )
+            )
+        return self._repository.create_issue(
+            title=title,
+            body=body,
+            labels=labels,
+            assignees=assignees,
+        )
+
     def get_commit(self, sha: str) -> Commit:
         """Get information about a specific commit.
 
@@ -749,6 +783,29 @@ class Repository(BaseRepository):
             return await self._repository.list_issues_async(state)  # type: ignore
         return await asyncio.to_thread(self._repository.list_issues, state)
 
+    async def create_issue_async(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """See create_issue."""
+        if self._repository.is_async:
+            return await self._repository.create_issue_async(
+                title=title,
+                body=body,
+                labels=labels,
+                assignees=assignees,
+            )
+        return await asyncio.to_thread(
+            self._repository.create_issue,
+            title=title,
+            body=body,
+            labels=labels,
+            assignees=assignees,
+        )
+
     async def get_commit_async(self, sha: str) -> Commit:
         """See get_commit."""
         if self._repository.is_async:
@@ -1013,6 +1070,7 @@ class Repository(BaseRepository):
             self.list_pull_requests,
             self.get_issue,
             self.list_issues,
+            self.create_issue,
             self.get_commit,
             self.list_commits,
             self.get_workflow,
@@ -1043,6 +1101,7 @@ class Repository(BaseRepository):
             self.get_issue_async,
             self.list_issues_async,
             self.get_commit_async,
+            self.create_issue_async,
             self.list_commits_async,
             self.get_workflow_async,
             self.list_workflows_async,

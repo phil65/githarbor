@@ -122,6 +122,31 @@ class GitLabRepository(BaseRepository):
         issues = self._repo.issues.list(state=state, all=True)
         return [gitlabtools.create_issue_model(issue) for issue in issues]
 
+    @gitlabtools.handle_gitlab_errors("Failed to create issue")
+    def create_issue(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        data: dict[str, Any] = {
+            "title": title,
+            "description": body,
+        }
+        if labels:
+            data["labels"] = ",".join(labels)
+        if assignees:
+            # GitLab API expects assignee_ids
+            data["assignee_ids"] = [
+                self._gl.users.list(username=name)[0].id  # type: ignore
+                for name in assignees
+            ]
+
+        issue = self._repo.issues.create(data)
+        return gitlabtools.create_issue_model(issue)
+
     @gitlabtools.handle_gitlab_errors("Commit {sha} not found")
     def get_commit(self, sha: str) -> Commit:
         commit = self._repo.commits.get(sha)

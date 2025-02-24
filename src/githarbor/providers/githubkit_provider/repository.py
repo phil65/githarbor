@@ -137,6 +137,25 @@ class GitHubKitRepository(BaseRepository):
         data = resp.parsed_data
         return [githubkittools.create_issue_model(issue) for issue in data]  # type: ignore
 
+    @githubkittools.handle_githubkit_errors("Failed to create issue")
+    async def create_issue_async(
+        self,
+        title: str,
+        body: str,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+    ) -> Issue:
+        """Create a new issue."""
+        response = await self._gh.rest.issues.async_create(
+            owner=self._owner,
+            repo=self._name,
+            title=title,
+            body=body,
+            labels=labels or [],  # type: ignore
+            assignees=assignees,
+        )
+        return githubkittools.create_issue_model(response.parsed_data)
+
     @githubkittools.handle_githubkit_errors("Failed to get commit {sha}")
     async def get_commit_async(self, sha: str) -> Commit:
         """Get commit by SHA."""
