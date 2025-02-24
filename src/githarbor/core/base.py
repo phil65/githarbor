@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from githarbor.core.models import (
         Branch,
+        Comment,
         Commit,
         Issue,
         PullRequest,
@@ -247,6 +248,26 @@ class BaseRepository:
         )
         raise FeatureNotSupportedError(msg)
 
+    def add_pull_request_comment(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        msg = f"{self.__class__.__name__} does not implement add_pull_request_comment"
+        raise FeatureNotSupportedError(msg)
+
+    def add_pull_request_review_comment(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        fn_name = "add_pull_request_review_comment"
+        msg = f"{self.__class__.__name__} does not implement {fn_name}"
+        raise FeatureNotSupportedError(msg)
+
     async def get_repo_user_async(self) -> User:
         """Get repository owner information asynchronously."""
         msg = f"{self.__class__.__name__} does not implement get_repo_user_async"
@@ -423,6 +444,28 @@ class BaseRepository:
     ) -> Branch:
         """Create a new branch at the specified commit asynchronously."""
         msg = f"{self.__class__.__name__} does not implement create_branch_async"
+        raise FeatureNotSupportedError(msg)
+
+    async def add_pull_request_comment_async(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        msg = (
+            f"{self.__class__.__name__} does not implement add_pull_request_comment_async"
+        )
+        raise FeatureNotSupportedError(msg)
+
+    async def add_pull_request_review_comment_async(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        fn_name = "add_pull_request_review_comment_async"
+        msg = f"{self.__class__.__name__} does not implement {fn_name}"
         raise FeatureNotSupportedError(msg)
 
     async def create_pull_request_from_diff_async(

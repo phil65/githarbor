@@ -6,10 +6,11 @@ from datetime import datetime
 import functools
 import inspect
 import string
-from typing import TYPE_CHECKING, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
     Branch,
+    Comment,
     Commit,
     Issue,
     Label,
@@ -426,4 +427,16 @@ def create_tag_model(ghk_tag: ghk_models.Tag | ghk_models.GitTag) -> Tag:
         sha=ghk_tag.sha,
         url=ghk_tag.url,
         message=ghk_tag.message,
+    )
+
+
+def create_comment_model(ghk_comment: Any) -> Comment:
+    """Create Comment model from GitHubKit comment object."""
+    return Comment(
+        id=str(ghk_comment.id),
+        body=ghk_comment.body,
+        author=create_user_model(ghk_comment.user),
+        created_at=ghk_comment.created_at,
+        updated_at=ghk_comment.updated_at,
+        url=ghk_comment.html_url,
     )

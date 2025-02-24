@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
     Branch,
+    Comment,
     Commit,
     Issue,
     Label,
@@ -325,4 +326,18 @@ def create_release_model(release: Any) -> Release:
         ],
         url=getattr(release, "_links", {}).get("self"),
         target_commitish=getattr(release, "commit", {}).get("id"),
+    )
+
+
+def create_comment_model(gl_comment: Any) -> Comment:
+    """Create Comment model from GitLab comment/note object."""
+    return Comment(
+        id=str(gl_comment.id),
+        body=gl_comment.body,
+        author=create_user_model(gl_comment.author),
+        created_at=parse_timestamp(gl_comment.created_at),
+        updated_at=parse_timestamp(gl_comment.updated_at)
+        if gl_comment.updated_at
+        else None,
+        url=gl_comment.url if hasattr(gl_comment, "url") else None,
     )

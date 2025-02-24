@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from githarbor.core.models import (
         Branch,
+        Comment,
         Commit,
         Issue,
         PullRequest,
@@ -478,6 +479,30 @@ class GitHubRepository(BaseRepository):
         # Get the branch to return proper Branch model
         branch = self._repo.get_branch(name)
         return githubtools.create_branch_model(branch)
+
+    @githubtools.handle_github_errors("Failed to add pull request comment")
+    def add_pull_request_comment(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        pr = self._repo.get_pull(number)
+        comment = pr.create_issue_comment(body)
+        return githubtools.create_comment_model(comment)
+
+    @githubtools.handle_github_errors("Failed to add pull request review comment")
+    def add_pull_request_review_comment(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        pr = self._repo.get_pull(number)
+        commit = self._repo.get_commit(commit_id)
+        comment = pr.create_review_comment(body, commit, path, position)
+        return githubtools.create_comment_model(comment)
 
 
 if __name__ == "__main__":

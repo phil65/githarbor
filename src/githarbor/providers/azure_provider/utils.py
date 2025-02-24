@@ -10,6 +10,7 @@ import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
+    Comment,
     Commit,
     Issue,
     Label,
@@ -302,4 +303,16 @@ def create_tag_model(tag: Any) -> Tag:
             email=tag.commit.committer.email,
         ),
         url=None,  # Azure DevOps doesn't provide direct URLs for tags
+    )
+
+
+def create_comment_model(azure_comment: Any) -> Comment:
+    """Create Comment model from Azure DevOps comment object."""
+    return Comment(
+        id=str(azure_comment.id),
+        body=azure_comment.content,
+        author=create_user_model(azure_comment.author),
+        created_at=azure_comment.published_date,
+        updated_at=azure_comment.last_updated_date,
+        url=None,  # Azure doesn't provide direct URLs for comments
     )

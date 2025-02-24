@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from githarbor.core.base import BaseRepository, IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
+        Comment,
         Commit,
         Issue,
         PullRequest,
@@ -506,6 +507,52 @@ async def create_branch_async(
     )
 
 
+async def add_pull_request_comment_async(
+    url: str,
+    number: int,
+    body: str,
+) -> Comment:
+    """Add a general comment to a pull request.
+
+    Args:
+        url: Repository URL
+        number: Pull request number
+        body: Comment text
+
+    Returns:
+        Created comment
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.add_pull_request_comment_async(number, body)
+
+
+async def add_pull_request_review_comment_async(
+    url: str,
+    number: int,
+    body: str,
+    commit_id: str,
+    path: str,
+    position: int,
+) -> Comment:
+    """Add a review comment to specific line in a pull request.
+
+    Args:
+        url: Repository URL
+        number: Pull request number
+        body: Comment text
+        commit_id: The SHA of the commit to comment on
+        path: The relative path to the file to comment on
+        position: Line number in the file to comment on
+
+    Returns:
+        Created comment
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.add_pull_request_review_comment_async(
+        number, body, commit_id, path, position
+    )
+
+
 get_repo_user = make_sync(get_repo_user_async)
 get_branch = make_sync(get_branch_async)
 create_branch = make_sync(create_branch_async)
@@ -535,6 +582,8 @@ list_repositories = make_sync(list_repositories_async)
 create_repository = make_sync(create_repository_async)
 get_user = make_sync(get_user_async)
 delete_repository = make_sync(delete_repository_async)
+add_pull_request_comment = make_sync(add_pull_request_comment_async)
+add_pull_request_review_comment = make_sync(add_pull_request_review_comment_async)
 
 
 def setup_env(env: Any) -> None:
@@ -574,6 +623,8 @@ def setup_env(env: Any) -> None:
         create_repository_async,
         get_user_async,
         delete_repository_async,
+        add_pull_request_comment_async,
+        add_pull_request_review_comment_async,
         # Sync methods
         get_repo_user,
         get_branch,
@@ -604,6 +655,8 @@ def setup_env(env: Any) -> None:
         create_repository,
         get_user,
         delete_repository,
+        add_pull_request_comment,
+        add_pull_request_review_comment,
     ]
 
     funcs = {func.__name__: func for func in methods}

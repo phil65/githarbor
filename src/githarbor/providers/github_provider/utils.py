@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
     Branch,
+    Comment,
     Commit,
     Issue,
     Label,
@@ -339,3 +340,15 @@ def create_file_model(content: Any) -> dict[str, Any]:
         "download_url": content.download_url,
         "encoding": content.encoding if hasattr(content, "encoding") else None,
     }
+
+
+def create_comment_model(gh_comment: Any) -> Comment:
+    """Create Comment model from GitHub comment object."""
+    return Comment(
+        id=str(gh_comment.id),
+        body=gh_comment.body,
+        author=create_user_model(gh_comment.user),
+        created_at=gh_comment.created_at,
+        updated_at=gh_comment.updated_at,
+        url=gh_comment.html_url,
+    )

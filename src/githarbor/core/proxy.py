@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from githarbor.core.models import (
         Branch,
+        Comment,
         Commit,
         Issue,
         PullRequest,
@@ -645,6 +646,56 @@ class Repository(BaseRepository):
             base_commit=base_commit,
         )
 
+    def add_pull_request_comment(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        """Add a general comment to a pull request.
+
+        Args:
+            number: Pull request number
+            body: Comment text
+
+        Returns:
+            Created comment
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.add_pull_request_comment_async(number, body)
+            )
+        return self._repository.add_pull_request_comment(number, body)
+
+    def add_pull_request_review_comment(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        """Add a review comment to specific line in a pull request.
+
+        Args:
+            number: Pull request number
+            body: Comment text
+            commit_id: The SHA of the commit to comment on
+            path: The relative path to the file to comment on
+            position: Line number in the file to comment on
+
+        Returns:
+            Created comment
+        """
+        if self._repository.is_async:
+            return asyncio.run(
+                self._repository.add_pull_request_review_comment_async(
+                    number, body, commit_id, path, position
+                )
+            )
+        return self._repository.add_pull_request_review_comment(
+            number, body, commit_id, path, position
+        )
+
     def create_pull_request_from_diff(
         self,
         title: str,
@@ -1058,6 +1109,40 @@ class Repository(BaseRepository):
             draft=draft,
         )
 
+    async def add_pull_request_comment_async(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        """See add_pull_request_comment."""
+        if self._repository.is_async:
+            return await self._repository.add_pull_request_comment_async(number, body)
+        return await asyncio.to_thread(
+            self._repository.add_pull_request_comment, number, body
+        )
+
+    async def add_pull_request_review_comment_async(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        """See add_pull_request_review_comment."""
+        if self._repository.is_async:
+            return await self._repository.add_pull_request_review_comment_async(
+                number, body, commit_id, path, position
+            )
+        return await asyncio.to_thread(
+            self._repository.add_pull_request_review_comment,
+            number,
+            body,
+            commit_id,
+            path,
+            position,
+        )
+
     def get_sync_methods(self) -> list[Callable]:
         """Return list of all synchronous methods."""
         return [
@@ -1079,6 +1164,8 @@ class Repository(BaseRepository):
             self.download,
             self.search_commits,
             self.get_contributors,
+            self.add_pull_request_comment,
+            self.add_pull_request_review_comment,
             self.get_languages,
             self.compare_branches,
             self.get_latest_release,
@@ -1109,6 +1196,8 @@ class Repository(BaseRepository):
             self.download_async,
             self.search_commits_async,
             self.get_contributors_async,
+            self.add_pull_request_comment_async,
+            self.add_pull_request_review_comment_async,
             self.get_languages_async,
             self.compare_branches_async,
             self.get_latest_release_async,
@@ -1117,3 +1206,10 @@ class Repository(BaseRepository):
             self.get_tag_async,
             self.list_tags_async,
         ]
+
+
+for method_name, method in Repository.__dict__.items():
+    if method_name.endswith("_async"):
+        sync_name = method_name[:-6]  # Remove '_async' suffix
+        if (sync_method := getattr(Repository, sync_name, None)) and sync_method.__doc__:
+            method.__doc__ = sync_method.__doc__

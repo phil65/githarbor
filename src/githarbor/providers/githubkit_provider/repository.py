@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from githarbor.core.models import (
         Branch,
+        Comment,
         Commit,
         Issue,
         PullRequest,
@@ -382,6 +383,40 @@ class GitHubKitRepository(BaseRepository):
             branch=name,
         )
         return githubkittools.create_branch_model(response.parsed_data)
+
+    @githubkittools.handle_githubkit_errors("Failed to add pull request comment")
+    async def add_pull_request_comment_async(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        response = await self._gh.rest.issues.async_create_comment(
+            owner=self._owner,
+            repo=self._name,
+            issue_number=number,
+            body=body,
+        )
+        return githubkittools.create_comment_model(response.parsed_data)
+
+    @githubkittools.handle_githubkit_errors("Failed to add pull request review comment")
+    async def add_pull_request_review_comment_async(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        response = await self._gh.rest.pulls.async_create_review_comment(
+            owner=self._owner,
+            repo=self._name,
+            pull_number=number,
+            body=body,
+            commit_id=commit_id,
+            path=path,
+            line=position,  # Using line instead of position as per API docs
+        )
+        return githubkittools.create_comment_model(response.parsed_data)
 
 
 if __name__ == "__main__":

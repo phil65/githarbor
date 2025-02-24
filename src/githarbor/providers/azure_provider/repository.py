@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.core.models import (
     Branch,
+    Comment,
     Commit,
     Issue,
     PullRequest,
@@ -379,6 +380,72 @@ class AzureRepository(BaseRepository):
             project=self._project,
         )
         return azuretools.create_pull_request_model(pr)
+
+    @azuretools.handle_azure_errors("Failed to add pull request comment")
+    def add_pull_request_comment(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        from azure.devops.v7_1.git.models import Comment, GitPullRequestCommentThread
+
+        thread = GitPullRequestCommentThread(
+            comments=[
+                Comment(
+                    content=body,
+                )
+            ],
+            status="active",
+        )
+        result = self._git_client.create_thread(
+            comment_thread=thread,
+            repository_id=self._repo.id,
+            pull_request_id=number,
+            project=self._project,
+        )
+        return azuretools.create_comment_model(result.comments[0])
+
+    @azuretools.handle_azure_errors("Failed to add pull request review comment")
+    def add_pull_request_review_comment(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        from azure.devops.v7_1.git.models import (
+            Comment,
+            CommentThreadContext,
+            GitPullRequestCommentThread,
+        )
+
+        thread = GitPullRequestCommentThread(
+            comments=[
+                Comment(
+                    content=body,
+                )
+            ],
+            status="active",
+            thread_context=CommentThreadContext(
+                file_path=path,
+                right_file_start={
+                    "line": position,
+                    "offset": 0,
+                },
+                right_file_end={
+                    "line": position,
+                    "offset": 0,
+                },
+            ),
+        )
+        result = self._git_client.create_thread(
+            comment_thread=thread,
+            repository_id=self._repo.id,
+            pull_request_id=number,
+            project=self._project,
+        )
+        return azuretools.create_comment_model(result.comments[0])
 
 
 if __name__ == "__main__":

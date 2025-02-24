@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from githarbor.core.base import BaseRepository, IssueState, PullRequestState
 from githarbor.core.models import (
     Branch,
+    Comment,
     Commit,
     Issue,
     PullRequest,
@@ -439,6 +440,41 @@ class GitLabRepository(BaseRepository):
             "ref": base_commit,
         })
         return gitlabtools.create_branch_model(branch)  # type: ignore
+
+    @gitlabtools.handle_gitlab_errors("Failed to add merge request comment")
+    def add_pull_request_comment(
+        self,
+        number: int,
+        body: str,
+    ) -> Comment:
+        mr = self._repo.mergerequests.get(number)
+        note = mr.notes.create({"body": body})
+        return gitlabtools.create_comment_model(note)
+
+    @gitlabtools.handle_gitlab_errors("Failed to add merge request review comment")
+    def add_pull_request_review_comment(
+        self,
+        number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        position: int,
+    ) -> Comment:
+        mr = self._repo.mergerequests.get(number)
+        discussion = mr.discussions.create({
+            "body": body,
+            "position": {
+                "position_type": "text",
+                "new_path": path,
+                "new_line": position,
+                "head_sha": commit_id,
+                # GitLab requires these, we'll use the same commit SHA
+                "base_sha": commit_id,
+                "start_sha": commit_id,
+            },
+        })
+        # Discussion contains the note as first element
+        return gitlabtools.create_comment_model(discussion.attributes["notes"][0])
 
 
 if __name__ == "__main__":
