@@ -290,6 +290,7 @@ class GiteaRepository(BaseRepository):
         """Iterate over repository files."""
         ref_ = ref or self.default_branch
         entries = self._repo_api.repo_get_contents_list(self._owner, self._name, ref=ref_)
+        assert isinstance(entries, list)
         for entry in entries:
             if entry.type == "file":
                 if not pattern or fnmatch.fnmatch(entry.path, pattern):
@@ -344,7 +345,7 @@ class GiteaRepository(BaseRepository):
         if not releases:
             msg = "No matching releases found"
             raise ResourceNotFoundError(msg)
-
+        assert isinstance(releases, list), f"Expected list, got {type(releases)}"
         return giteatools.create_release_model(releases[0])
 
     @giteatools.handle_api_errors("Failed to list releases")

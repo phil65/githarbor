@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 
     from gitlab.base import RESTObject
 
+StrPath = str | os.PathLike[str]
+PRE_TAGS = ("alpha", "beta", "rc")
+
 
 class GitLabRepository(BaseRepository):
     """GitLab repository implementation."""
@@ -68,13 +71,8 @@ class GitLabRepository(BaseRepository):
         if len(parts) < 2:  # noqa: PLR2004
             msg = f"Invalid GitLab URL: {url}"
             raise ValueError(msg)
-
-        return cls(
-            owner=parts[0],
-            name=parts[1],
-            token=kwargs.get("token"),
-            url=f"{parsed.scheme}://{parsed.netloc}",
-        )
+        url_ = f"{parsed.scheme}://{parsed.netloc}"
+        return cls(owner=parts[0], name=parts[1], token=kwargs.get("token"), url=url_)
 
     @property
     def default_branch(self) -> str:
@@ -132,18 +130,13 @@ class GitLabRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        data: dict[str, Any] = {
-            "title": title,
-            "description": body,
-        }
+        data: dict[str, Any] = {"title": title, "description": body}
         if labels:
             data["labels"] = ",".join(labels)
         if assignees:
             # GitLab API expects assignee_ids
-            data["assignee_ids"] = [
-                self._gl.users.list(username=name)[0].id  # type: ignore
-                for name in assignees
-            ]
+            ids_ = [self._gl.users.list(username=n)[0].id for n in assignees]  # type: ignore
+            data["assignee_ids"] = ids_
 
         issue = self._repo.issues.create(data)
         return gitlabtools.create_issue_model(issue)
@@ -201,12 +194,7 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_workflow_run_model(job)
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
-    def download(
-        self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
-        recursive: bool = False,
-    ):
+    def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
         import upath
 
         dest = upath.UPath(destination)
@@ -257,9 +245,8 @@ class GitLabRepository(BaseRepository):
         ref: str | None = None,
         pattern: str | None = None,
     ) -> Iterator[str]:
-        items = self._repo.repository_tree(
-            path=path, ref=ref or self.default_branch, recursive=True
-        )
+        ref_ = ref or self.default_branch
+        items = self._repo.repository_tree(path=path, ref=ref_, recursive=True)
         for item in items:
             if item["type"] == "blob" and (
                 not pattern or fnmatch.fnmatch(item["path"], pattern)
@@ -339,11 +326,7 @@ class GitLabRepository(BaseRepository):
         filtered: list[RESTObject] = []
         for release in releases:
             # GitLab doesn't have draft releases
-            if not include_prereleases and release.tag_name.startswith((
-                "alpha",
-                "beta",
-                "rc",
-            )):
+            if not include_prereleases and release.tag_name.startswith(PRE_TAGS):
                 continue
             filtered.append(release)
 
@@ -363,11 +346,7 @@ class GitLabRepository(BaseRepository):
     ) -> list[Release]:
         releases: list[Release] = []
         for release in self._repo.releases.list():
-            if not include_prereleases and release.tag_name.startswith((
-                "alpha",
-                "beta",
-                "rc",
-            )):
+            if not include_prereleases and release.tag_name.startswith(PRE_TAGS):
                 continue
             releases.append(gitlabtools.create_release_model(release))
             if limit and len(releases) >= limit:
