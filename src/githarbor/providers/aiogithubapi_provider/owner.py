@@ -69,11 +69,7 @@ class AioGitHubOwner(BaseOwner):
         try:
             response = await self._gh.user.repos()
             assert response.data
-            return [
-                create_repository(repo.html_url)
-                for repo in response.data
-                if repo.html_url
-            ]
+            return [create_repository(r.html_url) for r in response.data if r.html_url]
         except GitHubAuthenticationException as e:
             msg = f"Failed to list repositories: {e}"
             raise ResourceNotFoundError(msg) from e
@@ -99,17 +95,10 @@ class AioGitHubOwner(BaseOwner):
         from aiogithubapi.github import HttpMethod
 
         try:
-            data = {
-                "name": name,
-                "description": description,
-                "private": private,
-            }
+            data = {"name": name, "description": description, "private": private}
             kwargs: dict[Any, Any] = {GitHubRequestKwarg.METHOD: HttpMethod.POST}
-            response = await self._gh.generic(
-                endpoint="/user/repos",
-                data=data,
-                **kwargs,
-            )
+            ep = "/user/repos"
+            response = await self._gh.generic(endpoint=ep, data=data, **kwargs)
             assert response.data
             return create_repository(response.data["html_url"])
         except GitHubAuthenticationException as e:
@@ -140,10 +129,8 @@ class AioGitHubOwner(BaseOwner):
 
         try:
             kwargs = {GitHubRequestKwarg.METHOD: HttpMethod.DELETE}
-            await self._gh.generic(
-                endpoint=f"/repos/{self._name}/{name}",
-                **kwargs,  # type: ignore
-            )
+            ep = f"/repos/{self._name}/{name}"
+            await self._gh.generic(endpoint=ep, **kwargs)  # type: ignore
         except GitHubAuthenticationException as e:
             msg = f"Failed to delete repository: {e}"
             raise ResourceNotFoundError(msg) from e

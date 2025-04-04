@@ -16,7 +16,6 @@ from githarbor.providers.gitea_provider import utils as giteatools
 
 
 logger = logging.getLogger(__name__)
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
@@ -34,6 +33,8 @@ if TYPE_CHECKING:
         Workflow,
         WorkflowRun,
     )
+
+StrPath = str | os.PathLike[str]
 
 
 class GiteaRepository(BaseRepository):
@@ -84,13 +85,8 @@ class GiteaRepository(BaseRepository):
         if len(parts) < 2:  # noqa: PLR2004
             msg = f"Invalid Gitea URL: {url}"
             raise ValueError(msg)
-
-        return cls(
-            owner=parts[0],
-            name=parts[1],
-            token=kwargs.get("token"),
-            url=f"{parsed.scheme}://{parsed.netloc}",
-        )
+        url = f"{parsed.scheme}://{parsed.netloc}"
+        return cls(owner=parts[0], name=parts[1], token=kwargs.get("token"), url=url)
 
     @property
     def default_branch(self) -> str:
@@ -225,12 +221,7 @@ class GiteaRepository(BaseRepository):
         raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to download file")
-    def download(
-        self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
-        recursive: bool = False,
-    ) -> None:
+    def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
         """Download repository contents."""
         dest = upath.UPath(destination)
         dest.mkdir(exist_ok=True, parents=True)
@@ -328,10 +319,7 @@ class GiteaRepository(BaseRepository):
                 continue
 
             if author.login not in contributors:
-                contributors[author.login] = {
-                    "user": author,
-                    "commits": 0,
-                }
+                contributors[author.login] = {"user": author, "commits": 0}
             contributors[author.login]["commits"] += 1
 
         # Convert to list and sort
@@ -340,8 +328,6 @@ class GiteaRepository(BaseRepository):
             contributor_list.sort(key=lambda c: c["user"].login)
         elif sort_by == "commits":
             contributor_list.sort(key=lambda c: c["commits"], reverse=True)
-
-        # Apply limit if specified
         if limit:
             contributor_list = contributor_list[:limit]
 
@@ -354,10 +340,7 @@ class GiteaRepository(BaseRepository):
         include_prereleases: bool = False,
     ) -> Release:
         """Get the latest repository release."""
-        kwargs = {
-            "draft": include_drafts,
-            "pre_release": include_prereleases,
-        }
+        kwargs = {"draft": include_drafts, "pre_release": include_prereleases}
         releases = self._repo_api.repo_list_releases(
             self._owner, self._name, per_page=1, **kwargs
         )
@@ -433,12 +416,7 @@ class GiteaRepository(BaseRepository):
         pr = self._repo_api.repo_create_pull_request(
             owner=self._owner,
             repo=self._name,
-            body={
-                "title": title,
-                "body": body,
-                "head": head_branch,
-                "base": base_branch,
-            },
+            body={"title": title, "body": body, "head": head_branch, "base": base_branch},
         )
         return giteatools.create_pull_request_model(pr)
 

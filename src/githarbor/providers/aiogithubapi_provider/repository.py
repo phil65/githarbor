@@ -99,10 +99,8 @@ class AioGitHubRepository(BaseRepository):
     async def get_issue_async(self, issue_id: int) -> Issue:
         """Get issue by number."""
         try:
-            response = await self._gh.repos.issues.get(
-                f"{self._owner}/{self._name}",
-                issue_id,
-            )
+            repo = f"{self._owner}/{self._name}"
+            response = await self._gh.repos.issues.get(repo, issue_id)
             assert response.data, f"Issue #{issue_id} not found"
             return aiogithubapitools.create_issue_model(response.data)
         except GitHubNotFoundException as e:
@@ -111,13 +109,10 @@ class AioGitHubRepository(BaseRepository):
 
     async def list_issues_async(self, state: IssueState = "open") -> list[Issue]:
         """List repository issues."""
-        response = await self._gh.repos.issues.list(
-            f"{self._owner}/{self._name}",
-            params={GitHubRequestKwarg.QUERY: {"state": state}},
-        )
-        return [
-            aiogithubapitools.create_issue_model(issue) for issue in response.data or []
-        ]
+        repo = f"{self._owner}/{self._name}"
+        params = {GitHubRequestKwarg.QUERY: {"state": state}}
+        response = await self._gh.repos.issues.list(repo, params=params)
+        return [aiogithubapitools.create_issue_model(i) for i in response.data or []]
 
     async def create_issue_async(
         self,
@@ -137,21 +132,17 @@ class AioGitHubRepository(BaseRepository):
             "assignees": assignees or [],
         }
         kwargs = {GitHubRequestKwarg.METHOD: HttpMethod.POST}
-        response = await self._gh.generic(
-            endpoint=f"/repos/{self._owner}/{self._name}/issues",
-            data=data,
-            **kwargs,  # type: ignore
-        )
+        endpoint = f"/repos/{self._owner}/{self._name}/issues"
+        response = await self._gh.generic(endpoint=endpoint, data=data, **kwargs)  # type: ignore
         assert response.data
         return aiogithubapitools.create_issue_model(response.data)
 
     async def get_pull_request_async(self, number: int) -> PullRequest:
         """Get pull request by number."""
         try:
-            response = await self._gh.repos.pulls.list(
-                f"{self._owner}/{self._name}",
-                params={GitHubRequestKwarg.QUERY: {"number": number}},
-            )
+            repo = f"{self._owner}/{self._name}"
+            params = {GitHubRequestKwarg.QUERY: {"number": number}}
+            response = await self._gh.repos.pulls.list(repo, params=params)
             if not response.data:
                 msg = f"Pull request #{number} not found"
                 raise ResourceNotFoundError(msg)
@@ -164,10 +155,9 @@ class AioGitHubRepository(BaseRepository):
         self, state: PullRequestState = "open"
     ) -> list[PullRequest]:
         """List pull requests."""
-        response = await self._gh.repos.pulls.list(
-            f"{self._owner}/{self._name}",
-            params={GitHubRequestKwarg.QUERY: {"state": state}},
-        )
+        repo = f"{self._owner}/{self._name}"
+        params = {GitHubRequestKwarg.QUERY: {"state": state}}
+        response = await self._gh.repos.pulls.list(repo, params=params)
         return [
             aiogithubapitools.create_pull_request_model(pr) for pr in response.data or []
         ]
