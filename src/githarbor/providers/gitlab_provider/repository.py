@@ -283,7 +283,8 @@ class GitLabRepository(BaseRepository):
         include_files: bool = True,
         include_stats: bool = True,
     ) -> dict[str, Any]:
-        comparison = self._repo.compare(base, head)
+        comparison = self._repo.repository_compare(base, head)
+        assert isinstance(comparison, dict)
         result: dict[str, Any] = {"ahead_by": len(comparison["commits"])}
         if include_commits:
             result["commits"] = [
@@ -303,9 +304,18 @@ class GitLabRepository(BaseRepository):
         if include_files:
             result["files"] = [f["new_path"] for f in comparison["diffs"]]
         if include_stats:
+            # Parse diff strings to count additions/deletions
+            additions = deletions = 0
+            for diff in comparison["diffs"]:
+                diff_text = diff["diff"]
+                for line in diff_text.splitlines():
+                    if line.startswith("+") and not line.startswith("+++"):
+                        additions += 1
+                    elif line.startswith("-") and not line.startswith("---"):
+                        deletions += 1
             result["stats"] = {
-                "additions": sum(d["additions"] for d in comparison["diffs"]),
-                "deletions": sum(d["deletions"] for d in comparison["diffs"]),
+                "additions": additions,
+                "deletions": deletions,
                 "changes": len(comparison["diffs"]),
             }
         return result
@@ -458,4 +468,4 @@ class GitLabRepository(BaseRepository):
 
 if __name__ == "__main__":
     repo = GitLabRepository("phil65", "test")
-    print(repo.get_repo_user())
+    print(repo.compare_branches("master", "pullrequest"))
