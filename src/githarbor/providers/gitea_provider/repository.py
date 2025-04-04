@@ -288,12 +288,8 @@ class GiteaRepository(BaseRepository):
         pattern: str | None = None,
     ) -> Iterator[str]:
         """Iterate over repository files."""
-        entries = self._repo_api.repo_get_contents_list(
-            self._owner,
-            self._name,
-            str(path),
-            ref=ref or self.default_branch,
-        )
+        ref_ = ref or self.default_branch
+        entries = self._repo_api.repo_get_contents_list(self._owner, self._name, ref=ref_)
         for entry in entries:
             if entry.type == "file":
                 if not pattern or fnmatch.fnmatch(entry.path, pattern):
@@ -426,4 +422,4 @@ if __name__ == "__main__":
 
     # Test Gitea API
     gitea = GiteaRepository.from_url(url="https://gitea.com/phil65/test")
-    print(gitea.default_branch)
+    print(list(gitea.iter_files()))
