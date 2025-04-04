@@ -113,14 +113,10 @@ def download_from_azure(
 
     dest = upath.UPath(destination)
     dest.mkdir(exist_ok=True, parents=True)
-
     credentials = BasicAuthentication("", token)
-    connection = Connection(
-        base_url=f"https://dev.azure.com/{organization}",
-        creds=credentials,
-    )
+    url = f"https://dev.azure.com/{organization}"
+    connection = Connection(base_url=url, creds=credentials)
     git_client = connection.clients.get_git_client()
-
     logger.info("Downloading files from Azure DevOps: %s", path)
     content = git_client.get_item_content(
         repository_id=repo,
@@ -209,32 +205,40 @@ def create_issue_model(work_item: AzureWorkItem) -> Issue:
 
 def create_commit_model(commit: GitCommit) -> Commit:
     """Create Commit model from Azure DevOps commit object."""
+    author = User(
+        username=commit.author.name,
+        name=commit.author.name,
+        email=commit.author.email,
+    )
+    committer = User(
+        username=commit.committer.name,
+        name=commit.committer.name,
+        email=commit.committer.email,
+    )
+    stats = {
+        "additions": commit.change_counts.add if commit.change_counts else 0,
+        "deletions": commit.change_counts.delete if commit.change_counts else 0,
+        "total": commit.change_counts.edit if commit.change_counts else 0,
+    }
     return Commit(
         sha=commit.commit_id,
         message=commit.comment,
         created_at=commit.author.date,
-        author=User(
-            username=commit.author.name,
-            name=commit.author.name,
-            email=commit.author.email,
-        ),
-        committer=User(
-            username=commit.committer.name,
-            name=commit.committer.name,
-            email=commit.committer.email,
-        ),
+        author=author,
+        committer=committer,
         url=commit.url,
-        stats={
-            "additions": commit.change_counts.add if commit.change_counts else 0,
-            "deletions": commit.change_counts.delete if commit.change_counts else 0,
-            "total": commit.change_counts.edit if commit.change_counts else 0,
-        },
+        stats=stats,
         parents=[p.commit_id for p in commit.parents] if commit.parents else [],
     )
 
 
 def create_release_model(tag: Any) -> Release:
     """Create Release model from Azure DevOps tag object."""
+    author = User(
+        username=tag.commit.committer.name,
+        name=tag.commit.committer.name,
+        email=tag.commit.committer.email,
+    )
     return Release(
         tag_name=tag.name,
         name=tag.name,
@@ -243,11 +247,7 @@ def create_release_model(tag: Any) -> Release:
         published_at=tag.commit.committer.date,
         draft=False,  # Azure doesn't have draft concept for tags
         prerelease=False,  # Azure doesn't have prerelease concept for tags
-        author=User(
-            username=tag.commit.committer.name,
-            name=tag.commit.committer.name,
-            email=tag.commit.committer.email,
-        ),
+        author=author,
         url=None,  # Azure doesn't provide direct URLs for tags
         target_commitish=tag.commit.commit_id,
         assets=[],  # Azure tags don't have assets
@@ -292,16 +292,17 @@ def create_workflow_run_model(build: Any) -> WorkflowRun:
 
 
 def create_tag_model(tag: Any) -> Tag:
+    author = User(
+        username=tag.commit.committer.name,
+        name=tag.commit.committer.name,
+        email=tag.commit.committer.email,
+    )
     return Tag(
         name=tag.name,
         sha=tag.commit.commit_id,
         message=tag.message or "",
         created_at=tag.commit.committer.date,
-        author=User(
-            username=tag.commit.committer.name,
-            name=tag.commit.committer.name,
-            email=tag.commit.committer.email,
-        ),
+        author=author,
         url=None,  # Azure DevOps doesn't provide direct URLs for tags
     )
 

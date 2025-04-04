@@ -68,7 +68,7 @@ class AzureRepository(BaseRepository):
             organization_url = f"https://dev.azure.com/{organization}"
             self._connection = Connection(base_url=organization_url, creds=credentials)
 
-            self._git_client: GitClient = self._connection.clients.get_git_client()
+            self._client: GitClient = self._connection.clients.get_git_client()
             self._work_client: WorkItemTrackingClient = (
                 self._connection.clients.get_work_item_tracking_client()
             )
@@ -77,10 +77,7 @@ class AzureRepository(BaseRepository):
             self._project = project
             self._name = name
             self._owner = organization
-            self._repo: GitRepository = self._git_client.get_repository(
-                name,
-                project=project,
-            )
+            self._repo: GitRepository = self._client.get_repository(name, project=project)
 
         except Exception as e:
             msg = f"Azure DevOps authentication failed: {e!s}"
@@ -99,16 +96,11 @@ class AzureRepository(BaseRepository):
             msg = f"Invalid Azure DevOps URL: {url}"
             raise ValueError(msg)
 
-        organization = parts[0]
+        org = parts[0]
         project = parts[1]
         repo_name = parts[3]  # After '_git'
-
-        return cls(
-            organization=organization,
-            project=project,
-            name=repo_name,
-            token=kwargs.get("token"),
-        )
+        token = kwargs.get("token")
+        return cls(organization=org, project=project, name=repo_name, token=token)
 
     @property
     def default_branch(self) -> str:
@@ -136,9 +128,8 @@ class AzureRepository(BaseRepository):
             user_info = core_client.get_authorized_user()
         else:
             # Search for the specific user
-            user_descriptor = identity_client.read_identities(
-                search_filter=f"General,localAccount,{username}",
-            )
+            filter_ = f"General,localAccount,{username}"
+            user_descriptor = identity_client.read_identities(search_filter=filter_)
             if not user_descriptor or not user_descriptor[0]:
                 msg = f"User {username} not found"
                 raise ResourceNotFoundError(msg)
@@ -154,12 +145,8 @@ class AzureRepository(BaseRepository):
     @azuretools.handle_azure_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         """Get branch information."""
-        branch = self._git_client.get_branch(
-            repository_id=self._repo.id,
-            name=name,
-            project=self._project,
-        )
-        commit = self._git_client.get_commit(branch.commit.commit_id, self._repo.id)
+        branch = self._client.get_branch(self._repo.id, name=name, project=self._project)
+        commit = self._client.get_commit(branch.commit.commit_id, self._repo.id)
         return Branch(
             name=branch.name,
             sha=branch.commit.commit_id,
@@ -175,10 +162,7 @@ class AzureRepository(BaseRepository):
     @azuretools.handle_azure_errors("Failed to get pull request {number}")
     def get_pull_request(self, number: int) -> PullRequest:
         """Get pull request by number."""
-        pr: GitPullRequest = self._git_client.get_pull_request_by_id(
-            number,
-            self._project,
-        )
+        pr: GitPullRequest = self._client.get_pull_request_by_id(number, self._project)
         return azuretools.create_pull_request_model(pr)
 
     @azuretools.handle_azure_errors("Failed to list pull requests")
@@ -190,7 +174,7 @@ class AzureRepository(BaseRepository):
         status_map = {"open": "active", "closed": "completed", "all": "all"}
         azure_status = status_map.get(state, "active")
         criteria = GitPullRequestSearchCriteria(status=azure_status)
-        prs = self._git_client.get_pull_requests(
+        prs = self._client.get_pull_requests(
             self._repo.id, search_criteria=criteria, project=self._project
         )
         return [azuretools.create_pull_request_model(pr) for pr in prs]
@@ -231,14 +215,8 @@ class AzureRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        work_item = self._work_client.create_work_item(
-            project=self._project,
-            type="Issue",
-            document={
-                "System.Title": title,
-                "System.Description": body,
-            },
-        )
+        doc = {"System.Title": title, "System.Description": body}
+        work_item = self._work_client.create_work_item(doc, self._project, type="Issue")
         # if labels:
         #     for label in labels:
         #         self._work_client.add_work_item_label(
@@ -268,7 +246,7 @@ class AzureRepository(BaseRepository):
     @azuretools.handle_azure_errors("Failed to get commit {sha}")
     def get_commit(self, sha: str) -> Commit:
         """Get commit by SHA."""
-        commit: GitCommit = self._git_client.get_commit(
+        commit: GitCommit = self._client.get_commit(
             commit_id=sha,
             repository_id=self._repo.id,
             project=self._project,
@@ -286,7 +264,7 @@ class AzureRepository(BaseRepository):
         max_results: int | None = None,
     ) -> list[Commit]:
         """List repository commits with optional filters."""
-        commits = self._git_client.get_commits(
+        commits = self._client.get_commits(
             repository_id=self._repo.id,
             search_criteria=None,
             project=self._project,
@@ -324,7 +302,7 @@ class AzureRepository(BaseRepository):
         pattern: str | None = None,
     ) -> Iterator[str]:
         """Iterate over repository files."""
-        items = self._git_client.get_items(
+        items = self._client.get_items(
             repository_id=self._repo.id,
             project=self._project,
             recursion_level="full",
@@ -343,7 +321,7 @@ class AzureRepository(BaseRepository):
     #     include_prereleases: bool = False,
     # ) -> Release:
     #     """Get latest release (mapped from Git tags)."""
-    #     tags = self._git_client.get_tags(
+    #     tags = self._client.get_tags(
     #         repository_id=self._repo.id,
     #         project=self._project,
     #     )
@@ -374,7 +352,7 @@ class AzureRepository(BaseRepository):
             description=body,
             is_draft=draft,
         )
-        pr = self._git_client.create_pull_request(
+        pr = self._client.create_pull_request(
             request,
             repository_id=self._repo.id,
             project=self._project,
@@ -389,15 +367,9 @@ class AzureRepository(BaseRepository):
     ) -> Comment:
         from azure.devops.v7_1.git.models import Comment, GitPullRequestCommentThread
 
-        thread = GitPullRequestCommentThread(
-            comments=[
-                Comment(
-                    content=body,
-                )
-            ],
-            status="active",
-        )
-        result = self._git_client.create_thread(
+        comment = Comment(content=body)
+        thread = GitPullRequestCommentThread(comments=[comment], status="active")
+        result = self._client.create_thread(
             comment_thread=thread,
             repository_id=self._repo.id,
             pull_request_id=number,
@@ -420,26 +392,17 @@ class AzureRepository(BaseRepository):
             GitPullRequestCommentThread,
         )
 
-        thread = GitPullRequestCommentThread(
-            comments=[
-                Comment(
-                    content=body,
-                )
-            ],
-            status="active",
-            thread_context=CommentThreadContext(
-                file_path=path,
-                right_file_start={
-                    "line": position,
-                    "offset": 0,
-                },
-                right_file_end={
-                    "line": position,
-                    "offset": 0,
-                },
-            ),
+        ctx = CommentThreadContext(
+            file_path=path,
+            right_file_start={"line": position, "offset": 0},
+            right_file_end={"line": position, "offset": 0},
         )
-        result = self._git_client.create_thread(
+        thread = GitPullRequestCommentThread(
+            comments=[Comment(content=body)],
+            status="active",
+            thread_context=ctx,
+        )
+        result = self._client.create_thread(
             comment_thread=thread,
             repository_id=self._repo.id,
             pull_request_id=number,

@@ -72,12 +72,7 @@ class GitHubOwner(BaseOwner):
         from githarbor.repositories import create_repository
 
         assert isinstance(self._user, AuthenticatedUser)
-
-        repo = self._user.create_repo(
-            name=name,
-            description=description,
-            private=private,
-        )
+        repo = self._user.create_repo(name=name, description=description, private=private)
         return create_repository(repo.html_url)
 
     @githubtools.handle_github_errors("Failed to get user information")

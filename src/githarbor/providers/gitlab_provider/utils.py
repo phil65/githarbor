@@ -17,6 +17,7 @@ from githarbor.core.models import (
     Label,
     PullRequest,
     Release,
+    Tag,
     User,
     Workflow,
     WorkflowRun,
@@ -340,4 +341,17 @@ def create_comment_model(gl_comment: Any) -> Comment:
         if gl_comment.updated_at
         else None,
         url=gl_comment.url if hasattr(gl_comment, "url") else None,
+    )
+
+
+def create_tag_model(tag: Any) -> Tag:
+    """Create Tag model from GitLab tag object."""
+    return Tag(
+        name=tag.name,
+        sha=tag.commit["id"],
+        message=tag.message or "",
+        created_at=parse_timestamp(tag.commit["created_at"]),
+        author=create_user_model(tag.commit["author"]),
+        url=f"{tag._project.web_url}/-/tags/{tag.name}",  # type: ignore
+        verified=bool(getattr(tag, "verified", False)),
     )

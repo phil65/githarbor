@@ -372,31 +372,12 @@ class GitLabRepository(BaseRepository):
     def get_tag(self, name: str) -> Tag:
         """Get a specific tag by name."""
         tag = self._repo.tags.get(name)
-        return Tag(
-            name=tag.name,
-            sha=tag.commit["id"],
-            message=tag.message,
-            created_at=tag.commit["created_at"],
-            author=gitlabtools.create_user_model(tag.commit["author"]),
-            url=f"{self._repo.web_url}/-/tags/{name}",
-            verified=bool(getattr(tag, "verified", False)),
-        )
+        return gitlabtools.create_tag_model(tag)
 
     @gitlabtools.handle_gitlab_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
         """List all repository tags."""
-        return [
-            Tag(
-                name=tag.name,
-                sha=tag.commit["id"],
-                message=tag.message,
-                created_at=tag.commit["created_at"],
-                author=gitlabtools.create_user_model(tag.commit["author"]),
-                url=f"{self._repo.web_url}/-/tags/{tag.name}",
-                verified=bool(getattr(tag, "verified", False)),
-            )
-            for tag in self._repo.tags.list()
-        ]
+        return [gitlabtools.create_tag_model(tag) for tag in self._repo.tags.list()]
 
     @gitlabtools.handle_gitlab_errors("Failed to create merge request")
     def create_pull_request(
@@ -418,24 +399,13 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_pull_request_model(mr)
 
     @gitlabtools.handle_gitlab_errors("Failed to create branch")
-    def create_branch(
-        self,
-        name: str,
-        base_commit: str,
-    ) -> Branch:
+    def create_branch(self, name: str, base_commit: str) -> Branch:
         """Create a new branch at the specified commit."""
-        branch = self._repo.branches.create({
-            "branch": name,
-            "ref": base_commit,
-        })
+        branch = self._repo.branches.create({"branch": name, "ref": base_commit})
         return gitlabtools.create_branch_model(branch)  # type: ignore
 
     @gitlabtools.handle_gitlab_errors("Failed to add merge request comment")
-    def add_pull_request_comment(
-        self,
-        number: int,
-        body: str,
-    ) -> Comment:
+    def add_pull_request_comment(self, number: int, body: str) -> Comment:
         mr = self._repo.mergerequests.get(number)
         note = mr.notes.create({"body": body})
         return gitlabtools.create_comment_model(note)
@@ -450,18 +420,16 @@ class GitLabRepository(BaseRepository):
         position: int,
     ) -> Comment:
         mr = self._repo.mergerequests.get(number)
-        discussion = mr.discussions.create({
-            "body": body,
-            "position": {
-                "position_type": "text",
-                "new_path": path,
-                "new_line": position,
-                "head_sha": commit_id,
-                # GitLab requires these, we'll use the same commit SHA
-                "base_sha": commit_id,
-                "start_sha": commit_id,
-            },
-        })
+        pos = {
+            "position_type": "text",
+            "new_path": path,
+            "new_line": position,
+            "head_sha": commit_id,
+            # GitLab requires these, we'll use the same commit SHA
+            "base_sha": commit_id,
+            "start_sha": commit_id,
+        }
+        discussion = mr.discussions.create({"body": body, "position": pos})
         # Discussion contains the note as first element
         return gitlabtools.create_comment_model(discussion.attributes["notes"][0])
 

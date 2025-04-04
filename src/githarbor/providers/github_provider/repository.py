@@ -262,21 +262,17 @@ class GitHubRepository(BaseRepository):
         include_files: bool = True,
         include_stats: bool = True,
     ) -> dict[str, Any]:
-        comparison = self._repo.compare(base, head)
-        result: dict[str, Any] = {
-            "ahead_by": comparison.ahead_by,
-            "behind_by": comparison.behind_by,
-        }
-
+        comp = self._repo.compare(base, head)
+        result: dict[str, Any] = {"ahead_by": comp.ahead_by, "behind_by": comp.behind_by}
         if include_commits:
-            result["commits"] = [self.get_commit(c.sha) for c in comparison.commits]
+            result["commits"] = [self.get_commit(c.sha) for c in comp.commits]
         if include_files:
-            result["files"] = [f.filename for f in comparison.files]
+            result["files"] = [f.filename for f in comp.files]
         if include_stats:
             result["stats"] = {
-                "additions": comparison.total_commits,
-                "deletions": comparison.total_commits,
-                "changes": len(comparison.files),
+                "additions": comp.total_commits,
+                "deletions": comp.total_commits,
+                "changes": len(comp.files),
             }
         return result
 

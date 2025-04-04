@@ -110,11 +110,7 @@ def create_commit_model(commit: git.Commit) -> Commit:
         author=create_user_model(commit.author),
         created_at=datetime.fromtimestamp(commit.committed_date, UTC),
         committer=create_user_model(commit.committer),
-        stats={
-            "additions": commit.stats.total["insertions"],
-            "deletions": commit.stats.total["deletions"],
-            "total": commit.stats.total["lines"],
-        },
+        stats=get_commit_stats(commit),
         parents=[c.hexsha for c in commit.parents],
         files_changed=[diff.a_path for diff in commit.diff() if diff.a_path],
     )
@@ -153,7 +149,6 @@ def create_tag_model(
         message=message,
         created_at=created_at,
         author=author,
-        url=None,  # Local tags don't have URLs
     )
 
 
@@ -166,11 +161,7 @@ def create_user_model(git_actor: git.Actor) -> User:
     Returns:
         User model instance or None if no actor
     """
-    return User(
-        username=git_actor.name,  # type: ignore
-        name=git_actor.name,
-        email=git_actor.email,
-    )
+    return User(username=git_actor.name, name=git_actor.name, email=git_actor.email)  # type: ignore
 
 
 def get_commit_stats(commit: git.Commit) -> dict[str, int]:

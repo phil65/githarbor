@@ -53,19 +53,14 @@ class LocalRepository(BaseRepository):
     @localtools.handle_git_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         branch = self.repo.heads[name]
-        return localtools.create_branch_model(
-            branch,
-            is_default=branch.name == self.default_branch,
-        )
+        is_default = branch.name == self.default_branch
+        return localtools.create_branch_model(branch, is_default=is_default)
 
     @localtools.handle_git_errors("Failed to list branches")
     def list_branches(self) -> list[Branch]:
         return [
-            localtools.create_branch_model(
-                branch,
-                is_default=branch.name == self.default_branch,
-            )
-            for branch in self.repo.heads
+            localtools.create_branch_model(b, is_default=b.name == self.default_branch)
+            for b in self.repo.heads
         ]
 
     @localtools.handle_git_errors("Failed to get commit {sha}")
