@@ -11,6 +11,7 @@ import aiohttp
 import upath
 
 from githarbor.core.models import (
+    Asset,
     Issue,
     Label,
     PullRequest,
@@ -134,16 +135,6 @@ def create_pull_request_model(pr: GitHubPullRequestModel) -> PullRequest:
     )
 
 
-def _process_release_asset(asset: dict[str, Any]) -> dict[str, Any]:
-    """Convert release asset data."""
-    return {
-        "name": str(asset["name"]),
-        "url": str(asset["browser_download_url"]),
-        "size": int(asset["size"]),
-        "download_count": int(asset["download_count"]),
-    }
-
-
 def create_release_model(release: GitHubReleaseModel) -> Release:
     """Convert aiogithubapi release model to GitHarbor release model."""
     return Release(
@@ -155,9 +146,25 @@ def create_release_model(release: GitHubReleaseModel) -> Release:
         draft=bool(release.draft),
         prerelease=bool(release.prerelease),
         author=create_user_model(release.author),
-        assets=[_process_release_asset(asset) for asset in (release.assets or [])],
+        assets=[create_asset_model(asset) for asset in (release.assets or [])],
         url=str(release.html_url or ""),
         target_commitish=str(release.target_commitish or ""),
+    )
+
+
+def create_asset_model(asset: Any) -> Asset:
+    """Create Asset model from AioGitHubAPI asset object."""
+    return Asset(
+        name=str(asset["name"]),
+        url=str(asset["browser_download_url"]),
+        size=int(asset["size"]),
+        download_count=int(asset["download_count"]),
+        created_at=parse_datetime(asset["created_at"])
+        if asset.get("created_at")
+        else None,
+        updated_at=parse_datetime(asset["updated_at"])
+        if asset.get("updated_at")
+        else None,
     )
 
 

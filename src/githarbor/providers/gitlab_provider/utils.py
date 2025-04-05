@@ -10,6 +10,7 @@ import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
+    Asset,
     Branch,
     Comment,
     Commit,
@@ -306,6 +307,7 @@ def create_workflow_run_model(job: Any) -> WorkflowRun:
 
 def create_release_model(release: Any) -> Release:
     """Create Release model from GitLab release object."""
+    asset_list = getattr(release, "assets", {}).get("links", [])
     return Release(
         tag_name=release.tag_name,
         name=release.name,
@@ -317,14 +319,7 @@ def create_release_model(release: Any) -> Release:
         draft=False,  # GitLab doesn't have draft releases
         prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
         author=create_user_model(getattr(release, "author", None)),
-        assets=[
-            {
-                "name": asset["name"],
-                "url": asset["url"],
-                "size": asset.get("size", 0),
-            }
-            for asset in getattr(release, "assets", {}).get("links", [])
-        ],
+        assets=[create_asset_model(a) for a in asset_list],
         url=getattr(release, "_links", {}).get("self"),
         target_commitish=getattr(release, "commit", {}).get("id"),
     )
@@ -354,4 +349,14 @@ def create_tag_model(tag: Any) -> Tag:
         author=create_user_model(tag.commit["author"]),
         url=f"{tag._project.web_url}/-/tags/{tag.name}",  # type: ignore
         verified=bool(getattr(tag, "verified", False)),
+    )
+
+
+def create_asset_model(gl_asset: Any) -> Asset:
+    """Create Asset model from GitLab asset object."""
+    return Asset(
+        name=gl_asset["name"],
+        url=gl_asset["url"],
+        size=gl_asset.get("size", 0),
+        download_count=gl_asset.get("download_count", 0),
     )

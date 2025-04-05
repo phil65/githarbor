@@ -8,6 +8,7 @@ import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
+    Asset,
     Branch,
     Comment,
     Commit,
@@ -222,6 +223,15 @@ def create_commit_model(commit: Any) -> Commit:
 
 
 def create_release_model(release: Any) -> Release:
+    author = (
+        User(
+            username=release.author.login,
+            name=release.author.name,
+            avatar_url=release.author.avatar_url,
+        )
+        if release.author
+        else None
+    )
     return Release(
         tag_name=release.tag_name,
         name=release.title,
@@ -230,24 +240,8 @@ def create_release_model(release: Any) -> Release:
         published_at=release.published_at,
         draft=release.draft,
         prerelease=release.prerelease,
-        author=User(
-            username=release.author.login,
-            name=release.author.name,
-            avatar_url=release.author.avatar_url,
-        )
-        if release.author
-        else None,
-        assets=[
-            {
-                "name": asset.name,
-                "url": asset.browser_download_url,
-                "size": asset.size,
-                "download_count": asset.download_count,
-                "created_at": asset.created_at,
-                "updated_at": asset.updated_at,
-            }
-            for asset in release.assets
-        ],
+        author=author,
+        assets=[create_asset_model(asset) for asset in release.assets],
         url=release.html_url,
         target_commitish=release.target_commitish,
     )
@@ -308,20 +302,20 @@ def create_tag_model(tag: Any) -> Tag:
 def create_branch_model(branch: Any) -> Branch:
     """Create Branch model from GitHub branch object."""
     last_commit = branch.commit
+    rules = (
+        {
+            "required_reviews": branch.get_required_status_checks(),
+            "dismiss_stale_reviews": branch.get_required_pull_request_reviews(),
+            "require_code_owner_reviews": branch.get_required_signatures(),
+        }
+        if branch.protected
+        else None
+    )
     return Branch(
         name=branch.name,
         sha=branch.commit.sha,
         protected=branch.protected,
-        default=False,  # This needs to be set by the caller
-        protection_rules=(
-            {
-                "required_reviews": branch.get_required_status_checks(),
-                "dismiss_stale_reviews": branch.get_required_pull_request_reviews(),
-                "require_code_owner_reviews": branch.get_required_signatures(),
-            }
-            if branch.protected
-            else None
-        ),
+        protection_rules=rules,
         last_commit_date=last_commit.commit.author.date,
         last_commit_message=last_commit.commit.message,
         last_commit_author=create_user_model(last_commit.author),
@@ -351,4 +345,16 @@ def create_comment_model(gh_comment: Any) -> Comment:
         created_at=gh_comment.created_at,
         updated_at=gh_comment.updated_at,
         url=gh_comment.html_url,
+    )
+
+
+def create_asset_model(gh_asset: Any) -> Asset:
+    """Create Asset model from GitHub asset object."""
+    return Asset(
+        name=gh_asset.name,
+        url=gh_asset.browser_download_url,
+        size=gh_asset.size,
+        download_count=gh_asset.download_count,
+        created_at=gh_asset.created_at,
+        updated_at=gh_asset.updated_at,
     )

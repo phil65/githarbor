@@ -9,6 +9,7 @@ import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
+    Asset,
     Branch,
     Comment,
     Commit,
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from githubkit.versions.latest import models as ghk_models
+    from githubkit.versions.latest.models import ReleaseAsset
 
 
 T = TypeVar("T")
@@ -398,17 +400,23 @@ def create_release_model(ghk_release: ghk_models.Release) -> Release:
         draft=ghk_release.draft,
         prerelease=ghk_release.prerelease,
         author=create_user_model(ghk_release.author),
-        assets=[
-            {
-                "name": asset.name,
-                "url": asset.browser_download_url,
-                "size": asset.size,
-                "download_count": asset.download_count,
-            }
-            for asset in ghk_release.assets
-        ],
+        assets=[create_asset_model(asset) for asset in ghk_release.assets],
         url=ghk_release.html_url,
         target_commitish=ghk_release.target_commitish,
+    )
+
+
+def create_asset_model(ghk_asset: ReleaseAsset) -> Asset:
+    """Create Asset model from GitHubKit asset object."""
+    from githubkit.utils import UNSET
+
+    return Asset(
+        name=ghk_asset.name,
+        url=ghk_asset.browser_download_url,
+        size=ghk_asset.size,
+        download_count=ghk_asset.download_count,
+        created_at=ghk_asset.created_at if ghk_asset.created_at is not UNSET else None,
+        updated_at=ghk_asset.updated_at if ghk_asset.updated_at is not UNSET else None,
     )
 
 
@@ -417,11 +425,7 @@ def create_tag_model(ghk_tag: ghk_models.Tag | ghk_models.GitTag) -> Tag:
     from githubkit.versions.latest import models as ghk_models
 
     if isinstance(ghk_tag, ghk_models.Tag):
-        return Tag(
-            name=ghk_tag.name,
-            sha=ghk_tag.commit.sha,
-            url=None,  # Not available in the Tag model
-        )
+        return Tag(name=ghk_tag.name, sha=ghk_tag.commit.sha)
     return Tag(
         name=ghk_tag.tag,
         sha=ghk_tag.sha,

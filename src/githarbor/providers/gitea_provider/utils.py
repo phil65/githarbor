@@ -4,6 +4,7 @@ import functools
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
+    Asset,
     Branch,
     Commit,
     Issue,
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from giteapy.models import (
+        Asset as GiteaAsset,
         Branch as GiteaBranch,
         Commit as GiteaCommit,
         Issue as GiteaIssue,
@@ -170,15 +172,7 @@ def create_release_model(release: GiteaRelease) -> Release:
         draft=release.draft,
         prerelease=release.prerelease,
         author=create_user_model(release.author),
-        assets=[
-            {
-                "name": asset.name,
-                "url": asset.browser_download_url,
-                "size": asset.size,
-                "download_count": asset.download_count,
-            }
-            for asset in release.assets
-        ],
+        assets=[create_asset_model(asset) for asset in release.assets],
         url=release.url,
         target_commitish=release.target_commitish,
     )
@@ -207,4 +201,17 @@ def create_branch_model(gitea_branch: GiteaBranch) -> Branch:
         protected=gitea_branch.protected,
         created_at=None,  # Gitea API doesn't provide this
         updated_at=None,  # Gitea API doesn't provide this
+    )
+
+
+def create_asset_model(gitea_asset: GiteaAsset) -> Asset:
+    """Create Asset model from Gitea asset object."""
+    return Asset(
+        name=gitea_asset.name,
+        url=gitea_asset.browser_download_url,
+        size=gitea_asset.size,
+        download_count=gitea_asset.download_count,
+        # Gitea API doesn't provide these timestamps
+        created_at=None,
+        updated_at=None,
     )

@@ -332,7 +332,7 @@ class Release:
     """Whether this is a pre-release."""
     author: User | None = None
     """User who created the release."""
-    assets: list[dict[str, Any]] = field(default_factory=list)
+    assets: list[Asset] = field(default_factory=list)
     """List of assets attached to the release."""
     url: str | None = None
     """URL to view the release."""
@@ -340,3 +340,21 @@ class Release:
     """The branch/tag/commit the release targets."""
     download_count: int = 0
     """Total downloads."""
+
+
+@dataclass
+class Asset:
+    """Model representing a release asset."""
+
+    name: str
+    """Name of the asset."""
+    url: str
+    """Download URL for the asset."""
+    size: int
+    """Size of the asset in bytes."""
+    download_count: int = 0
+    """Number of times the asset has been downloaded."""
+    created_at: datetime | None = None
+    """Date and time when the asset was created."""
+    updated_at: datetime | None = None
+    """Date and time when the asset was last updated."""
