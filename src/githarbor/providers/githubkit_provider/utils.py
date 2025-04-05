@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 import functools
 import inspect
-import string
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from githarbor.core.models import (
@@ -39,35 +38,32 @@ P = ParamSpec("P")
 def handle_githubkit_errors(
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """Decorator to handle GitHubKit API exceptions consistently."""
-    parser = string.Formatter()
-    param_names = {
-        field_name
-        for _, field_name, _, _ in parser.parse(error_msg_template)
-        if field_name and field_name != "error"
-    }
-
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
-        @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            from githubkit.exception import GitHubException
+        if not inspect.iscoroutinefunction(func):
+            # For sync functions
+            @functools.wraps(func)
+            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:  # pyright: ignore
+                from githubkit.exception import GitHubException
 
-            sig = inspect.signature(func)
-            bound_args = sig.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            params = {
-                name: bound_args.arguments[name]
-                for name in param_names
-                if name in bound_args.arguments
-            }
+                try:
+                    return func(*args, **kwargs)  # type: ignore
+                except GitHubException as e:
+                    msg = error_msg_template.format(error=str(e))
+                    raise ResourceNotFoundError(msg) from e
 
-            try:
-                return func(*args, **kwargs)
-            except GitHubException as e:
-                msg = error_msg_template.format(**params, error=str(e))
-                raise ResourceNotFoundError(msg) from e
+        else:
+            # For async functions
+            @functools.wraps(func)
+            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+                from githubkit.exception import GitHubException
 
-        return wrapper
+                try:
+                    return await func(*args, **kwargs)  # type: ignore
+                except GitHubException as e:
+                    msg = error_msg_template.format(error=str(e))
+                    raise ResourceNotFoundError(msg) from e
+
+        return wrapper  # type: ignore
 
     return decorator
 
