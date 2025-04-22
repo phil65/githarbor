@@ -48,6 +48,7 @@ azure = ["azure-devops"]
 bitbucket = ["atlassian-python-api"]
 local = ["gitpython"]
 diff = ["unidiff"]
+mcp = ["fastmcp"]
 all = [
     "pygithub",
     "python-gitlab",
@@ -56,10 +57,14 @@ all = [
     "azure-devops",
     "gitpython",
     "unidiff",
+    "fastmcp",
 ]
 
 [project.entry-points."jinjarope.environment"]
 llmling_agent = "githarbor.functional:setup_env"
+
+[project.scripts]
+githarbor = "githarbor.mcp_server:main"
 
 [tool.uv]
 default-groups = ["dev", "lint", "docs"]
