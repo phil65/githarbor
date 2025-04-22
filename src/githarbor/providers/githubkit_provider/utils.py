@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import functools
 import inspect
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
@@ -112,7 +111,7 @@ def create_user_model(
             username=name or "unknown",
             name=name,
             email=email,
-            created_at=datetime.fromisoformat(date) if date else None,
+            created_at=date if date is not UNSET else None,
         )
     user = User(
         username=ghk_user.login,
@@ -359,7 +358,7 @@ def create_commit_model(
         if stats.total is not UNSET:
             stats_dict["total"] = stats.total or 0
     created_at = (
-        datetime.fromisoformat(commit_data.author.date)
+        commit_data.author.date
         if commit_data.author
         and commit_data.author.date
         and commit_data.author.date is not UNSET

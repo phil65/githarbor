@@ -7,7 +7,7 @@ import dataclasses
 import functools
 import os
 import tempfile
-from typing import Literal
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 
@@ -340,7 +340,7 @@ def main() -> None:
 
         # Create a repository for the specified path
         fixed_repo = create_repository(args.repo_path)
-        fixed_repo_mcp = FastMCP(f"GitHarbor - {args.repo_path}")
+        fixed_repo_mcp = FastMCP[Any](f"GitHarbor - {args.repo_path}")
 
         # Get all async methods from the repository proxy
         async_methods = fixed_repo.get_async_methods()
