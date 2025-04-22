@@ -152,7 +152,9 @@ def create_label_model(ghk_label: ghk_models.IssuePropLabelsItemsOneof1) -> Labe
 
 
 def create_branch_model(
-    ghk_branch: ghk_models.BranchShort | ghk_models.BranchWithProtection,
+    ghk_branch: ghk_models.BranchShort
+    | ghk_models.BranchWithProtection
+    | ghk_models.ShortBranch,
     *,
     is_default: bool = False,
 ) -> Branch:

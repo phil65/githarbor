@@ -37,7 +37,7 @@ from githarbor.functional import (
 
 
 # Create the MCP server
-mcp = FastMCP("GitHarbor")
+mcp = FastMCP[Any]("GitHarbor")
 
 
 # Expose functional tools as MCP tools
