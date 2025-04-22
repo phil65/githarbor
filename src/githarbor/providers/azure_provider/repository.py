@@ -179,6 +179,11 @@ class AzureRepository(BaseRepository):
         )
         return [azuretools.create_pull_request_model(pr) for pr in prs]
 
+    # @azuretools.handle_azure_errors("Failed to list branches")
+    # def list_branches(self) -> list[Branch]:
+    #     branches = self._client.get_branches(self._repo.id, project=self._project)
+    #     return [azuretools.create_branch_model(branch) for branch in branches]
+
     @azuretools.handle_azure_errors("Failed to get issue {issue_id}")
     def get_issue(self, issue_id: int) -> Issue:
         """Get issue by ID (work item in Azure DevOps)."""

@@ -121,6 +121,11 @@ class GitHubKitRepository(BaseRepository):
         data = resp.parsed_data
         return [githubkittools.create_pull_request_model(pr) for pr in data]  # type: ignore
 
+    @githubkittools.handle_githubkit_errors("Failed to list branches")
+    async def list_branches_async(self) -> list[Branch]:
+        resp = await self._gh.rest.repos.async_list_branches(self._owner, self._name)
+        return [githubkittools.create_branch_model(branch) for branch in resp.parsed_data]
+
     @githubkittools.handle_githubkit_errors("Failed to get issue {issue_id}")
     async def get_issue_async(self, issue_id: int) -> Issue:
         """Get issue by ID."""
@@ -423,7 +428,7 @@ if __name__ == "__main__":
 
     async def main():
         provider = GitHubKitRepository("phil65", "llmling-agent")
-        releases = await provider.list_pull_requests_async()
+        releases = await provider.list_branches_async()
         print(releases)
 
     import asyncio

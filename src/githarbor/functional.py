@@ -85,6 +85,19 @@ async def list_pull_requests_async(
     return await repo.list_pull_requests_async(state)
 
 
+async def list_branches_async(url: str) -> list[Branch]:
+    """List all branches in a repository.
+
+    Args:
+        url: Repository URL
+
+    Returns:
+        List of branches
+    """
+    repo = RepoRegistry.get(url)
+    return await repo.list_branches_async()
+
+
 async def get_issue_async(url: str, issue_id: int) -> Issue:
     """Get information about a specific issue.
 
@@ -563,6 +576,7 @@ list_issues = make_sync(list_issues_async)
 create_issue = make_sync(create_issue_async)
 get_commit = make_sync(get_commit_async)
 list_commits = make_sync(list_commits_async)
+list_branches = make_sync(list_branches_async)
 get_workflow = make_sync(get_workflow_async)
 list_workflows = make_sync(list_workflows_async)
 get_workflow_run = make_sync(get_workflow_run_async)
@@ -617,6 +631,7 @@ def setup_env(env: Any) -> None:
         get_release_async,
         get_tag_async,
         list_tags_async,
+        list_branches_async,
         create_pull_request_async,
         create_pull_request_from_diff_async,
         list_repositories_async,
@@ -633,6 +648,7 @@ def setup_env(env: Any) -> None:
         list_pull_requests,
         get_issue,
         list_issues,
+        list_branches,
         create_issue,
         get_commit,
         list_commits,

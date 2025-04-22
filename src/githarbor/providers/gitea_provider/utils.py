@@ -195,12 +195,34 @@ def create_tag_model(gitea_tag: GiteaTag) -> Tag:
 
 def create_branch_model(gitea_branch: GiteaBranch) -> Branch:
     """Create Branch model from Gitea branch object."""
+    # Extract the commit data
+    commit = gitea_branch.commit
+    commit_author = None
+    commit_message = None
+    created_at = None
+
+    # Extract commit details if available
+    if commit:
+        commit_message = commit.message
+        if hasattr(commit, "author") and commit.author:
+            commit_author = User(
+                username=commit.author.username or "",
+                name=commit.author.name or "",
+                email=commit.author.email or "",
+            )
+        if hasattr(commit, "timestamp"):
+            created_at = commit.timestamp
+
     return Branch(
         name=gitea_branch.name,
-        sha=gitea_branch.commit.id,
-        protected=gitea_branch.protected,
-        created_at=None,  # Gitea API doesn't provide this
-        updated_at=None,  # Gitea API doesn't provide this
+        sha=commit.id if commit else "",
+        protected=getattr(gitea_branch, "protected", False),
+        default=False,  # We don't know if it's default from just the branch data
+        created_at=created_at,
+        updated_at=None,  # Not provided by Gitea API
+        last_commit_date=created_at,
+        last_commit_message=commit_message,
+        last_commit_author=commit_author,
     )
 
 

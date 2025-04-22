@@ -72,7 +72,7 @@ class GiteaRepository(BaseRepository):
             self._issues_api = giteapy.IssueApi(self._api)
             self._user_api = giteapy.UserApi(self._api)
             # Verify access and get repo info
-            self._repo: giteapy.RepositoryApi = self._repo_api.repo_get(owner, name)
+            self._repo: giteapy.Repository = self._repo_api.repo_get(owner, name)
         except ApiException as e:
             msg = f"Gitea authentication failed: {e!s}"
             raise AuthenticationError(msg) from e
@@ -123,7 +123,13 @@ class GiteaRepository(BaseRepository):
             state=state,
         )
         assert isinstance(prs, list)
-        return [giteatools.create_pull_request_model(pr) for pr in prs]
+        return [giteatools.create_pull_request_model(pr) for pr in prs]  # pyright: ignore
+
+    @giteatools.handle_api_errors("Failed to list branches")
+    def list_branches(self) -> list[Branch]:
+        branches = self._repo_api.repo_list_branches(self._owner, self._name)
+        assert isinstance(branches, list)
+        return [giteatools.create_branch_model(branch) for branch in branches]  # pyright: ignore
 
     @giteatools.handle_api_errors("Failed to get issue")
     def get_issue(self, issue_id: int) -> Issue:
@@ -419,8 +425,5 @@ class GiteaRepository(BaseRepository):
 
 
 if __name__ == "__main__":
-    import os
-
-    # Test Gitea API
     gitea = GiteaRepository.from_url(url="https://gitea.com/phil65/test")
-    print(list(gitea.iter_files()))
+    print(gitea.list_branches())

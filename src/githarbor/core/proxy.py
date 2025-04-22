@@ -620,6 +620,16 @@ class Repository(BaseRepository):
             return asyncio.run(self._repository.list_tags_async())
         return self._repository.list_tags()
 
+    def list_branches(self) -> list[Branch]:
+        """List all branches in the repository.
+
+        Returns:
+            List of branches.
+        """
+        if self._repository.is_async:
+            return asyncio.run(self._repository.list_branches_async())
+        return self._repository.list_branches()
+
     def create_branch(
         self,
         name: str,
@@ -1068,6 +1078,16 @@ class Repository(BaseRepository):
             return await self._repository.list_tags_async()  # type: ignore
         return await asyncio.to_thread(self._repository.list_tags)
 
+    async def list_branches_async(self) -> list[Branch]:
+        """List all branches in the repository asynchronously.
+
+        Returns:
+            List of branches.
+        """
+        if self._repository.is_async:
+            return await self._repository.list_branches_async()
+        return await asyncio.to_thread(self._repository.list_branches)
+
     async def create_pull_request_from_diff_async(
         self,
         title: str,
@@ -1149,6 +1169,7 @@ class Repository(BaseRepository):
             self.get_repo_user,
             self.create_branch,
             self.get_branch,
+            self.list_branches,
             self.create_pull_request,
             self.create_pull_request_from_diff,
             self.get_pull_request,
@@ -1181,6 +1202,7 @@ class Repository(BaseRepository):
             self.get_repo_user_async,
             self.create_branch_async,
             self.get_branch_async,
+            self.list_branches_async,
             self.create_pull_request_async,
             self.create_pull_request_from_diff_async,
             self.get_pull_request_async,

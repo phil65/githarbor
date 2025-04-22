@@ -92,6 +92,11 @@ class GitHubRepository(BaseRepository):
         pr = self._repo.get_pull(number)
         return githubtools.create_pull_request_model(pr)
 
+    @githubtools.handle_github_errors("Failed to list branches")
+    def list_branches(self) -> list[Branch]:
+        branches = self._repo.get_branches()
+        return [githubtools.create_branch_model(branch) for branch in branches]
+
     @githubtools.handle_github_errors("Failed to list pull requests")
     def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         prs = self._repo.get_pulls(state=state)

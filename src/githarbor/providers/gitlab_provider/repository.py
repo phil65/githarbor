@@ -109,6 +109,11 @@ class GitLabRepository(BaseRepository):
         mrs = self._repo.mergerequests.list(state=state, all=True)
         return [gitlabtools.create_pull_request_model(mr) for mr in mrs]
 
+    @gitlabtools.handle_gitlab_errors("Failed to list branches")
+    def list_branches(self) -> list[Branch]:
+        branches = self._repo.branches.list(get_all=True)
+        return [gitlabtools.create_branch_model(branch) for branch in branches]  # type: ignore
+
     @gitlabtools.handle_gitlab_errors("Issue #{issue_id} not found")
     def get_issue(self, issue_id: int) -> Issue:
         issue = self._repo.issues.get(issue_id)
@@ -436,4 +441,4 @@ class GitLabRepository(BaseRepository):
 
 if __name__ == "__main__":
     repo = GitLabRepository("phil65", "test")
-    print(repo.compare_branches("master", "pullrequest"))
+    print(repo.list_branches())

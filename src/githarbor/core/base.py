@@ -426,6 +426,11 @@ class BaseRepository:
         msg = f"{self.__class__.__name__} does not implement list_tags_async"
         raise FeatureNotSupportedError(msg)
 
+    async def list_branches_async(self) -> list[Branch]:
+        """List all branches asynchronously."""
+        msg = f"{self.__class__.__name__} does not implement list_branches_async"
+        raise FeatureNotSupportedError(msg)
+
     async def create_pull_request_async(
         self,
         title: str,

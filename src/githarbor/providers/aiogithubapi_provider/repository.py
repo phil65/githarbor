@@ -162,6 +162,11 @@ class AioGitHubRepository(BaseRepository):
             aiogithubapitools.create_pull_request_model(pr) for pr in response.data or []
         ]
 
+    # async def list_branches_async(self) -> list[Branch]:
+    #     response = await self._gh.repos.branches.list(f"{self._owner}/{self._name}")
+    #     assert response.data
+    #     return [aiogithubapitools.create_branch_model(b) for b in response.data]
+
     async def get_latest_release_async(
         self,
         include_drafts: bool = False,
