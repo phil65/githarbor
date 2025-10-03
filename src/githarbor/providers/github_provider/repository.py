@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from github import NamedUser
-    from github.Commit import CommitSearchResult
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -203,6 +202,8 @@ class GitHubRepository(BaseRepository):
         max_results: int | None = None,
     ) -> list[Commit]:
         # Build the search query
+        from github.Commit import CommitSearchResult
+
         search_query = f"{query} repo:{self._owner}/{self._name}"
         # Add branch qualifier if specified
         if branch:
