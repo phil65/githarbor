@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
 
 from aiogithubapi.exceptions import GitHubException
 import aiohttp
-import upath
 
 from githarbor.core.models import (
     Asset,
@@ -188,9 +187,11 @@ async def download_from_github(
     recursive: bool = False,
 ) -> None:
     """Download files from GitHub repository."""
+    from upathtools import to_upath
+
     owner, repo = repository.split("/")
 
-    dest = upath.UPath(destination)
+    dest = to_upath(destination)
     dest.mkdir(exist_ok=True, parents=True)
 
     url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}"
@@ -203,7 +204,7 @@ async def download_from_github(
                     msg = f"Path not found: {path}"
                     raise ResourceNotFoundError(msg)
                 content = await response.read()
-                file_dest = dest / upath.UPath(path).name
+                file_dest = dest / to_upath(path).name
                 file_dest.write_bytes(content)
         except aiohttp.ClientError as e:
             msg = f"Failed to download {path}: {e}"

@@ -104,14 +104,14 @@ def download_from_azure(
     """
     from azure.devops.connection import Connection
     from msrest.authentication import BasicAuthentication
-    import upath
+    from upathtools import to_upath
 
     token = token or TOKEN
     if not token:
         msg = "Azure DevOps PAT token is required"
         raise ValueError(msg)
 
-    dest = upath.UPath(destination)
+    dest = to_upath(destination)
     dest.mkdir(exist_ok=True, parents=True)
     credentials = BasicAuthentication("", token)
     url = f"https://dev.azure.com/{organization}"
@@ -129,7 +129,7 @@ def download_from_azure(
         msg = "Recursive download not yet implemented for Azure DevOps"
         raise NotImplementedError(msg)
 
-    file_dest = dest / upath.UPath(path).name
+    file_dest = dest / to_upath(path).name
     file_dest.write_bytes(content)
 
 

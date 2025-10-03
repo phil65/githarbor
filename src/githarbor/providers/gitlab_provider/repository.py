@@ -200,9 +200,9 @@ class GitLabRepository(BaseRepository):
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
     def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
-        import upath
+        from upathtools import to_upath
 
-        dest = upath.UPath(destination)
+        dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
         if recursive:
@@ -222,7 +222,7 @@ class GitLabRepository(BaseRepository):
         else:
             # For single file download
             content = self._repo.files.get(file_path=str(path), ref=self.default_branch)
-            file_dest = dest / upath.UPath(path).name
+            file_dest = dest / to_upath(path).name
             file_dest.write_bytes(content.decode())
 
     @gitlabtools.handle_gitlab_errors("Failed to search commits")

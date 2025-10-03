@@ -205,9 +205,9 @@ class GitHubKitRepository(BaseRepository):
         recursive: bool = False,
     ) -> None:
         """Download repository content."""
-        import upath
+        from upathtools import to_upath
 
-        dest = upath.UPath(destination)
+        dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
         resp = await self._gh.rest.repos.async_get_content(
@@ -216,7 +216,7 @@ class GitHubKitRepository(BaseRepository):
             str(path),
             headers={"Accept": "application/vnd.github.raw"},
         )
-        file_dest = dest / upath.UPath(path).name
+        file_dest = dest / to_upath(path).name
         file_dest.write_bytes(resp.content)
 
     @githubkittools.handle_githubkit_errors("Failed to search commits")

@@ -94,12 +94,12 @@ def download_from_github(
     recursive: bool = False,
 ):
     import fsspec
-    import upath
+    from upathtools import to_upath
 
     token = token or TOKEN
     if token and not username:
         token = None
-    dest = upath.UPath(destination)
+    dest = to_upath(destination)
     dest.mkdir(exist_ok=True, parents=True)
     fs = fsspec.filesystem("github", org=org, repo=repo)
     logger.info("Copying files from Github: %s", path)

@@ -8,8 +8,6 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-import upath
-
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.gitea_provider import utils as giteatools
@@ -230,7 +228,9 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to download file")
     def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
         """Download repository contents."""
-        dest = upath.UPath(destination)
+        from upathtools import to_upath
+
+        dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
         if recursive:
@@ -259,7 +259,7 @@ class GiteaRepository(BaseRepository):
                 str(path),
                 ref=self.default_branch,
             )
-            file_dest = dest / upath.UPath(path).name
+            file_dest = dest / to_upath(path).name
             file_dest.write_bytes(content.content.encode())
 
     @giteatools.handle_api_errors("Failed to search commits")
