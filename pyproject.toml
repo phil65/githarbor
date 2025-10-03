@@ -36,6 +36,7 @@ license = { file = "LICENSE" }
 dependencies = [
     # Only add below (Copier)
     "universal_pathlib",
+    "upathtools>=0.6.5",
 ]
 
 [project.optional-dependencies]
