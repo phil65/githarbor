@@ -87,7 +87,9 @@ def create_branch_model(branch: git.Reference, is_default: bool = False) -> Bran
         protected=False,  # Local repos don't have branch protection
         default=is_default,
         last_commit_date=datetime.fromtimestamp(commit.committed_date, UTC),
-        last_commit_message=commit.message,
+        last_commit_message=commit.message
+        if isinstance(commit.message, str)
+        else commit.message.decode(),
         last_commit_author=create_user_model(commit.author),
     )
 
@@ -132,6 +134,7 @@ def create_tag_model(
     from datetime import UTC, datetime
 
     import git
+    from git.refs import TagReference
 
     # Get author info if tag is annotated
     author = None
@@ -144,7 +147,7 @@ def create_tag_model(
         message = tag.message
 
     return Tag(
-        name=tag.name if hasattr(tag, "name") else tag.tag,  # type: ignore
+        name=tag.name if isinstance(tag, TagReference) else tag.tag,
         sha=commit.hexsha,
         message=message,
         created_at=created_at,
@@ -161,7 +164,11 @@ def create_user_model(git_actor: git.Actor) -> User:
     Returns:
         User model instance or None if no actor
     """
-    return User(username=git_actor.name, name=git_actor.name, email=git_actor.email)  # type: ignore
+    return User(
+        username=git_actor.name or "unknown",
+        name=git_actor.name,
+        email=git_actor.email,
+    )
 
 
 def get_commit_stats(commit: git.Commit) -> dict[str, int]:

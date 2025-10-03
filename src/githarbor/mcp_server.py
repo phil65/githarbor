@@ -240,7 +240,7 @@ async def gh_get_release(repo_url: str, tag: str) -> dict:
 @mcp.resource("repo://{repo_url}/files/{path}")
 async def get_file_content(repo_url: str, path: str) -> str:
     """Get the content of a file from a repository."""
-    import upath
+    import pathlib
 
     from githarbor import create_repository
     from githarbor.exceptions import ResourceNotFoundError
@@ -250,7 +250,7 @@ async def get_file_content(repo_url: str, path: str) -> str:
 
         # Create a temporary directory to download the file
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = upath.UPath(temp_dir)
+            temp_path = pathlib.Path(temp_dir)
 
             # Download the file
             repo.download(path, temp_path, recursive=False)

@@ -216,8 +216,7 @@ class GitHubRepository(BaseRepository):
         # if path:
         #     kwargs["path"] = path
         results = self._gh.search_commits(**kwargs)
-        commits = list(results[:max_results] if max_results else results)
-        return [self.get_commit(c.sha) for c in commits]
+        return [self.get_commit(c.sha) for c in results[:max_results]]
 
     @githubtools.handle_github_errors("Failed to list files for {path}")
     def iter_files(
