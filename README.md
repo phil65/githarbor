@@ -2,8 +2,6 @@
 
 [![PyPI License](https://img.shields.io/pypi/l/githarbor.svg)](https://pypi.org/project/githarbor/)
 [![Package status](https://img.shields.io/pypi/status/githarbor.svg)](https://pypi.org/project/githarbor/)
-[![Daily downloads](https://img.shields.io/pypi/dd/githarbor.svg)](https://pypi.org/project/githarbor/)
-[![Weekly downloads](https://img.shields.io/pypi/dw/githarbor.svg)](https://pypi.org/project/githarbor/)
 [![Monthly downloads](https://img.shields.io/pypi/dm/githarbor.svg)](https://pypi.org/project/githarbor/)
 [![Distribution format](https://img.shields.io/pypi/format/githarbor.svg)](https://pypi.org/project/githarbor/)
 [![Wheel availability](https://img.shields.io/pypi/wheel/githarbor.svg)](https://pypi.org/project/githarbor/)
@@ -21,11 +19,8 @@
 [![Github last commit](https://img.shields.io/github/last-commit/phil65/githarbor)](https://github.com/phil65/githarbor/commits)
 [![Github release date](https://img.shields.io/github/release-date/phil65/githarbor)](https://github.com/phil65/githarbor/releases)
 [![Github language count](https://img.shields.io/github/languages/count/phil65/githarbor)](https://github.com/phil65/githarbor)
-[![Github commits this week](https://img.shields.io/github/commit-activity/w/phil65/githarbor)](https://github.com/phil65/githarbor)
 [![Github commits this month](https://img.shields.io/github/commit-activity/m/phil65/githarbor)](https://github.com/phil65/githarbor)
-[![Github commits this year](https://img.shields.io/github/commit-activity/y/phil65/githarbor)](https://github.com/phil65/githarbor)
 [![Package status](https://codecov.io/gh/phil65/githarbor/branch/main/graph/badge.svg)](https://codecov.io/gh/phil65/githarbor/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyUp](https://pyup.io/repos/github/phil65/githarbor/shield.svg)](https://pyup.io/repos/github/phil65/githarbor/)
 
 [Read the documentation!](https://phil65.github.io/githarbor/)
