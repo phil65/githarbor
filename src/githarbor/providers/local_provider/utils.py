@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import inspect
 import string
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING
 
 from githarbor.core.models import Branch, Commit, Tag, User
 from githarbor.exceptions import ResourceNotFoundError
@@ -18,11 +18,7 @@ if TYPE_CHECKING:
     import git
 
 
-T = TypeVar("T")
-P = ParamSpec("P")
-
-
-def handle_git_errors(
+def handle_git_errors[T, **P](
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle Git operation exceptions consistently.

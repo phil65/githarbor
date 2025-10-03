@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, overload
 
 from githarbor.core.models import (
     Asset,
@@ -32,11 +32,10 @@ if TYPE_CHECKING:
         User as GiteaUser,
     )
 
-T = TypeVar("T")
-P = ParamSpec("P")
 
-
-def handle_api_errors(error_msg: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
+def handle_api_errors[T, **P](
+    error_msg: str,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle Gitea API exceptions consistently.
 
     Args:

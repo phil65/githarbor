@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from typing import TYPE_CHECKING, Any, Literal, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, Literal
 
 from githarbor.registry import RepoRegistry
 
@@ -25,9 +25,6 @@ if TYPE_CHECKING:
         Workflow,
         WorkflowRun,
     )
-
-P = ParamSpec("P")
-T = TypeVar("T")
 
 
 def make_sync[**P, T](async_func: Callable[P, T]) -> Callable[P, T]:

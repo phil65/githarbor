@@ -3,7 +3,7 @@ from __future__ import annotations
 import fnmatch
 import logging
 import os
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 from urllib.parse import urlparse
 
 from githarbor.core.base import BaseRepository
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from github import NamedUser
+    from github.Commit import CommitSearchResult
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -216,7 +217,10 @@ class GitHubRepository(BaseRepository):
         # if path:
         #     kwargs["path"] = path
         results = self._gh.search_commits(**kwargs)
-        return [self.get_commit(c.sha) for c in results[:max_results]]
+        return [
+            self.get_commit(c.sha)
+            for c in cast(list[CommitSearchResult], results[:max_results])
+        ]
 
     @githubtools.handle_github_errors("Failed to list files for {path}")
     def iter_files(

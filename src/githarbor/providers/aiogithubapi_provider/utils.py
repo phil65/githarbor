@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from aiogithubapi.exceptions import GitHubException
 import aiohttp
@@ -33,8 +33,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-T = TypeVar("T")
-P = ParamSpec("P")
 
 
 def parse_datetime(date_str: str | None) -> datetime | None:

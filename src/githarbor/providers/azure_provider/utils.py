@@ -7,7 +7,7 @@ import inspect
 import logging
 import os
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from githarbor.core.models import (
     Comment,
@@ -32,12 +32,11 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-T = TypeVar("T")
-P = ParamSpec("P")
+
 TOKEN = os.getenv("AZURE_DEVOPS_PAT")
 
 
-def handle_azure_errors(
+def handle_azure_errors[T, **P](
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle Azure DevOps API exceptions consistently.

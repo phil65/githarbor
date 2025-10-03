@@ -5,7 +5,7 @@ import inspect
 import logging
 import os
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from githarbor.core.models import (
     Asset,
@@ -31,13 +31,11 @@ if TYPE_CHECKING:
     from github.NamedUser import NamedUser
 
 
-T = TypeVar("T")
-P = ParamSpec("P")
 TOKEN = os.getenv("GITHUB_TOKEN")
 logger = logging.getLogger(__name__)
 
 
-def handle_github_errors(
+def handle_github_errors[T, **P](
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle GitHub API exceptions consistently.

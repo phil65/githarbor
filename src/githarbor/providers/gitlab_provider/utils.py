@@ -7,7 +7,7 @@ import functools
 import inspect
 import re
 import string
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from githarbor.core.models import (
     Asset,
@@ -33,11 +33,7 @@ if TYPE_CHECKING:
     from gitlab.v4.objects import ProjectBranch
 
 
-T = TypeVar("T")
-P = ParamSpec("P")
-
-
-def handle_gitlab_errors(
+def handle_gitlab_errors[T, **P](
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to handle GitLab API exceptions consistently.
