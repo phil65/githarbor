@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from githubkit import GitHub
 from githubkit.exception import GitHubException
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
 from githarbor.providers.githubkit_provider import utils as githubkittools
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from githubkit.versions.latest.models import FullRepository
 
+    from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
         Comment,

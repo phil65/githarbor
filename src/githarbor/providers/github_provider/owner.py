@@ -5,12 +5,13 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseOwner, BaseRepository
+from githarbor.core.base import BaseOwner
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.github_provider import utils as githubtools
 
 
 if TYPE_CHECKING:
+    from githarbor.core.base import BaseRepository
     from githarbor.core.models import User
 
 

@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from githarbor.core.base import BaseOwner, BaseRepository
+from githarbor.core.base import BaseOwner
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from githarbor.core.base import BaseRepository
     from githarbor.core.models import User
 
 

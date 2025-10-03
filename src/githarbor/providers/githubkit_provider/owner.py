@@ -9,13 +9,14 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from githubkit import GitHub
 from githubkit.exception import GitHubException
 
-from githarbor.core.base import BaseOwner, BaseRepository
+from githarbor.core.base import BaseOwner
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.githubkit_provider import utils as githubkittools
 from githarbor.repositories import create_repository
 
 
 if TYPE_CHECKING:
+    from githarbor.core.base import BaseRepository
     from githarbor.core.models import User
 
 logger = logging.getLogger(__name__)

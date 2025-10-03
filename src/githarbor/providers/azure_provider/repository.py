@@ -7,15 +7,8 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
-from githarbor.core.models import (
-    Branch,
-    Comment,
-    Commit,
-    Issue,
-    PullRequest,
-    User,
-)
+from githarbor.core.base import BaseRepository
+from githarbor.core.models import Branch, User
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.azure_provider import utils as azuretools
 
@@ -30,6 +23,9 @@ if TYPE_CHECKING:
     from azure.devops.v7_1.work_item_tracking.work_item_tracking_client import (
         WorkItemTrackingClient,
     )
+
+    from githarbor.core.base import IssueState, PullRequestState
+    from githarbor.core.models import Comment, Commit, Issue, PullRequest
 
 
 class AzureRepository(BaseRepository):

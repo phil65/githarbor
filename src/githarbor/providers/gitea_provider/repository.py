@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 import upath
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.gitea_provider import utils as giteatools
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     import giteapy
 
+    from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
         Commit,

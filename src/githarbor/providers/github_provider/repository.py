@@ -6,7 +6,7 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
+from githarbor.core.base import BaseRepository
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.github_provider import utils as githubtools
 
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
 
+    from github import NamedUser
+
+    from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
         Comment,
@@ -44,7 +47,7 @@ class GitHubRepository(BaseRepository):
 
     def __init__(self, owner: str, name: str, token: str | None = None):
         """Initialize GitHub repository."""
-        from github import Auth, Github, NamedUser
+        from github import Auth, Github
         from github.GithubException import GithubException
 
         try:

@@ -5,19 +5,8 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
-from githarbor.core.models import (
-    Branch,
-    Comment,
-    Commit,
-    Issue,
-    PullRequest,
-    Release,
-    Tag,
-    User,
-    Workflow,
-    WorkflowRun,
-)
+from githarbor.core.base import BaseRepository
+from githarbor.core.models import Branch, Commit, User
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.gitlab_provider import utils as gitlabtools
 
@@ -27,6 +16,17 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from gitlab.base import RESTObject
+
+    from githarbor.core.base import IssueState, PullRequestState
+    from githarbor.core.models import (
+        Comment,
+        Issue,
+        PullRequest,
+        Release,
+        Tag,
+        Workflow,
+        WorkflowRun,
+    )
 
 StrPath = str | os.PathLike[str]
 PRE_TAGS = ("alpha", "beta", "rc")

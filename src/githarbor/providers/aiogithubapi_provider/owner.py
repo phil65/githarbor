@@ -4,13 +4,14 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from githarbor.core.base import BaseOwner, BaseRepository
+from githarbor.core.base import BaseOwner
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.aiogithubapi_provider import utils as aiogithubapitools
 from githarbor.repositories import create_repository
 
 
 if TYPE_CHECKING:
+    from githarbor.core.base import BaseRepository
     from githarbor.core.models import User
 
 logger = logging.getLogger(__name__)

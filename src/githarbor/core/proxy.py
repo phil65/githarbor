@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, Literal
 
-from githarbor.core.base import BaseRepository, IssueState, PullRequestState
+from githarbor.core.base import BaseRepository
 from githarbor.core.datatypes import NiceReprList
 from githarbor.exceptions import ResourceNotFoundError
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from datetime import datetime
     import os
 
+    from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
         Comment,
