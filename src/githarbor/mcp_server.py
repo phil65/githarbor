@@ -366,7 +366,7 @@ def main() -> None:
             wrapper.__name__ = method.__name__.replace("_async", "")
 
             # Add the method as a tool
-            fixed_repo_mcp.add_tool(wrapper)
+            fixed_repo_mcp.tool(wrapper)
 
         # Run the fixed repository server
         if args.transport == "stdio":
