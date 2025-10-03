@@ -30,7 +30,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def make_sync(async_func: Callable[P, T]) -> Callable[P, T]:
+def make_sync[**P, T](async_func: Callable[P, T]) -> Callable[P, T]:
     """Convert an async function to sync using asyncio.run()."""
 
     @functools.wraps(async_func)
