@@ -1,8 +1,17 @@
+"""GitHarbor: Unified client for GitHub, GitLab and BitBucket"""
+
 from __future__ import annotations
 
 from importlib.metadata import version
 
 __version__ = version("githarbor")
+__title__ = "GitHarbor"
+__description__ = "Unified client for GitHub, GitLab and BitBucket"
+__author__ = "Philipp Temminghoff"
+__author_email__ = "philipptemminghoff@googlemail.com"
+__copyright__ = "Copyright (c) 2024 Philipp Temminghoff"
+__license__ = "MIT"
+__url__ = "https://github.com/phil65/githarbor"
 
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
