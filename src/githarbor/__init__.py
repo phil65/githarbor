@@ -29,9 +29,7 @@ from githarbor.exceptions import (
 from githarbor.repositories import create_repository
 
 
-
 __all__ = [
-    "__version__",
     "AuthenticationError",
     # Base
     "BaseRepository",
@@ -53,6 +51,7 @@ __all__ = [
     "User",
     "Workflow",
     "WorkflowRun",
+    "__version__",
     # Factory
     "create_repository",
 ]
