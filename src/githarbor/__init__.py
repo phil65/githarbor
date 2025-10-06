@@ -1,3 +1,9 @@
+from __future__ import annotations
+
+from importlib.metadata import version
+
+__version__ = version("githarbor")
+
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import (
     Branch,
@@ -22,9 +28,10 @@ from githarbor.exceptions import (
 )
 from githarbor.repositories import create_repository
 
-__version__ = "0.8.0"
+
 
 __all__ = [
+    "__version__",
     "AuthenticationError",
     # Base
     "BaseRepository",
