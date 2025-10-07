@@ -1,6 +1,6 @@
 [project]
 name = "githarbor"
-version = "0.9.1"
+version = "1.0.0"
 description = "Unified client for GitHub, GitLab and BitBucket"
 readme = "README.md"
 requires-python = ">=3.13"
