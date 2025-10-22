@@ -10,7 +10,8 @@ from githarbor.registry import RepoRegistry
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
-    import os
+
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import BaseRepository, IssueState, PullRequestState
     from githarbor.core.models import (
@@ -223,8 +224,8 @@ async def get_workflow_run_async(url: str, run_id: str) -> WorkflowRun:
 
 async def download_async(
     url: str,
-    path: str | os.PathLike[str],
-    destination: str | os.PathLike[str],
+    path: str,
+    destination: JoinablePathLike,
     *,
     recursive: bool = False,
 ) -> None:

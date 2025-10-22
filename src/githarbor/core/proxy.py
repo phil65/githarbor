@@ -13,7 +13,6 @@ from githarbor.exceptions import ResourceNotFoundError
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from datetime import datetime
-    import os
 
     from upath.types import JoinablePathLike
 
@@ -915,8 +914,8 @@ class Repository(BaseRepository):
 
     async def download_async(
         self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
+        path: str,
+        destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:
         """See download."""

@@ -10,7 +10,6 @@ from githarbor.exceptions import FeatureNotSupportedError
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
-    import os
 
     from upath.types import JoinablePathLike
 
@@ -137,7 +136,7 @@ class BaseRepository:
 
     def download(
         self,
-        path: str | os.PathLike[str],
+        path: str,
         destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:
@@ -349,7 +348,7 @@ class BaseRepository:
 
     async def download_async(
         self,
-        path: str | os.PathLike[str],
+        path: str,
         destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from githubkit.versions.latest.models import FullRepository
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -201,7 +202,7 @@ class GitHubKitRepository(BaseRepository):
     async def download_async(
         self,
         path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
+        destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:
         """Download repository content."""

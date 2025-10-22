@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from aiogithubapi.models.release import GitHubReleaseModel
     from aiogithubapi.models.tag import GitHubTagModel
     from aiogithubapi.models.user import GitHubBaseUserModel, GitHubUserModel
+    from upath.types import JoinablePathLike
 
 
 logger = logging.getLogger(__name__)
@@ -180,7 +181,7 @@ def create_tag_model(tag: GitHubTagModel) -> Tag:
 async def download_from_github(
     repository: str,
     path: str | os.PathLike[str],
-    destination: str | os.PathLike[str],
+    destination: JoinablePathLike,
     token: str | None = None,
     recursive: bool = False,
 ) -> None:
