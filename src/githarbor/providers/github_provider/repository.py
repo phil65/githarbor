@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from github import NamedUser
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -176,12 +177,7 @@ class GitHubRepository(BaseRepository):
         return githubtools.create_workflow_run_model(run)
 
     @githubtools.handle_github_errors("Failed to download file {path}")
-    def download(
-        self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
-        recursive: bool = False,
-    ):
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         user_name = self._gh.get_user().login if TOKEN else None
         return githubtools.download_from_github(
             org=self._owner,

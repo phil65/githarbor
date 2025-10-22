@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from github.AuthenticatedUser import AuthenticatedUser
     from github.NamedUser import NamedUser
+    from upath.types import JoinablePathLike
 
 
 TOKEN = os.getenv("GITHUB_TOKEN")
@@ -86,7 +87,7 @@ def download_from_github(
     org: str,
     repo: str,
     path: str | os.PathLike[str],
-    destination: str | os.PathLike[str],
+    destination: JoinablePathLike,
     username: str | None = None,
     token: str | None = None,
     recursive: bool = False,

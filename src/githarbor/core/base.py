@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from datetime import datetime
     import os
 
+    from upath.types import JoinablePathLike
+
     from githarbor.core.models import (
         Branch,
         Comment,
@@ -136,7 +138,7 @@ class BaseRepository:
     def download(
         self,
         path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
+        destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:
         msg = f"{self.__class__.__name__} does not implement download"
@@ -348,7 +350,7 @@ class BaseRepository:
     async def download_async(
         self,
         path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
+        destination: JoinablePathLike,
         recursive: bool = False,
     ) -> None:
         """Download repository content asynchronously."""

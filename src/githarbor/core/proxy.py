@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from datetime import datetime
     import os
 
+    from upath.types import JoinablePathLike
+
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
         Branch,
@@ -279,12 +281,7 @@ class Repository(BaseRepository):
             return asyncio.run(self._repository.get_workflow_run_async(run_id))
         return self._repository.get_workflow_run(run_id)
 
-    def download(
-        self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
-        recursive: bool = False,
-    ) -> None:
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         """Download repository content.
 
         Args:

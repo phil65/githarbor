@@ -5,6 +5,8 @@ import os
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
+from upathtools import to_upath
+
 from githarbor.core.base import BaseRepository
 from githarbor.core.models import Branch, Commit, User
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from gitlab.base import RESTObject
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -199,9 +202,7 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_workflow_run_model(job)
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
-    def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
-        from upathtools import to_upath
-
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 

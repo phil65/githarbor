@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from azure.devops.v7_1.work_item_tracking.work_item_tracking_client import (
         WorkItemTrackingClient,
     )
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import Comment, Commit, Issue, PullRequest
@@ -279,12 +280,7 @@ class AzureRepository(BaseRepository):
         return [azuretools.create_commit_model(c) for c in commits]
 
     @azuretools.handle_azure_errors("Failed to download file {path}")
-    def download(
-        self,
-        path: str | os.PathLike[str],
-        destination: str | os.PathLike[str],
-        recursive: bool = False,
-    ) -> None:
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         """Download file(s) from repository."""
         return azuretools.download_from_azure(
             organization=self._owner,

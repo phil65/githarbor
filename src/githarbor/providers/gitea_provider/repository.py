@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import giteapy
+    from upath.types import JoinablePathLike
 
     from githarbor.core.base import IssueState, PullRequestState
     from githarbor.core.models import (
@@ -226,7 +227,7 @@ class GiteaRepository(BaseRepository):
         raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to download file")
-    def download(self, path: StrPath, destination: StrPath, recursive: bool = False):
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         """Download repository contents."""
         from upathtools import to_upath
 

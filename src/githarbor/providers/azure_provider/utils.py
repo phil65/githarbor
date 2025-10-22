@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from azure.devops.v7_1.git.models import GitCommit, GitPullRequest
     from azure.devops.v7_1.work_item_tracking.models import WorkItem as AzureWorkItem
+    from upath.types import JoinablePathLike
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ def download_from_azure(
     project: str,
     repo: str,
     path: str | os.PathLike[str],
-    destination: str | os.PathLike[str],
+    destination: JoinablePathLike,
     token: str | None = None,
     recursive: bool = False,
 ):
@@ -186,8 +187,9 @@ def create_pull_request_model(pr: GitPullRequest) -> PullRequest:
 def create_issue_model(work_item: AzureWorkItem) -> Issue:
     """Create Issue model from Azure DevOps work item object."""
     fields = work_item.fields
+    assert fields
     return Issue(
-        number=work_item.id,
+        number=work_item.id if work_item.id else -1,
         title=fields["System.Title"],
         description=fields.get("System.Description", ""),
         state=fields["System.State"],
@@ -204,15 +206,23 @@ def create_issue_model(work_item: AzureWorkItem) -> Issue:
 
 def create_commit_model(commit: GitCommit) -> Commit:
     """Create Commit model from Azure DevOps commit object."""
-    author = User(
-        username=commit.author.name,
-        name=commit.author.name,
-        email=commit.author.email,
+    author = (
+        User(
+            username=commit.author.name,
+            name=commit.author.name,
+            email=commit.author.email,
+        )
+        if commit.author
+        else None
     )
-    committer = User(
-        username=commit.committer.name,
-        name=commit.committer.name,
-        email=commit.committer.email,
+    committer = (
+        User(
+            username=commit.committer.name,
+            name=commit.committer.name,
+            email=commit.committer.email,
+        )
+        if commit.committer
+        else None
     )
     stats = {
         "additions": commit.change_counts.add if commit.change_counts else 0,
@@ -220,9 +230,9 @@ def create_commit_model(commit: GitCommit) -> Commit:
         "total": commit.change_counts.edit if commit.change_counts else 0,
     }
     return Commit(
-        sha=commit.commit_id,
-        message=commit.comment,
-        created_at=commit.author.date,
+        sha=commit.commit_id or "",
+        message=commit.comment or "",
+        created_at=commit.author.date if commit.author else None,
         author=author,
         committer=committer,
         url=commit.url,
