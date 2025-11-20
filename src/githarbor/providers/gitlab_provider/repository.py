@@ -202,7 +202,9 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_workflow_run_model(job)
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
-    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
+    def download(
+        self, path: str, destination: JoinablePathLike, recursive: bool = False
+    ) -> None:
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 

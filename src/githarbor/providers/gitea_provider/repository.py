@@ -227,7 +227,9 @@ class GiteaRepository(BaseRepository):
         raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to download file")
-    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
+    def download(
+        self, path: str, destination: JoinablePathLike, recursive: bool = False
+    ) -> None:
         """Download repository contents."""
         from upathtools import to_upath
 

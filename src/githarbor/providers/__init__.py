@@ -22,6 +22,9 @@ if importlib.util.find_spec("aiogithubapi"):
 if importlib.util.find_spec("githubkit"):
     from githarbor.providers.githubkit_provider import GitHubKitRepository
 
+if importlib.util.find_spec("gitea"):
+    from githarbor.providers.pygitea_provider import PyGiteaRepository
+
 if importlib.util.find_spec("gitpython"):
     from githarbor.providers.local_provider import LocalRepository
 
@@ -37,5 +40,6 @@ __all__ = [
     "GitLabRepository",
     "GiteaRepository",
     "LocalRepository",
+    "PyGiteaRepository",
     # "BitbucketRepository",
 ]

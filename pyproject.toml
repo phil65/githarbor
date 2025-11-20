@@ -54,6 +54,7 @@ all = [
   "gitpython",
   "unidiff",
   "fastmcp",
+  "py-gitea>=0.2.10",
 ]
 azure = ["azure-devops"]
 bitbucket = ["atlassian-python-api"]
@@ -64,6 +65,7 @@ githubkit = ["githubkit"]
 gitlab = ["python-gitlab"]
 local = ["gitpython"]
 mcp = ["fastmcp"]
+pygitea = ["py-gitea>=0.2.10"]
 
 [dependency-groups]
 dev = [
