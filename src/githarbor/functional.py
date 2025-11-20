@@ -685,7 +685,7 @@ def setup_env(env: Any) -> None:
 
 if __name__ == "__main__":
 
-    async def main():
+    async def main() -> None:
         workflows = await list_workflows_async("https://github.com/phil65/githarbor")
         print(workflows)
 

@@ -82,7 +82,7 @@ class GitLabRepository(BaseRepository):
         return self._repo.default_branch
 
     @property
-    def edit_base_uri(self):
+    def edit_base_uri(self) -> str:
         return f"edit/{self.default_branch}/"
 
     @gitlabtools.handle_gitlab_errors("Failed to get user info")
@@ -202,7 +202,7 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_workflow_run_model(job)
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
-    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 

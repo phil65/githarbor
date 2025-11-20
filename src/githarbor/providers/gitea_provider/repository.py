@@ -93,7 +93,7 @@ class GiteaRepository(BaseRepository):
         return self._repo.default_branch
 
     @property
-    def edit_base_uri(self):
+    def edit_base_uri(self) -> str:
         return f"_edit/{self.default_branch}/"
 
     @giteatools.handle_api_errors("Failed to get branch")
@@ -227,7 +227,7 @@ class GiteaRepository(BaseRepository):
         raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to download file")
-    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
         """Download repository contents."""
         from upathtools import to_upath
 

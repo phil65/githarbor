@@ -43,7 +43,7 @@ class Repository(BaseRepository):
         self._repository = repository
         self.repository_type = type(repository).__name__.removesuffix("Repository")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.repository_type} {self.owner}/{self.name}>"
 
     @property

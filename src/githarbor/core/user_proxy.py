@@ -27,7 +27,7 @@ class Owner(BaseOwner):
         self._owner = owner
         self.owner_type = type(owner).__name__.removesuffix("Owner")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.owner_type} {self.owner.name}>"
 
     @property

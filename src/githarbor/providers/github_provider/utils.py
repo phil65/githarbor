@@ -91,7 +91,7 @@ def download_from_github(
     username: str | None = None,
     token: str | None = None,
     recursive: bool = False,
-):
+) -> None:
     import fsspec
     from upathtools import to_upath
 

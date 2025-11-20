@@ -428,7 +428,7 @@ class GitHubKitRepository(BaseRepository):
 
 if __name__ == "__main__":
 
-    async def main():
+    async def main() -> None:
         provider = GitHubKitRepository("phil65", "llmling-agent")
         releases = await provider.list_branches_async()
         print(releases)

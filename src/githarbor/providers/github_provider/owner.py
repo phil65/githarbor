@@ -98,7 +98,7 @@ class GitHubOwner(BaseOwner):
 
 if __name__ == "__main__":
 
-    async def main():
+    async def main() -> None:
         provider = GitHubOwner("phil65")
         repos = provider.list_repositories()
         print(repos)
