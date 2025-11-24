@@ -19,9 +19,7 @@ class RepoRegistry:
 
     _repo_classes: ClassVar[dict[str, type[BaseRepository]]] = {}
     _owner_classes: ClassVar[dict[str, type[BaseOwner]]] = {}
-    _repo_instances: ClassVar[WeakValueDictionary[str, Repository]] = (
-        WeakValueDictionary()
-    )
+    _repo_instances: ClassVar[WeakValueDictionary[str, Repository]] = WeakValueDictionary()
     _owner_instances: ClassVar[WeakValueDictionary[str, Owner]] = WeakValueDictionary()
 
     @classmethod

@@ -42,9 +42,7 @@ class GitHubRepository(BaseRepository):
     """GitHub repository implementation."""
 
     url_patterns: ClassVar[list[str]] = ["github.com"]
-    raw_prefix: ClassVar[str] = (
-        "https://raw.githubusercontent.com/{owner}/{name}/{branch}/{path}"
-    )
+    raw_prefix: ClassVar[str] = "https://raw.githubusercontent.com/{owner}/{name}/{branch}/{path}"
 
     def __init__(self, owner: str, name: str, token: str | None = None):
         """Initialize GitHub repository."""
@@ -215,8 +213,7 @@ class GitHubRepository(BaseRepository):
         #     kwargs["path"] = path
         results = self._gh.search_commits(**kwargs)
         return [
-            self.get_commit(c.sha)
-            for c in cast(list[CommitSearchResult], results[:max_results])
+            self.get_commit(c.sha) for c in cast(list[CommitSearchResult], results[:max_results])
         ]
 
     @githubtools.handle_github_errors("Failed to list files for {path}")
@@ -319,9 +316,7 @@ class GitHubRepository(BaseRepository):
         )
         return [
             githubtools.create_release_model(release)
-            for release in (
-                list(filtered_releases)[:limit] if limit else filtered_releases
-            )
+            for release in (list(filtered_releases)[:limit] if limit else filtered_releases)
         ]
 
     @githubtools.handle_github_errors("Failed to get release {tag}")
@@ -425,9 +420,7 @@ class GitHubRepository(BaseRepository):
 
             if change.content is not None:
                 # Create blob for the file content
-                blob = self._repo.create_git_blob(
-                    content=change.content, encoding="utf-8"
-                )
+                blob = self._repo.create_git_blob(content=change.content, encoding="utf-8")
 
                 if change.old_path:
                     # For renamed files, we need to remove the old path

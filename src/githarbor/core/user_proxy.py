@@ -62,9 +62,7 @@ class Owner(BaseOwner):
             Newly created repository.
         """
         if self._owner.is_async:
-            return asyncio.run(
-                self._owner.create_repository_async(name, description, private)
-            )
+            return asyncio.run(self._owner.create_repository_async(name, description, private))
         return self._owner.create_repository(name, description, private)
 
     def get_user(self) -> User:

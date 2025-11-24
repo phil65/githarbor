@@ -289,9 +289,7 @@ class Repository(BaseRepository):
             recursive: Whether to download recursively.
         """
         if self._repository.is_async:
-            return asyncio.run(
-                self._repository.download_async(path, destination, recursive)
-            )
+            return asyncio.run(self._repository.download_async(path, destination, recursive))
         return self._repository.download(path, destination, recursive)
 
     def search_commits(
@@ -501,13 +499,9 @@ class Repository(BaseRepository):
         try:
             if self._repository.is_async:
                 return asyncio.run(
-                    self._repository.get_latest_release_async(
-                        include_drafts, include_prereleases
-                    )
+                    self._repository.get_latest_release_async(include_drafts, include_prereleases)
                 )
-            return self._repository.get_latest_release(
-                include_drafts, include_prereleases
-            )
+            return self._repository.get_latest_release(include_drafts, include_prereleases)
         except NotImplementedError as e:
             releases = self.list_releases(
                 include_drafts=include_drafts,
@@ -537,9 +531,7 @@ class Repository(BaseRepository):
         """
         if self._repository.is_async:
             return asyncio.run(
-                self._repository.list_releases_async(
-                    include_drafts, include_prereleases, limit
-                )
+                self._repository.list_releases_async(include_drafts, include_prereleases, limit)
             )
         return self._repository.list_releases(include_drafts, include_prereleases, limit)
 
@@ -668,9 +660,7 @@ class Repository(BaseRepository):
             Created comment
         """
         if self._repository.is_async:
-            return asyncio.run(
-                self._repository.add_pull_request_comment_async(number, body)
-            )
+            return asyncio.run(self._repository.add_pull_request_comment_async(number, body))
         return self._repository.add_pull_request_comment(number, body)
 
     def add_pull_request_review_comment(
@@ -1134,9 +1124,7 @@ class Repository(BaseRepository):
         """See add_pull_request_comment."""
         if self._repository.is_async:
             return await self._repository.add_pull_request_comment_async(number, body)
-        return await asyncio.to_thread(
-            self._repository.add_pull_request_comment, number, body
-        )
+        return await asyncio.to_thread(self._repository.add_pull_request_comment, number, body)
 
     async def add_pull_request_review_comment_async(
         self,

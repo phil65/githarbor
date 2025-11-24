@@ -91,16 +91,8 @@ def create_user_model(
         return None
 
     # Handle potentially UNSET values
-    name = (
-        ghk_user.name
-        if hasattr(ghk_user, "name") and ghk_user.name is not UNSET
-        else None
-    )
-    email = (
-        ghk_user.email
-        if hasattr(ghk_user, "email") and ghk_user.email is not UNSET
-        else None
-    )
+    name = ghk_user.name if hasattr(ghk_user, "name") and ghk_user.name is not UNSET else None
+    email = ghk_user.email if hasattr(ghk_user, "email") and ghk_user.email is not UNSET else None
     if isinstance(ghk_user, ghk_models.GitUser):
         date = ghk_user.date
         return User(
@@ -148,9 +140,7 @@ def create_label_model(ghk_label: ghk_models.IssuePropLabelsItemsOneof1) -> Labe
 
 
 def create_branch_model(
-    ghk_branch: ghk_models.BranchShort
-    | ghk_models.BranchWithProtection
-    | ghk_models.ShortBranch,
+    ghk_branch: ghk_models.BranchShort | ghk_models.BranchWithProtection | ghk_models.ShortBranch,
     *,
     is_default: bool = False,
 ) -> Branch:
@@ -163,9 +153,7 @@ def create_branch_model(
             sha=ghk_branch.commit.sha,
             protected=ghk_branch.protected,
             default=is_default,
-            protection_rules={"url": ghk_branch.protection_url}
-            if ghk_branch.protected
-            else None,
+            protection_rules={"url": ghk_branch.protection_url} if ghk_branch.protected else None,
         )
     return Branch(
         name=ghk_branch.name,
@@ -242,21 +230,11 @@ def create_pull_request_model(
         review_comments_count=ghk_pr.review_comments
         if isinstance(ghk_pr, ghk_models.PullRequest)
         else None,
-        commits_count=ghk_pr.commits
-        if isinstance(ghk_pr, ghk_models.PullRequest)
-        else None,
-        additions=ghk_pr.additions
-        if isinstance(ghk_pr, ghk_models.PullRequest)
-        else None,
-        deletions=ghk_pr.deletions
-        if isinstance(ghk_pr, ghk_models.PullRequest)
-        else None,
-        changed_files=ghk_pr.changed_files
-        if isinstance(ghk_pr, ghk_models.PullRequest)
-        else None,
-        mergeable=ghk_pr.mergeable
-        if isinstance(ghk_pr, ghk_models.PullRequest)
-        else None,
+        commits_count=ghk_pr.commits if isinstance(ghk_pr, ghk_models.PullRequest) else None,
+        additions=ghk_pr.additions if isinstance(ghk_pr, ghk_models.PullRequest) else None,
+        deletions=ghk_pr.deletions if isinstance(ghk_pr, ghk_models.PullRequest) else None,
+        changed_files=ghk_pr.changed_files if isinstance(ghk_pr, ghk_models.PullRequest) else None,
+        mergeable=ghk_pr.mergeable if isinstance(ghk_pr, ghk_models.PullRequest) else None,
     )
 
 
@@ -316,9 +294,7 @@ def create_commit_model(
                 email=ghk_commit.author.email or "",
             ),
             created_at=ghk_commit.author.date,
-            committer=create_user_model(ghk_commit.committer)
-            if ghk_commit.committer
-            else None,
+            committer=create_user_model(ghk_commit.committer) if ghk_commit.committer else None,
             url=ghk_commit.url,
             stats={},  # No stats in this type
             parents=[],  # No parents in this type
@@ -357,9 +333,7 @@ def create_commit_model(
             stats_dict["total"] = stats.total or 0
     created_at = (
         commit_data.author.date
-        if commit_data.author
-        and commit_data.author.date
-        and commit_data.author.date is not UNSET
+        if commit_data.author and commit_data.author.date and commit_data.author.date is not UNSET
         else None
     )
     return Commit(

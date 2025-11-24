@@ -115,9 +115,7 @@ class GitHubKitRepository(BaseRepository):
         return githubkittools.create_pull_request_model(resp.parsed_data)
 
     @githubkittools.handle_githubkit_errors("Failed to list pull requests")
-    async def list_pull_requests_async(
-        self, state: PullRequestState = "open"
-    ) -> list[PullRequest]:
+    async def list_pull_requests_async(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
         resp = await self._gh.rest.pulls.async_list(self._owner, self._name, state=state)
         data = resp.parsed_data
@@ -193,9 +191,7 @@ class GitHubKitRepository(BaseRepository):
         if max_results:
             kwargs["per_page"] = max_results
 
-        resp = await self._gh.rest.repos.async_list_commits(
-            self._owner, self._name, **kwargs
-        )
+        resp = await self._gh.rest.repos.async_list_commits(self._owner, self._name, **kwargs)
         return [githubkittools.create_commit_model(c) for c in resp.parsed_data]
 
     @githubkittools.handle_githubkit_errors("Failed to download {path}")
@@ -238,9 +234,7 @@ class GitHubKitRepository(BaseRepository):
             search_query += f" per_page:{max_results}"
 
         resp = await self._gh.rest.search.async_commits(q=search_query)
-        return [
-            githubkittools.create_commit_model(c.commit) for c in resp.parsed_data.items
-        ]
+        return [githubkittools.create_commit_model(c.commit) for c in resp.parsed_data.items]
 
     @githubkittools.handle_githubkit_errors("Failed to get languages")
     async def get_languages_async(self) -> dict[str, int]:
@@ -273,9 +267,7 @@ class GitHubKitRepository(BaseRepository):
         }
 
         if include_commits:
-            result["commits"] = [
-                githubkittools.create_commit_model(c) for c in comparison.commits
-            ]
+            result["commits"] = [githubkittools.create_commit_model(c) for c in comparison.commits]
         files = comparison.files or []
         if include_files:
             result["files"] = [f.filename for f in files]
@@ -295,9 +287,7 @@ class GitHubKitRepository(BaseRepository):
     ) -> Release:
         """Get latest release."""
         try:
-            resp = await self._gh.rest.repos.async_get_latest_release(
-                self._owner, self._name
-            )
+            resp = await self._gh.rest.repos.async_get_latest_release(self._owner, self._name)
             release = resp.parsed_data
             if (not include_drafts and release.draft) or (
                 not include_prereleases and release.prerelease
@@ -332,9 +322,7 @@ class GitHubKitRepository(BaseRepository):
     @githubkittools.handle_githubkit_errors("Failed to get release {tag}")
     async def get_release_async(self, tag: str) -> Release:
         """Get release by tag."""
-        resp = await self._gh.rest.repos.async_get_release_by_tag(
-            self._owner, self._name, tag
-        )
+        resp = await self._gh.rest.repos.async_get_release_by_tag(self._owner, self._name, tag)
         return githubkittools.create_release_model(resp.parsed_data)
 
     @githubkittools.handle_githubkit_errors("Failed to get tag {name}")

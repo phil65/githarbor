@@ -559,9 +559,7 @@ async def add_pull_request_review_comment_async(
         Created comment
     """
     repo = RepoRegistry.get(url)
-    return await repo.add_pull_request_review_comment_async(
-        number, body, commit_id, path, position
-    )
+    return await repo.add_pull_request_review_comment_async(number, body, commit_id, path, position)
 
 
 get_repo_user = make_sync(get_repo_user_async)

@@ -162,9 +162,7 @@ class PyGiteaRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        issue = self._repo.create_issue(
-            title=title, description=body, assignees=assignees or []
-        )
+        issue = self._repo.create_issue(title=title, description=body, assignees=assignees or [])
         return pygiteatools.create_issue_model(issue)
 
     @pygiteatools.handle_api_errors("Failed to get commit")
@@ -460,7 +458,5 @@ class PyGiteaRepository(BaseRepository):
 
 if __name__ == "__main__":
     # Example usage
-    repo = PyGiteaRepository.from_url(
-        "https://codeberg.org/owner/repo", token="your_token"
-    )
+    repo = PyGiteaRepository.from_url("https://codeberg.org/owner/repo", token="your_token")
     print(repo.list_branches())

@@ -134,9 +134,7 @@ def create_user_model(gh_user: NamedUser | AuthenticatedUser | None) -> User | N
         following=gh_user.following,
         public_repos=gh_user.public_repos,
         blog=gh_user.blog,
-        twitter_username=gh_user.twitter_username
-        if isinstance(gh_user, NamedUser)
-        else None,
+        twitter_username=gh_user.twitter_username if isinstance(gh_user, NamedUser) else None,
         hireable=gh_user.hireable,
         gravatar_id=gh_user.gravatar_id,
     )

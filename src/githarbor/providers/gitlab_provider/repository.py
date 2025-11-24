@@ -202,9 +202,7 @@ class GitLabRepository(BaseRepository):
         return gitlabtools.create_workflow_run_model(job)
 
     @gitlabtools.handle_gitlab_errors("Failed to download {path}")
-    def download(
-        self, path: str, destination: JoinablePathLike, recursive: bool = False
-    ) -> None:
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
@@ -214,9 +212,7 @@ class GitLabRepository(BaseRepository):
             for item in items:
                 if item["type"] == "blob":  # Only download files, not directories
                     file_path = item["path"]
-                    content = self._repo.files.get(
-                        file_path=file_path, ref=self.default_branch
-                    )
+                    content = self._repo.files.get(file_path=file_path, ref=self.default_branch)
                     # Create subdirectories if needed
                     file_dest = dest / file_path
                     file_dest.parent.mkdir(exist_ok=True, parents=True)
@@ -256,9 +252,7 @@ class GitLabRepository(BaseRepository):
         ref_ = ref or self.default_branch
         items = self._repo.repository_tree(path=path, ref=ref_, recursive=True)
         for item in items:
-            if item["type"] == "blob" and (
-                not pattern or fnmatch.fnmatch(item["path"], pattern)
-            ):
+            if item["type"] == "blob" and (not pattern or fnmatch.fnmatch(item["path"], pattern)):
                 yield item["path"]
 
     @gitlabtools.handle_gitlab_errors("Failed to get contributors")

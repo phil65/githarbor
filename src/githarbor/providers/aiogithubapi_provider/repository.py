@@ -83,11 +83,7 @@ class AioGitHubRepository(BaseRepository):
     @property
     def default_branch(self) -> str:
         """Return default branch name."""
-        return (
-            self._repo.default_branch
-            if self._repo and self._repo.default_branch
-            else "main"
-        )
+        return self._repo.default_branch if self._repo and self._repo.default_branch else "main"
 
     async def get_repo_user_async(self) -> User:
         """Get repository owner information."""
@@ -154,16 +150,12 @@ class AioGitHubRepository(BaseRepository):
             msg = f"Failed to get pull request #{number}: {e}"
             raise ResourceNotFoundError(msg) from e
 
-    async def list_pull_requests_async(
-        self, state: PullRequestState = "open"
-    ) -> list[PullRequest]:
+    async def list_pull_requests_async(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
         repo = f"{self._owner}/{self._name}"
         params = {GitHubRequestKwarg.QUERY: {"state": state}}
         response = await self._gh.repos.pulls.list(repo, params=params)
-        return [
-            aiogithubapitools.create_pull_request_model(pr) for pr in response.data or []
-        ]
+        return [aiogithubapitools.create_pull_request_model(pr) for pr in response.data or []]
 
     # async def list_branches_async(self) -> list[Branch]:
     #     response = await self._gh.repos.branches.list(f"{self._owner}/{self._name}")

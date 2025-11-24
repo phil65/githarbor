@@ -184,9 +184,7 @@ def create_tag_model(gitea_tag: GiteaTag) -> Tag:
         sha=gitea_tag.id,  # Gitea uses 'id' for the SHA
         message=gitea_tag.message,
         created_at=getattr(gitea_tag, "created_at", None),
-        author=create_user_model(gitea_tag.tagger)
-        if hasattr(gitea_tag, "tagger")
-        else None,
+        author=create_user_model(gitea_tag.tagger) if hasattr(gitea_tag, "tagger") else None,
         url=getattr(gitea_tag, "url", None),
         verified=bool(getattr(gitea_tag, "verification", {}).get("verified", False)),
     )

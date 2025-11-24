@@ -244,9 +244,7 @@ class BaseRepository:
         draft: bool = False,
     ) -> PullRequest:
         """Create a pull request from a diff string."""
-        msg = (
-            f"{self.__class__.__name__} does not implement create_pull_request_from_diff"
-        )
+        msg = f"{self.__class__.__name__} does not implement create_pull_request_from_diff"
         raise FeatureNotSupportedError(msg)
 
     def add_pull_request_comment(
@@ -457,9 +455,7 @@ class BaseRepository:
         number: int,
         body: str,
     ) -> Comment:
-        msg = (
-            f"{self.__class__.__name__} does not implement add_pull_request_comment_async"
-        )
+        msg = f"{self.__class__.__name__} does not implement add_pull_request_comment_async"
         raise FeatureNotSupportedError(msg)
 
     async def add_pull_request_review_comment_async(

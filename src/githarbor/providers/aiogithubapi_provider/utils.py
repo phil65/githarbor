@@ -157,12 +157,8 @@ def create_asset_model(asset: Any) -> Asset:
         url=str(asset["browser_download_url"]),
         size=int(asset["size"]),
         download_count=int(asset["download_count"]),
-        created_at=parse_datetime(asset["created_at"])
-        if asset.get("created_at")
-        else None,
-        updated_at=parse_datetime(asset["updated_at"])
-        if asset.get("updated_at")
-        else None,
+        created_at=parse_datetime(asset["created_at"]) if asset.get("created_at") else None,
+        updated_at=parse_datetime(asset["updated_at"]) if asset.get("updated_at") else None,
     )
 
 

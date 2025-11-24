@@ -48,11 +48,7 @@ def handle_api_errors(error_msg: str) -> Callable[[F], F]:
                 if "not found" in error_str or "404" in error_str:
                     msg = f"{error_msg}: {e}"
                     raise ResourceNotFoundError(msg) from e
-                if (
-                    "unauthorized" in error_str
-                    or "401" in error_str
-                    or "403" in error_str
-                ):
+                if "unauthorized" in error_str or "401" in error_str or "403" in error_str:
                     msg = f"{error_msg}: {e}"
                     raise AuthenticationError(msg) from e
                 msg = f"{error_msg}: {e}"
@@ -136,9 +132,7 @@ def create_issue_model(issue: Any) -> Issue:
         labels=[],
         created_at=_parse_datetime(issue.created_at),
         updated_at=_parse_datetime(issue.updated_at),
-        closed_at=_parse_datetime(issue.closed_at)
-        if hasattr(issue, "closed_at")
-        else None,
+        closed_at=_parse_datetime(issue.closed_at) if hasattr(issue, "closed_at") else None,
         closed=issue.state == "closed",
     )
 
@@ -216,9 +210,7 @@ def _parse_datetime(dt_str: str | None) -> datetime | None:
         return None
 
 
-def iter_paginated(
-    func: Callable[..., list[Any]], *args: Any, **kwargs: Any
-) -> Iterator[Any]:
+def iter_paginated(func: Callable[..., list[Any]], *args: Any, **kwargs: Any) -> Iterator[Any]:
     """Iterate through paginated API results."""
     page = 1
     while True:

@@ -354,9 +354,7 @@ def main() -> None:
                 # Handle different return types
                 if isinstance(result, list):
                     return [
-                        dataclasses.asdict(item)
-                        for item in result
-                        if hasattr(item, "__dict__")
+                        dataclasses.asdict(item) for item in result if hasattr(item, "__dict__")
                     ]
                 if hasattr(result, "__dict__"):
                     return dataclasses.asdict(result)

@@ -154,9 +154,7 @@ def create_user_model(gl_user: RESTObject | None) -> User | None:
         name=gl_user.name,
         email=getattr(gl_user, "email", None),
         avatar_url=gl_user.avatar_url,
-        created_at=parse_timestamp(gl_user.created_at)
-        if hasattr(gl_user, "created_at")
-        else None,
+        created_at=parse_timestamp(gl_user.created_at) if hasattr(gl_user, "created_at") else None,
         bio=getattr(gl_user, "bio", None),
         location=getattr(gl_user, "location", None),
         company=getattr(gl_user, "organization", None),
@@ -252,9 +250,7 @@ def create_pull_request_model(mr: Any) -> PullRequest:
         merged_at=parse_timestamp(mr.merged_at) if hasattr(mr, "merged_at") else None,
         closed_at=parse_timestamp(mr.closed_at) if hasattr(mr, "closed_at") else None,
         author=create_user_model(getattr(mr, "author", None)),
-        assignees=[
-            create_user_model(a) for a in getattr(mr, "assignees", []) if a is not None
-        ],
+        assignees=[create_user_model(a) for a in getattr(mr, "assignees", []) if a is not None],
         labels=[Label(name=label) for label in getattr(mr, "labels", [])],
         review_comments_count=getattr(mr, "user_notes_count", 0),
         commits_count=getattr(mr, "commits_count", 0),
@@ -291,12 +287,8 @@ def create_workflow_run_model(job: Any) -> WorkflowRun:
         commit_sha=getattr(job.commit, "id", None),
         url=job.web_url,
         created_at=parse_timestamp(job.created_at),
-        started_at=parse_timestamp(job.started_at)
-        if hasattr(job, "started_at")
-        else None,
-        completed_at=parse_timestamp(job.finished_at)
-        if hasattr(job, "finished_at")
-        else None,
+        started_at=parse_timestamp(job.started_at) if hasattr(job, "started_at") else None,
+        completed_at=parse_timestamp(job.finished_at) if hasattr(job, "finished_at") else None,
         logs_url=getattr(job, "artifacts_file", {}).get("filename"),
     )
 
@@ -328,9 +320,7 @@ def create_comment_model(gl_comment: Any) -> Comment:
         body=gl_comment.body,
         author=create_user_model(gl_comment.author),
         created_at=parse_timestamp(gl_comment.created_at),
-        updated_at=parse_timestamp(gl_comment.updated_at)
-        if gl_comment.updated_at
-        else None,
+        updated_at=parse_timestamp(gl_comment.updated_at) if gl_comment.updated_at else None,
         url=gl_comment.url if hasattr(gl_comment, "url") else None,
     )
 

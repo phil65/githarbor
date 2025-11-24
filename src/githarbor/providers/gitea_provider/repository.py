@@ -134,9 +134,7 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get issue")
     def get_issue(self, issue_id: int) -> Issue:
         """Get a specific issue by ID."""
-        issue: giteapy.Issue = self._issues_api.issue_get_issue(
-            self._owner, self._name, issue_id
-        )
+        issue: giteapy.Issue = self._issues_api.issue_get_issue(self._owner, self._name, issue_id)
         return giteatools.create_issue_model(issue)
 
     @giteatools.handle_api_errors("Failed to list issues")
@@ -177,9 +175,7 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get commit")
     def get_commit(self, sha: str) -> Commit:
         """Get a specific commit by SHA."""
-        commit: giteapy.Commit = self._repo_api.repo_get_single_commit(
-            self._owner, self._name, sha
-        )
+        commit: giteapy.Commit = self._repo_api.repo_get_single_commit(self._owner, self._name, sha)
         return giteatools.create_commit_model(commit)
 
     @giteatools.handle_api_errors("Failed to list commits")
@@ -210,9 +206,7 @@ class GiteaRepository(BaseRepository):
 
         if author:
             commits = [
-                c
-                for c in commits
-                if author in (c.commit.author.name or c.commit.author.email)
+                c for c in commits if author in (c.commit.author.name or c.commit.author.email)
             ]
 
         return [giteatools.create_commit_model(commit) for commit in commits]
@@ -227,9 +221,7 @@ class GiteaRepository(BaseRepository):
         raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to download file")
-    def download(
-        self, path: str, destination: JoinablePathLike, recursive: bool = False
-    ) -> None:
+    def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
         """Download repository contents."""
         from upathtools import to_upath
 
@@ -348,9 +340,7 @@ class GiteaRepository(BaseRepository):
     ) -> Release:
         """Get the latest repository release."""
         kwargs = {"draft": include_drafts, "pre_release": include_prereleases}
-        releases = self._repo_api.repo_list_releases(
-            self._owner, self._name, per_page=1, **kwargs
-        )
+        releases = self._repo_api.repo_list_releases(self._owner, self._name, per_page=1, **kwargs)
 
         if not releases:
             msg = "No matching releases found"

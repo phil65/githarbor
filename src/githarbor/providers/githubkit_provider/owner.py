@@ -100,11 +100,7 @@ class GitHubKitOwner(BaseOwner):
         """List all repositories owned by this user."""
         try:
             repos = await self.list_repos_owned_by_user()
-            return [
-                create_repository(repo["html_url"])
-                for repo in repos
-                if repo.get("html_url")
-            ]
+            return [create_repository(repo["html_url"]) for repo in repos if repo.get("html_url")]
         except Exception as e:
             msg = f"Failed to list repositories: {e!s}"
             raise ResourceNotFoundError(msg) from e
