@@ -41,7 +41,7 @@ Source = "https://github.com/phil65/githarbor"
 githarbor = "githarbor.mcp_server:main"
 
 [project.entry-points."jinjarope.environment"]
-llmling_agent = "githarbor.functional:setup_env"
+githarbor = "githarbor.functional:setup_env"
 
 [project.optional-dependencies]
 aiogithubapi = ["aiogithubapi"]
@@ -61,7 +61,7 @@ bitbucket = ["atlassian-python-api"]
 diff = ["unidiff"]
 gitea = ["giteapy"]
 github = ["pygithub"]
-githubkit = ["githubkit"]
+# githubkit = ["githubkit"]
 gitlab = ["python-gitlab"]
 local = ["gitpython"]
 mcp = ["fastmcp"]
