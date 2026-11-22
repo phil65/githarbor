@@ -25,7 +25,7 @@ if importlib.util.find_spec("githubkit"):
 if importlib.util.find_spec("gitea"):
     from githarbor.providers.pygitea_provider import PyGiteaRepository
 
-if importlib.util.find_spec("gitpython"):
+if importlib.util.find_spec("git"):
     from githarbor.providers.local_provider import LocalRepository
 
 
