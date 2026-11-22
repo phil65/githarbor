@@ -5,9 +5,6 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from githubkit import GitHub
-from githubkit.exception import GitHubException
-
 from githarbor.core.base import BaseRepository
 from githarbor.exceptions import ResourceNotFoundError
 from githarbor.providers.githubkit_provider import utils as githubkittools
@@ -54,6 +51,8 @@ class GitHubKitRepository(BaseRepository):
         Raises:
             AuthenticationError: If authentication fails
         """
+        from githubkit import GitHub
+
         t = token or os.getenv("GITHUB_TOKEN")
         if not t:
             msg = "GitHub token is required"
@@ -65,6 +64,8 @@ class GitHubKitRepository(BaseRepository):
 
     async def _ensure_repo(self) -> None:
         """Ensure repository info is loaded."""
+        from githubkit.exception import GitHubException
+
         if self._repo is None:
             try:
                 resp = await self._gh.rest.repos.async_get(self._owner, self._name)
@@ -286,6 +287,8 @@ class GitHubKitRepository(BaseRepository):
         include_prereleases: bool = False,
     ) -> Release:
         """Get latest release."""
+        from githubkit.exception import GitHubException
+
         try:
             resp = await self._gh.rest.repos.async_get_latest_release(self._owner, self._name)
             release = resp.parsed_data

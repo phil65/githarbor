@@ -6,9 +6,6 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from githubkit import GitHub
-from githubkit.exception import GitHubException
-
 from githarbor.core.base import BaseOwner
 from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
 from githarbor.providers.githubkit_provider import utils as githubkittools
@@ -35,6 +32,9 @@ class GitHubKitOwner(BaseOwner):
             username: Username of the owner
             token: GitHub access token
         """
+        from githubkit import GitHub
+        from githubkit.exception import GitHubException
+
         try:
             t = token or os.getenv("GITHUB_TOKEN")
             if not t:
@@ -121,6 +121,8 @@ class GitHubKitOwner(BaseOwner):
         Returns:
             Newly created repository
         """
+        from githubkit.exception import GitHubException
+
         try:
             resp = await self._gh.rest.repos.async_create_for_authenticated_user(
                 name=name,
@@ -134,6 +136,8 @@ class GitHubKitOwner(BaseOwner):
 
     async def get_user_async(self) -> User:
         """Get user information."""
+        from githubkit.exception import GitHubException
+
         try:
             resp = await self._gh.rest.users.async_get_by_username(self._name)
             return githubkittools.create_user_model(resp.parsed_data)
@@ -147,6 +151,8 @@ class GitHubKitOwner(BaseOwner):
         Args:
             name: Name of repository to delete
         """
+        from githubkit.exception import GitHubException
+
         try:
             await self._gh.rest.repos.async_delete(self._name, name)
         except GitHubException as e:
