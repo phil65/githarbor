@@ -102,6 +102,10 @@ def download_from_github(
     dest.mkdir(exist_ok=True, parents=True)
     fs = fsspec.filesystem("github", org=org, repo=repo)
     logger.info("Copying files from Github: %s", path)
+    if fs.isfile(str(path)):
+        # Copy into dest; fs.get() would treat dest itself as the target file.
+        fs.get_file(str(path), (dest / to_upath(path).name).as_posix())
+        return
     files = fs.ls(str(path))
     fs.get(files, dest.as_posix(), recursive=recursive)
 
