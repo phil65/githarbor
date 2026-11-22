@@ -333,7 +333,7 @@ def create_tag_model(tag: Any) -> Tag:
         message=tag.message or "",
         created_at=parse_timestamp(tag.commit["created_at"]),
         author=create_user_model(tag.commit["author"]),
-        url=f"{tag._project.web_url}/-/tags/{tag.name}",  # type: ignore
+        url=f"{tag._project.web_url}/-/tags/{tag.name}",
         verified=bool(getattr(tag, "verified", False)),
     )
 

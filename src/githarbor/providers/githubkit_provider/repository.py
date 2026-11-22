@@ -119,7 +119,7 @@ class GitHubKitRepository(BaseRepository):
         """List pull requests."""
         resp = await self._gh.rest.pulls.async_list(self._owner, self._name, state=state)
         data = resp.parsed_data
-        return [githubkittools.create_pull_request_model(pr) for pr in data]  # type: ignore
+        return [githubkittools.create_pull_request_model(pr) for pr in data]
 
     @githubkittools.handle_githubkit_errors("Failed to list branches")
     async def list_branches_async(self) -> list[Branch]:
@@ -141,7 +141,7 @@ class GitHubKitRepository(BaseRepository):
             state=state,
         )
         data = resp.parsed_data
-        return [githubkittools.create_issue_model(issue) for issue in data]  # type: ignore
+        return [githubkittools.create_issue_model(issue) for issue in data]
 
     @githubkittools.handle_githubkit_errors("Failed to create issue")
     async def create_issue_async(
@@ -157,7 +157,7 @@ class GitHubKitRepository(BaseRepository):
             repo=self._name,
             title=title,
             body=body,
-            labels=labels or [],  # type: ignore
+            labels=labels or [],
             assignees=assignees,
         )
         return githubkittools.create_issue_model(response.parsed_data)

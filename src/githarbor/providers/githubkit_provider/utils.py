@@ -41,7 +41,7 @@ def handle_githubkit_errors[T, **P](
                 from githubkit.exception import GitHubException
 
                 try:
-                    return func(*args, **kwargs)  # type: ignore
+                    return func(*args, **kwargs)
                 except GitHubException as e:
                     msg = error_msg_template.format(error=str(e))
                     raise ResourceNotFoundError(msg) from e
@@ -53,7 +53,7 @@ def handle_githubkit_errors[T, **P](
                 from githubkit.exception import GitHubException
 
                 try:
-                    return await func(*args, **kwargs)  # type: ignore
+                    return await func(*args, **kwargs)
                 except GitHubException as e:
                     msg = error_msg_template.format(error=str(e))
                     raise ResourceNotFoundError(msg) from e
@@ -135,7 +135,7 @@ def create_label_model(ghk_label: ghk_models.IssuePropLabelsItemsOneof1) -> Labe
         name=ghk_label.name or "",
         color=ghk_label.color or "",
         description=ghk_label.description or "",
-        url=ghk_label.url,  # type: ignore
+        url=ghk_label.url,
     )
 
 

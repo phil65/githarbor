@@ -56,7 +56,7 @@ def create_user_model(user: GitHubBaseUserModel | GitHubUserModel | None) -> Use
     if not user:
         return None
 
-    data = {
+    data: dict[str, Any] = {
         "username": user.login or "",
         "name": getattr(user, "name", None),
         "email": getattr(user, "email", None),

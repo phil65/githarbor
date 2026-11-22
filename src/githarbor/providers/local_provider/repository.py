@@ -110,14 +110,11 @@ class LocalRepository(BaseRepository):
     @localtools.handle_git_errors("Failed to get tag {name}")
     def get_tag(self, name: str) -> Tag:
         tag = self.repo.tags[name]
-        return localtools.create_tag_model(tag.tag, tag.commit)  # type: ignore
+        return localtools.create_tag_model(tag.tag, tag.commit)
 
     @localtools.handle_git_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
-        return [
-            localtools.create_tag_model(tag.tag, tag.commit)  # type: ignore
-            for tag in self.repo.tags  # type: ignore
-        ]
+        return [localtools.create_tag_model(tag.tag, tag.commit) for tag in self.repo.tags]
 
     @functools.cached_property
     def remote_repository(self) -> Repository:

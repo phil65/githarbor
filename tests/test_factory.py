@@ -15,12 +15,14 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 
 
+@pytest.mark.integration
 def test_create_github_repository():
     repo = create_repository("https://github.com/phil65/mknodes")
     assert isinstance(repo._repository, GitHubRepository)
     assert repo.name == "mknodes"
 
 
+@pytest.mark.integration
 def test_create_gitlab_repository():
     repo = create_repository("https://gitlab.com/phil65/test")
     assert isinstance(repo._repository, GitLabRepository)

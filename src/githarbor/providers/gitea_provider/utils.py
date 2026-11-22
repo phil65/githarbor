@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from giteapy.models import (
-        Asset as GiteaAsset,
+        Attachment as GiteaAsset,
         Branch as GiteaBranch,
         Commit as GiteaCommit,
         Issue as GiteaIssue,
@@ -84,12 +84,12 @@ def create_user_model(gitea_user: GiteaUser | None) -> User | None:
         email=gitea_user.email,
         avatar_url=gitea_user.avatar_url,
         created_at=gitea_user.created,
-        bio=gitea_user.description,
-        location=gitea_user.location,
+        bio=getattr(gitea_user, "description", None),
+        location=getattr(gitea_user, "location", None),
         is_admin=gitea_user.is_admin,
         last_activity_on=gitea_user.last_login,
-        blog=gitea_user.website,
-        url=gitea_user.html_url,
+        blog=getattr(gitea_user, "website", None),
+        url=getattr(gitea_user, "html_url", None),
         followers=getattr(gitea_user, "followers_count", None),
         following=getattr(gitea_user, "following_count", None),
         public_repos=getattr(gitea_user, "public_repos", None),
@@ -141,7 +141,7 @@ def create_issue_model(issue: GiteaIssue) -> Issue:
         author=create_user_model(issue.user),
         assignee=create_user_model(issue.assignee),
         labels=[create_label_model(label) for label in (issue.labels or [])],
-        url=issue.html_url,
+        url=getattr(issue, "html_url", None) or issue.url,
     )
 
 
@@ -182,9 +182,9 @@ def create_tag_model(gitea_tag: GiteaTag) -> Tag:
     return Tag(
         name=gitea_tag.name,
         sha=gitea_tag.id,  # Gitea uses 'id' for the SHA
-        message=gitea_tag.message,
+        message=getattr(gitea_tag, "message", None),
         created_at=getattr(gitea_tag, "created_at", None),
-        author=create_user_model(gitea_tag.tagger) if hasattr(gitea_tag, "tagger") else None,
+        author=create_user_model(getattr(gitea_tag, "tagger", None)),
         url=getattr(gitea_tag, "url", None),
         verified=bool(getattr(gitea_tag, "verification", {}).get("verified", False)),
     )

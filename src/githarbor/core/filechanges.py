@@ -58,7 +58,7 @@ def parse_diff(diff_str: str) -> list[FileChange]:
             continue
         # Reconstruct the final content
         lines = [ln.value for hunk in patched_file for ln in hunk if not ln.is_removed]
-        change = FileChange(patched_file.path, content="".join(lines), mode=mode)  # type: ignore
+        change = FileChange(patched_file.path, content="".join(lines), mode=mode)
         changes.append(change)
 
     return changes

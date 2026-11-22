@@ -13,26 +13,26 @@ from fastmcp import FastMCP
 
 from githarbor.exceptions import ResourceNotFoundError
 from githarbor.functional import (
-    add_pull_request_comment,
-    create_branch,
-    create_issue,
-    create_pull_request,
-    get_branch,
-    get_commit,
-    get_contributors,
-    get_issue,
-    get_languages,
-    get_latest_release,
-    get_pull_request,
-    get_release,
-    get_repo_user,
-    get_tag,
-    list_branches,
-    list_commits,
-    list_issues,
-    list_pull_requests,
-    list_releases,
-    list_tags,
+    add_pull_request_comment_async,
+    create_branch_async,
+    create_issue_async,
+    create_pull_request_async,
+    get_branch_async,
+    get_commit_async,
+    get_contributors_async,
+    get_issue_async,
+    get_languages_async,
+    get_latest_release_async,
+    get_pull_request_async,
+    get_release_async,
+    get_repo_user_async,
+    get_tag_async,
+    list_branches_async,
+    list_commits_async,
+    list_issues_async,
+    list_pull_requests_async,
+    list_releases_async,
+    list_tags_async,
 )
 
 
@@ -44,28 +44,28 @@ mcp = FastMCP[Any]("GitHarbor")
 @mcp.tool()
 async def gh_get_repo_user(repo_url: str) -> dict:
     """Get information about the owner of a repository."""
-    user = await get_repo_user(repo_url)
+    user = await get_repo_user_async(repo_url)
     return dataclasses.asdict(user)
 
 
 @mcp.tool()
 async def gh_get_branch(repo_url: str, branch_name: str) -> dict:
     """Get information about a specific branch in a repository."""
-    branch = await get_branch(repo_url, branch_name)
+    branch = await get_branch_async(repo_url, branch_name)
     return dataclasses.asdict(branch)
 
 
 @mcp.tool()
 async def gh_list_branches(repo_url: str) -> list[dict]:
     """List all branches in a repository."""
-    branches = await list_branches(repo_url)
+    branches = await list_branches_async(repo_url)
     return [dataclasses.asdict(branch) for branch in branches]
 
 
 @mcp.tool()
 async def gh_get_pull_request(repo_url: str, number: int) -> dict:
     """Get details about a specific pull request."""
-    pr = await get_pull_request(repo_url, number)
+    pr = await get_pull_request_async(repo_url, number)
     return dataclasses.asdict(pr)
 
 
@@ -75,14 +75,14 @@ async def gh_list_pull_requests(
     state: Literal["open", "closed", "all"] = "open",
 ) -> list[dict]:
     """List pull requests in a repository with optional state filter."""
-    prs = await list_pull_requests(repo_url, state=state)
+    prs = await list_pull_requests_async(repo_url, state=state)
     return [dataclasses.asdict(pr) for pr in prs]
 
 
 @mcp.tool()
 async def gh_get_issue(repo_url: str, issue_id: int) -> dict:
     """Get details about a specific issue."""
-    issue = await get_issue(repo_url, issue_id)
+    issue = await get_issue_async(repo_url, issue_id)
     return dataclasses.asdict(issue)
 
 
@@ -91,7 +91,7 @@ async def gh_list_issues(
     repo_url: str, state: Literal["open", "closed", "all"] = "open"
 ) -> list[dict]:
     """List issues in a repository with optional state filter."""
-    issues = await list_issues(repo_url, state=state)
+    issues = await list_issues_async(repo_url, state=state)
     return [dataclasses.asdict(issue) for issue in issues]
 
 
@@ -104,14 +104,14 @@ async def gh_create_issue(
     assignees: list[str] | None = None,
 ) -> dict:
     """Create a new issue in a repository."""
-    issue = await create_issue(repo_url, title, body, labels=labels, assignees=assignees)
+    issue = await create_issue_async(repo_url, title, body, labels=labels, assignees=assignees)
     return dataclasses.asdict(issue)
 
 
 @mcp.tool()
 async def gh_get_commit(repo_url: str, sha: str) -> dict:
     """Get details about a specific commit."""
-    commit = await get_commit(repo_url, sha)
+    commit = await get_commit_async(repo_url, sha)
     return dataclasses.asdict(commit)
 
 
@@ -122,14 +122,14 @@ async def gh_list_commits(
     max_results: int | None = None,
 ) -> list[dict]:
     """List commits in a repository with optional branch and limit."""
-    commits = await list_commits(repo_url, branch=branch, max_results=max_results)
+    commits = await list_commits_async(repo_url, branch=branch, max_results=max_results)
     return [dataclasses.asdict(commit) for commit in commits]
 
 
 @mcp.tool()
 async def gh_get_languages(repo_url: str) -> dict[str, int]:
     """Get programming language statistics for a repository."""
-    return await get_languages(repo_url)
+    return await get_languages_async(repo_url)
 
 
 @mcp.tool()
@@ -139,14 +139,14 @@ async def gh_get_contributors(
     limit: int | None = None,
 ) -> list[dict]:
     """Get contributors to a repository."""
-    contributors = await get_contributors(repo_url, sort_by=sort_by, limit=limit)
+    contributors = await get_contributors_async(repo_url, sort_by=sort_by, limit=limit)
     return [dataclasses.asdict(contributor) for contributor in contributors]
 
 
 @mcp.tool()
 async def gh_create_branch(repo_url: str, name: str, base_commit: str) -> dict:
     """Create a new branch in a repository."""
-    branch = await create_branch(repo_url, name, base_commit)
+    branch = await create_branch_async(repo_url, name, base_commit)
     return dataclasses.asdict(branch)
 
 
@@ -160,7 +160,7 @@ async def gh_create_pull_request(
     draft: bool = False,
 ) -> dict:
     """Create a new pull request in a repository."""
-    pr = await create_pull_request(repo_url, title, body, head_branch, base_branch, draft)
+    pr = await create_pull_request_async(repo_url, title, body, head_branch, base_branch, draft)
     return dataclasses.asdict(pr)
 
 
@@ -182,21 +182,21 @@ async def gh_create_pull_request(
 @mcp.tool()
 async def gh_add_pull_request_comment(repo_url: str, number: int, body: str) -> dict:
     """Add a comment to a pull request."""
-    comment = await add_pull_request_comment(repo_url, number, body)
+    comment = await add_pull_request_comment_async(repo_url, number, body)
     return dataclasses.asdict(comment)
 
 
 @mcp.tool()
 async def gh_get_tag(repo_url: str, name: str) -> dict:
     """Get information about a specific tag."""
-    tag = await get_tag(repo_url, name)
+    tag = await get_tag_async(repo_url, name)
     return dataclasses.asdict(tag)
 
 
 @mcp.tool()
 async def gh_list_tags(repo_url: str) -> list[dict]:
     """List all tags in a repository."""
-    tags = await list_tags(repo_url)
+    tags = await list_tags_async(repo_url)
     return [dataclasses.asdict(tag) for tag in tags]
 
 
@@ -207,7 +207,7 @@ async def gh_get_latest_release(
     include_prereleases: bool = False,
 ) -> dict:
     """Get the latest release from a repository."""
-    release = await get_latest_release(
+    release = await get_latest_release_async(
         repo_url, include_drafts=include_drafts, include_prereleases=include_prereleases
     )
     return dataclasses.asdict(release)
@@ -221,7 +221,7 @@ async def gh_list_releases(
     limit: int | None = None,
 ) -> list[dict]:
     """List releases from a repository."""
-    releases = await list_releases(
+    releases = await list_releases_async(
         repo_url,
         include_drafts=include_drafts,
         include_prereleases=include_prereleases,
@@ -233,7 +233,7 @@ async def gh_list_releases(
 @mcp.tool()
 async def gh_get_release(repo_url: str, tag: str) -> dict:
     """Get a specific release by tag name."""
-    release = await get_release(repo_url, tag)
+    release = await get_release_async(repo_url, tag)
     return dataclasses.asdict(release)
 
 
@@ -272,7 +272,7 @@ async def get_file_content(repo_url: str, path: str) -> str:
 async def get_commit_history(repo_url: str, max_results: int = 10) -> list[dict]:
     """Get the commit history for a repository."""
     try:
-        commits = await list_commits(repo_url, max_results=max_results)
+        commits = await list_commits_async(repo_url, max_results=max_results)
         return [dataclasses.asdict(commit) for commit in commits]
     except Exception as e:  # noqa: BLE001
         msg = f"Error fetching commit history: {e}"
@@ -287,7 +287,7 @@ async def get_issues_list(repo_url: str, state: str) -> list[dict]:  # IssueStat
     State can be one of "open", "closed", or "all".
     """
     try:
-        issues = await list_issues(repo_url, state=state)  # type: ignore
+        issues = await list_issues_async(repo_url, state=state)  # type: ignore
         return [dataclasses.asdict(issue) for issue in issues]
     except Exception as e:  # noqa: BLE001
         msg = f"Error fetching issues: {e}"
@@ -302,7 +302,7 @@ async def get_pull_requests_list(
 ) -> list[dict]:
     """Get a list of pull requests for a repository filtered by state."""
     try:
-        prs = await list_pull_requests(repo_url, state=state)  # type: ignore
+        prs = await list_pull_requests_async(repo_url, state=state)  # type: ignore
         return [dataclasses.asdict(pr) for pr in prs]
     except Exception as e:  # noqa: BLE001
         msg = f"Error fetching pull requests: {e}"
@@ -361,7 +361,7 @@ def main() -> None:
                 return result
 
             # Rename the method to remove _async suffix
-            wrapper.__name__ = method.__name__.replace("_async", "")
+            wrapper.__name__ = method.__name__.replace("_async", "")  # ty: ignore[missing-attribute]
 
             # Add the method as a tool
             fixed_repo_mcp.tool(wrapper)

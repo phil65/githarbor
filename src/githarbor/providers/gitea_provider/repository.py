@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 from githarbor.core.base import BaseRepository
-from githarbor.exceptions import AuthenticationError, ResourceNotFoundError
+from githarbor.exceptions import (
+    AuthenticationError,
+    FeatureNotSupportedError,
+    ResourceNotFoundError,
+)
 from githarbor.providers.gitea_provider import utils as giteatools
 
 
@@ -111,7 +115,7 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get pull request")
     def get_pull_request(self, number: int) -> PullRequest:
         """Get a specific pull request by number."""
-        pr = self._repo_api.repo_get_pull(self._owner, self._name, number)
+        pr = self._repo_api.repo_get_pull_request(self._owner, self._name, number)
         return giteatools.create_pull_request_model(pr)
 
     @giteatools.handle_api_errors("Failed to list pull requests")
@@ -229,12 +233,7 @@ class GiteaRepository(BaseRepository):
         dest.mkdir(exist_ok=True, parents=True)
 
         if recursive:
-            contents = self._repo_api.repo_get_contents_list(
-                self._owner,
-                self._name,
-                str(path),
-                ref=self.default_branch,
-            )
+            contents = self._list_contents(str(path), self.default_branch)
 
             for content in contents:
                 if content.type == "file":
@@ -266,21 +265,33 @@ class GiteaRepository(BaseRepository):
         max_results: int | None = None,
     ) -> list[Commit]:
         """Search repository commits."""
-        kwargs: dict[str, Any] = {}
-        if branch:
-            kwargs["ref_name"] = branch
+        # giteapy has no commit search endpoint, so filter commit messages client-side.
         if path:
-            kwargs["path"] = path
+            msg = "Filtering commit search by path is not supported for Gitea"
+            raise FeatureNotSupportedError(msg)
+        kwargs = {"sha": branch} if branch else {}
+        commits = self._repo_api.repo_get_all_commits(self._owner, self._name, **kwargs)
+        query_lower = query.lower()
+        matches = [c for c in commits if query_lower in (c.commit.message or "").lower()]
         if max_results:
-            kwargs["limit"] = max_results
+            matches = matches[:max_results]
+        return [giteatools.create_commit_model(commit) for commit in matches]
 
-        commits = self._repo_api.repo_search_commits(
-            self._owner,
-            self._name,
-            keyword=query,
-            **kwargs,
+    def _list_contents(self, path: str, ref: str) -> list[Any]:
+        """List the entries of a directory (giteapy only supports the root dir)."""
+        path = path.strip("/")
+        if not path:
+            return self._repo_api.repo_get_contents_list(self._owner, self._name, ref=ref)
+        return self._api.call_api(
+            "/repos/{owner}/{repo}/contents/{filepath}",
+            "GET",
+            {"owner": self._owner, "repo": self._name, "filepath": path},
+            [("ref", ref)],
+            {"Accept": "application/json"},
+            response_type="list[ContentsResponse]",
+            auth_settings=["AccessToken", "AuthorizationHeaderToken", "BasicAuth", "Token"],
+            _return_http_data_only=True,
         )
-        return [giteatools.create_commit_model(commit) for commit in commits]
 
     @giteatools.handle_api_errors("Failed to list files")
     def iter_files(
@@ -291,8 +302,7 @@ class GiteaRepository(BaseRepository):
     ) -> Iterator[str]:
         """Iterate over repository files."""
         ref_ = ref or self.default_branch
-        entries = self._repo_api.repo_get_contents_list(self._owner, self._name, ref=ref_)
-        assert isinstance(entries, list)
+        entries = self._list_contents(path, ref_)
         for entry in entries:
             if entry.type == "file":
                 if not pattern or fnmatch.fnmatch(entry.path, pattern):
@@ -381,8 +391,12 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get tag {name}")
     def get_tag(self, name: str) -> Tag:
         """Get a specific repository tag."""
-        tag = self._repo_api.repo_get_tag(self._owner, self._name, name)
-        return giteatools.create_tag_model(tag)
+        tags = self._repo_api.repo_list_tags(self._owner, self._name)
+        for tag in tags:
+            if tag.name == name:
+                return giteatools.create_tag_model(tag)
+        msg = f"Tag {name!r} not found"
+        raise ResourceNotFoundError(msg)
 
     def get_languages(self) -> dict[str, int]:
         raise NotImplementedError

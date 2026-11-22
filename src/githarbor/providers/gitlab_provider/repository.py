@@ -88,7 +88,7 @@ class GitLabRepository(BaseRepository):
     @gitlabtools.handle_gitlab_errors("Failed to get user info")
     def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
-        user = self._gl.users.list(username=self._owner)[0]  # type: ignore
+        user = self._gl.users.list(username=self._owner)[0]
         return gitlabtools.create_user_model(user)
 
     @gitlabtools.handle_gitlab_errors("Branch {name} not found")
@@ -115,7 +115,7 @@ class GitLabRepository(BaseRepository):
     @gitlabtools.handle_gitlab_errors("Failed to list branches")
     def list_branches(self) -> list[Branch]:
         branches = self._repo.branches.list(get_all=True)
-        return [gitlabtools.create_branch_model(branch) for branch in branches]  # type: ignore
+        return [gitlabtools.create_branch_model(branch) for branch in branches]
 
     @gitlabtools.handle_gitlab_errors("Issue #{issue_id} not found")
     def get_issue(self, issue_id: int) -> Issue:
@@ -143,7 +143,7 @@ class GitLabRepository(BaseRepository):
             data["labels"] = ",".join(labels)
         if assignees:
             # GitLab API expects assignee_ids
-            ids_ = [self._gl.users.list(username=n)[0].id for n in assignees]  # type: ignore
+            ids_ = [self._gl.users.list(username=n)[0].id for n in assignees]
             data["assignee_ids"] = ids_
 
         issue = self._repo.issues.create(data)
@@ -404,7 +404,7 @@ class GitLabRepository(BaseRepository):
     def create_branch(self, name: str, base_commit: str) -> Branch:
         """Create a new branch at the specified commit."""
         branch = self._repo.branches.create({"branch": name, "ref": base_commit})
-        return gitlabtools.create_branch_model(branch)  # type: ignore
+        return gitlabtools.create_branch_model(branch)
 
     @gitlabtools.handle_gitlab_errors("Failed to add merge request comment")
     def add_pull_request_comment(self, number: int, body: str) -> Comment:

@@ -58,7 +58,7 @@ class GitHubRepository(BaseRepository):
             self._repo = self._gh.get_repo(f"{owner}/{name}")
             self._owner = owner
             self._name = name
-            self.user: NamedUser.NamedUser = self._gh.get_user(owner)  # type: ignore
+            self.user: NamedUser.NamedUser = self._gh.get_user(owner)
         except GithubException as e:
             msg = f"GitHub authentication failed: {e!s}"
             raise AuthenticationError(msg) from e

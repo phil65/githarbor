@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
 import logging
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 
 if TYPE_CHECKING:
@@ -54,7 +54,7 @@ def handle_api_errors(error_msg: str) -> Callable[[F], F]:
                 msg = f"{error_msg}: {e}"
                 raise GitHarborError(msg) from e
 
-        return wrapper  # type: ignore[return-value]
+        return cast("F", wrapper)
 
     return decorator
 

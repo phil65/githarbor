@@ -14,6 +14,13 @@ REPO = "test"
 BRANCH = "master"
 
 
+@pytest.fixture(autouse=True)
+def gitlab_token(monkeypatch: pytest.MonkeyPatch):
+    """Provide a dummy token so offline tests don't depend on real credentials."""
+    if not os.getenv("GITLAB_TOKEN"):
+        monkeypatch.setenv("GITLAB_TOKEN", "dummy-token")
+
+
 @pytest.fixture
 def mock_gitlab_client():
     return Mock()
@@ -33,6 +40,7 @@ def supports_url():
     assert not GitLabRepository.supports_url("https://github.com/owner/repo")
 
 
+@pytest.mark.integration
 def test_initialization():
     """Test basic initialization of GitLabRepository."""
     repo = GitLabRepository(OWNER, REPO)
@@ -40,6 +48,7 @@ def test_initialization():
     assert repo._name == REPO
 
 
+@pytest.mark.integration
 def test_from_url():
     """Test creating repository from URL."""
     url = "https://gitlab.com/phil65/test"

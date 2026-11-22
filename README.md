@@ -43,10 +43,7 @@ repo = create_repository("https://github.com/owner/repo", token="github_pat_..."
 repo = create_repository("https://gitlab.com/owner/repo", token="glpat-...")
 
 # Azure DevOps repository
-repo = create_repository(
-    "https://dev.azure.com/org/project/_git/repo",
-    token="azure_pat"
-)
+repo = create_repository("https://dev.azure.com/org/project/_git/repo", token="azure_pat")
 ```
 
 > [!TIP]
@@ -67,10 +64,7 @@ languages = repo.get_languages()
 
 # Get recent activity statistics
 activity = repo.get_recent_activity(
-    days=30,
-    include_commits=True,
-    include_prs=True,
-    include_issues=True
+    days=30, include_commits=True, include_prs=True, include_issues=True
 )
 ```
 
@@ -91,11 +85,7 @@ tag = repo.get_tag("v1.0.0")
 
 # Compare branches
 diff = repo.compare_branches(
-    base="main",
-    head="feature",
-    include_commits=True,
-    include_files=True,
-    include_stats=True
+    base="main", head="feature", include_commits=True, include_files=True, include_stats=True
 )
 ```
 
@@ -112,16 +102,11 @@ commits = repo.list_commits(
     until=datetime(2024, 2, 1),
     author="username",
     path="src/",
-    max_results=100
+    max_results=100,
 )
 
 # Search commits
-results = repo.search_commits(
-    query="fix bug",
-    branch="main",
-    path="src/",
-    max_results=10
-)
+results = repo.search_commits(query="fix bug", branch="main", path="src/", max_results=10)
 ```
 
 ### Issues and Pull Requests
@@ -144,17 +129,10 @@ pr = repo.get_pull_request(456)
 
 ```python
 # Get latest release
-latest = repo.get_latest_release(
-    include_drafts=False,
-    include_prereleases=False
-)
+latest = repo.get_latest_release(include_drafts=False, include_prereleases=False)
 
 # List all releases
-releases = repo.list_releases(
-    include_drafts=False,
-    include_prereleases=True,
-    limit=10
-)
+releases = repo.list_releases(include_drafts=False, include_prereleases=True, limit=10)
 
 # Get specific release
 release = repo.get_release("v1.0.0")
@@ -164,24 +142,13 @@ release = repo.get_release("v1.0.0")
 
 ```python
 # Download single file
-repo.download(
-    path="README.md",
-    destination="local/README.md"
-)
+repo.download(path="README.md", destination="local/README.md")
 
 # Download directory recursively
-repo.download(
-    path="src/",
-    destination="local/src",
-    recursive=True
-)
+repo.download(path="src/", destination="local/src", recursive=True)
 
 # Iterate through files
-for file_path in repo.iter_files(
-    path="src/",
-    ref="main",
-    pattern="*.py"
-):
+for file_path in repo.iter_files(path="src/", ref="main", pattern="*.py"):
     print(file_path)
 ```
 
@@ -204,7 +171,7 @@ run = repo.get_workflow_run("run_id")
 # Get repository contributors
 contributors = repo.get_contributors(
     sort_by="commits",  # or "name" or "date"
-    limit=10
+    limit=10,
 )
 ```
 
@@ -216,7 +183,7 @@ GitHarbor provides specific exceptions for different error cases:
 from githarbor.exceptions import (
     RepositoryNotFoundError,
     ResourceNotFoundError,
-    FeatureNotSupportedError
+    FeatureNotSupportedError,
 )
 
 try:

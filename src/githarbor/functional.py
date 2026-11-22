@@ -8,7 +8,7 @@ from githarbor.registry import RepoRegistry
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
     from datetime import datetime
 
     from upath.types import JoinablePathLike
@@ -28,12 +28,12 @@ if TYPE_CHECKING:
     )
 
 
-def make_sync[**P, T](async_func: Callable[P, T]) -> Callable[P, T]:
+def make_sync[**P, T](async_func: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, T]:
     """Convert an async function to sync using asyncio.run()."""
 
     @functools.wraps(async_func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        return asyncio.run(async_func(*args, **kwargs))  # type: ignore[arg-type]
+        return asyncio.run(async_func(*args, **kwargs))
 
     return wrapper
 
@@ -671,7 +671,7 @@ def setup_env(env: Any) -> None:
         add_pull_request_review_comment,
     ]
 
-    funcs = {func.__name__: func for func in methods}
+    funcs = {func.__name__: func for func in methods}  # ty: ignore[missing-union-attribute]
     # Special case for download which has a different name in the interface
     funcs["download_from_repo"] = download
     funcs["download_from_repo_async"] = download_async
