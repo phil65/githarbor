@@ -25,65 +25,97 @@
 
 [Read the documentation!](https://phil65.github.io/githarbor/)
 
-# GitHarbor User Guide
+GitHarbor is a unified Python client for Git hosting platforms. One API covers repositories on
+[GitHub](https://github.com), [GitLab](https://gitlab.com),
+[Azure DevOps](https://azure.microsoft.com/products/devops), [Gitea](https://gitea.io) /
+[Codeberg](https://codeberg.org) and local Git checkouts: pass a URL (or path), get a repository
+object, and work with branches, commits, issues, pull requests, releases and files without
+caring which backend is behind it.
 
-GitHarbor is a unified interface for interacting with Git hosting platforms. It provides a consistent API to work with repositories hosted on [GitHub](https://github.com), [GitLab](https://gitlab.com), [Azure DevOps](https://azure.microsoft.com/products/devops), [Gitea](https://gitea.io), [CodeBerg](https://codeberg.org) and [Bitbucket](https://bitbucket.org).
+## Key features
 
-## Getting Started
+- **One API, many hosts**: `create_repository(url)` picks the provider from the URL.
+- **Typed results**: every provider returns the same dataclasses (`Branch`, `Commit`, `Issue`,
+  `PullRequest`, `Release`, `Tag`, `User`, `Workflow`, `WorkflowRun`).
+- **Sync and async**: every method has an `*_async` twin (`list_issues` / `list_issues_async`).
+- **Functional API**: module-level functions that take a repository URL (`githarbor.functional`).
+- **MCP server**: expose repository operations to LLM agents via the `githarbor` command.
+- **Pick your SDKs**: each backend is an optional extra, nothing heavy is installed by default.
 
-The main entry point is the `create_repository()` function which accepts a repository URL and platform-specific credentials:
+## Installation
+
+Install GitHarbor with the extras for the platforms you need:
+
+```bash
+pip install "githarbor[github]"          # GitHub via PyGithub
+pip install "githarbor[github,gitlab]"   # several providers
+pip install "githarbor[all]"             # all providers, diff parsing and the MCP server
+```
+
+| Extra | Provides |
+|-------|----------|
+| `github` | GitHub (PyGithub) |
+| `aiogithubapi` | GitHub (async, aiogithubapi) |
+| `gitlab` | GitLab (python-gitlab) |
+| `gitea` / `pygitea` | Gitea and Codeberg (giteapy / py-gitea) |
+| `azure` | Azure DevOps |
+| `local` | Local repositories (GitPython) |
+| `diff` | Creating pull requests from unified diffs (unidiff) |
+| `mcp` | MCP server (FastMCP) |
+
+## Quickstart
 
 ```python
 from githarbor import create_repository
 
-# GitHub repository
-repo = create_repository("https://github.com/owner/repo", token="github_pat_...")
+repo = create_repository("https://github.com/phil65/githarbor")
 
-# GitLab repository
-repo = create_repository("https://gitlab.com/owner/repo", token="glpat-...")
+print(repo.name, repo.default_branch)
+for branch in repo.list_branches():
+    print(branch.name)
 
-# Azure DevOps repository
-repo = create_repository("https://dev.azure.com/org/project/_git/repo", token="azure_pat")
+latest = repo.get_latest_release()
+print(latest.tag_name, latest.published_at)
+```
+
+Credentials are passed as keyword arguments or read from environment variables
+(`GITHUB_TOKEN`, `GITLAB_TOKEN`, `GITEA_TOKEN`, `AZURE_DEVOPS_PAT`):
+
+```python
+from githarbor import create_repository
+
+github_repo = create_repository("https://github.com/owner/repo", token="github_pat_...")
+gitlab_repo = create_repository("https://gitlab.com/owner/repo", token="glpat-...")
+azure_repo = create_repository("https://dev.azure.com/org/project/_git/repo", token="azure_pat")
+local_repo = create_repository("/path/to/checkout")  # needs the "local" extra
 ```
 
 > [!TIP]
-> Always use personal access tokens (PATs) for authentication. Never hardcode tokens in your source code.
+> Use personal access tokens (PATs) and keep them out of your source code.
 
-## Working with Repositories
+## Working with repositories
 
-### Basic Repository Information
+### Repository information
 
 ```python
-# Get repository name and default branch
-print(repo.name)
-print(repo.default_branch)
-
-# Get language statistics
+# Language statistics, e.g. {"Python": 10000, "JavaScript": 5000}
 languages = repo.get_languages()
-# Returns: {"Python": 10000, "JavaScript": 5000}
 
-# Get recent activity statistics
+# Activity counts over the last 30 days
 activity = repo.get_recent_activity(
     days=30, include_commits=True, include_prs=True, include_issues=True
 )
 ```
 
-### Branches and Tags
+### Branches and tags
 
 ```python
-# List all branches
 branches = repo.list_branches()
-
-# Get specific branch
 main_branch = repo.get_branch("main")
 
-# List all tags
 tags = repo.list_tags()
-
-# Get specific tag
 tag = repo.get_tag("v1.0.0")
 
-# Compare branches
 diff = repo.compare_branches(
     base="main", head="feature", include_commits=True, include_files=True, include_stats=True
 )
@@ -92,10 +124,10 @@ diff = repo.compare_branches(
 ### Commits
 
 ```python
-# Get specific commit
+from datetime import datetime
+
 commit = repo.get_commit("abcd1234")
 
-# List commits with filters
 commits = repo.list_commits(
     branch="main",
     since=datetime(2024, 1, 1),
@@ -105,91 +137,129 @@ commits = repo.list_commits(
     max_results=100,
 )
 
-# Search commits
-results = repo.search_commits(query="fix bug", branch="main", path="src/", max_results=10)
+results = repo.search_commits(query="fix bug", branch="main", max_results=10)
 ```
 
-### Issues and Pull Requests
+### Issues and pull requests
 
 ```python
-# List open issues
 open_issues = repo.list_issues(state="open")
-
-# Get specific issue
 issue = repo.get_issue(123)
+new_issue = repo.create_issue(title="Bug report", body="Steps to reproduce...", labels=["bug"])
 
-# List pull requests
 prs = repo.list_pull_requests(state="open")  # or "closed" or "all"
-
-# Get specific pull request
 pr = repo.get_pull_request(456)
 ```
 
 ### Releases
 
 ```python
-# Get latest release
 latest = repo.get_latest_release(include_drafts=False, include_prereleases=False)
-
-# List all releases
 releases = repo.list_releases(include_drafts=False, include_prereleases=True, limit=10)
-
-# Get specific release
 release = repo.get_release("v1.0.0")
 ```
 
-### Repository Content
+### Repository content
 
 ```python
-# Download single file
-repo.download(path="README.md", destination="local/README.md")
-
-# Download directory recursively
+# Download a single file or a whole directory
+repo.download(path="README.md", destination="local/")
 repo.download(path="src/", destination="local/src", recursive=True)
 
-# Iterate through files
+# Iterate over files
 for file_path in repo.iter_files(path="src/", ref="main", pattern="*.py"):
     print(file_path)
 ```
 
-### CI/CD Workflows
+### CI/CD workflows
 
 ```python
-# List all workflows
 workflows = repo.list_workflows()
-
-# Get specific workflow
 workflow = repo.get_workflow("workflow_id")
-
-# Get specific workflow run
 run = repo.get_workflow_run("run_id")
 ```
 
 ### Contributors
 
 ```python
-# Get repository contributors
-contributors = repo.get_contributors(
-    sort_by="commits",  # or "name" or "date"
-    limit=10,
+contributors = repo.get_contributors(sort_by="commits", limit=10)  # or "name" / "date"
+```
+
+### Async usage
+
+Every operation has an async counterpart:
+
+```python
+import asyncio
+
+from githarbor import create_repository
+
+
+async def main() -> None:
+    repo = create_repository("https://github.com/phil65/githarbor")
+    issues, releases = await asyncio.gather(
+        repo.list_issues_async(state="open"),
+        repo.list_releases_async(limit=5),
+    )
+    print(len(issues), [r.tag_name for r in releases])
+
+
+asyncio.run(main())
+```
+
+## Owners
+
+`create_owner()` works with users and organizations (GitHub):
+
+```python
+from githarbor.users import create_owner
+
+owner = create_owner("https://github.com/phil65")
+for repository in owner.list_repositories():
+    print(repository.name)
+```
+
+## Functional API
+
+`githarbor.functional` offers the same operations as plain functions that take the repository
+URL first. Repository instances are cached per URL.
+
+```python
+from githarbor.functional import get_latest_release, list_issues_async
+
+release = get_latest_release("https://github.com/phil65/githarbor")
+issues = await list_issues_async(  # inside an async function
+    "https://github.com/phil65/githarbor", state="open"
 )
 ```
 
-## Error Handling
+These functions are also registered as Jinja globals and filters for
+[jinjarope](https://github.com/phil65/jinjarope) environments.
 
-GitHarbor provides specific exceptions for different error cases:
+## MCP server
+
+With the `mcp` extra, GitHarbor runs as an [MCP](https://modelcontextprotocol.io) server:
+
+```bash
+githarbor                                  # stdio transport
+githarbor --transport sse --port 8000      # SSE transport
+githarbor --repo-path https://github.com/owner/repo  # tools bound to one repository
+```
+
+## Error handling
 
 ```python
+from githarbor import create_repository
 from githarbor.exceptions import (
+    FeatureNotSupportedError,
     RepositoryNotFoundError,
     ResourceNotFoundError,
-    FeatureNotSupportedError,
 )
 
 try:
     repo = create_repository("https://github.com/nonexistent/repo")
 except RepositoryNotFoundError:
-    print("Repository does not exist")
+    print("Repository does not exist or no provider supports the URL")
 
 try:
     issue = repo.get_issue(999999)
@@ -197,13 +267,14 @@ except ResourceNotFoundError:
     print("Issue does not exist")
 
 try:
-    repo.some_unsupported_method()
+    workflows = repo.list_workflows()
 except FeatureNotSupportedError:
-    print("This feature is not supported by this repository provider")
+    print("This provider does not support workflows")
 ```
 
 > [!NOTE]
-> Not all features are supported by all platforms. Operations that aren't supported will raise `FeatureNotSupportedError`.
+> Not every platform supports every operation. Unsupported operations raise
+> `FeatureNotSupportedError`.
 
 > [!IMPORTANT]
-> Be mindful of API rate limits when making many requests. Consider implementing retries and delays in your code.
+> Mind the API rate limits of the hosting platforms when making many requests.
