@@ -37,10 +37,10 @@ jobs:
         run: uv sync --all-extras --no-group docs --no-group lint
 
       - name: Check for code issues (ruff check)
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4
 
       - name: Check code format (ruff format)
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4
         with:
           args: "format --check"
 
