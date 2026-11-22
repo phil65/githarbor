@@ -58,6 +58,9 @@ jobs:
           AZURE_TOKEN: ${{ secrets.AZURE_TOKEN }}
 
       - name: Upload test results to Codecov
+        # The upload sometimes hangs; never let it fail or block the build.
+        timeout-minutes: 5
+        continue-on-error: true
         uses: codecov/codecov-action@v7
         with:
           fail_ci_if_error: false
