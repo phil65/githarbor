@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class User:
-    """GitHub user model."""
+    """User or organization account on a Git hosting platform."""
 
     username: str
     """Username of the user."""
