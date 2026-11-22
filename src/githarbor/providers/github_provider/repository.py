@@ -256,7 +256,8 @@ class GitHubRepository(BaseRepository):
 
     @githubtools.handle_github_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
-        return self._repo.get_languages()
+        # PyGithub includes the API "url" in the raw response; keep only byte counts.
+        return {k: v for k, v in self._repo.get_languages().items() if isinstance(v, int)}
 
     @githubtools.handle_github_errors("Failed to compare branches")
     def compare_branches(
