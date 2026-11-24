@@ -55,6 +55,7 @@ class GitHubRepository(BaseRepository):
                 logger.info("No GitHub token provided. Stricter rate limit.")
             auth = Auth.Token(t) if t else None
             self._gh = Github(auth=auth)
+            self._token = t
             self._repo = self._gh.get_repo(f"{owner}/{name}")
             self._owner = owner
             self._name = name
@@ -176,14 +177,14 @@ class GitHubRepository(BaseRepository):
 
     @githubtools.handle_github_errors("Failed to download file {path}")
     def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
-        user_name = self._gh.get_user().login if TOKEN else None
+        user_name = self._gh.get_user().login if self._token else None
         return githubtools.download_from_github(
             org=self._owner,
             repo=self._name,
             path=path,
             destination=destination,
             username=user_name,
-            token=TOKEN,
+            token=self._token,
             recursive=recursive,
         )
 
@@ -250,7 +251,12 @@ class GitHubRepository(BaseRepository):
         if sort_by == "name":
             contributors = sorted(contributors, key=lambda c: c.login)
         elif sort_by == "date":
-            contributors = sorted(contributors, key=lambda c: c.created_at)
+            from datetime import UTC, datetime
+
+            contributors = sorted(
+                contributors,
+                key=lambda c: c.created_at or datetime.min.replace(tzinfo=UTC),
+            )
         contributors = contributors[:limit] if limit else contributors
         return [u for c in contributors if (u := githubtools.create_user_model(c))]
 
@@ -276,8 +282,8 @@ class GitHubRepository(BaseRepository):
             result["files"] = [f.filename for f in comp.files]
         if include_stats:
             result["stats"] = {
-                "additions": comp.total_commits,
-                "deletions": comp.total_commits,
+                "additions": sum(f.additions for f in comp.files),
+                "deletions": sum(f.deletions for f in comp.files),
                 "changes": len(comp.files),
             }
         return result
@@ -337,7 +343,7 @@ class GitHubRepository(BaseRepository):
         except GithubException as e:
             if e.status == HTML_ERROR_CODE:  # Might be lightweight tag
                 commit = self._repo.get_commit(name)
-                return githubtools.create_tag_model(commit)
+                return githubtools.create_tag_model(commit, name=name)
             raise
 
     @githubtools.handle_github_errors("Failed to list tags")
@@ -390,12 +396,12 @@ class GitHubRepository(BaseRepository):
             head_branch = f"patch/{timestamp}_{unique_id}"
 
         # Get the base branch's last commit
-        base_ref = self._repo.get_git_ref(f"refs/heads/{base_branch}")
+        base_ref = self._repo.get_git_ref(f"heads/{base_branch}")
         base_commit = self._repo.get_git_commit(base_ref.object.sha)
 
         # Create a new branch
         try:
-            head_ref = self._repo.get_git_ref(f"refs/heads/{head_branch}")
+            head_ref = self._repo.get_git_ref(f"heads/{head_branch}")
             msg = f"Branch {head_branch} already exists"
             raise GitHarborError(msg)
         except GithubException:
@@ -499,7 +505,7 @@ class GitHubRepository(BaseRepository):
     ) -> Comment:
         pr = self._repo.get_pull(number)
         commit = self._repo.get_commit(commit_id)
-        comment = pr.create_review_comment(body, commit, path, position)
+        comment = pr.create_review_comment(body, commit, path, line=position)
         return githubtools.create_comment_model(comment)
 
 

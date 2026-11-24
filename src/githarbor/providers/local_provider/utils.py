@@ -55,7 +55,7 @@ def handle_git_errors[T, **P](
 
             try:
                 return func(*args, **kwargs)
-            except (GitError, ODBError) as e:
+            except (GitError, ODBError, IndexError) as e:
                 msg = error_msg_template.format(**params, error=str(e))
                 raise ResourceNotFoundError(msg) from e
 
@@ -110,18 +110,18 @@ def create_commit_model(commit: git.Commit) -> Commit:
         committer=create_user_model(commit.committer),
         stats=get_commit_stats(commit),
         parents=[c.hexsha for c in commit.parents],
-        files_changed=[diff.a_path for diff in commit.diff() if diff.a_path],
+        files_changed=[str(p) for p in commit.stats.files],
     )
 
 
 def create_tag_model(
-    tag: git.Tag | git.TagObject,
+    tag: git.TagReference | git.TagObject,
     commit: git.Commit,
 ) -> Tag:
-    """Create Tag model from GitPython tag.
+    """Create Tag model from GitPython tag reference or annotated tag object.
 
     Args:
-        tag: GitPython tag or tag object
+        tag: GitPython TagReference or TagObject
         commit: Associated commit
 
     Returns:
@@ -137,10 +137,11 @@ def create_tag_model(
     created_at = None
     message = None
 
-    if isinstance(tag, git.TagObject):
-        author = create_user_model(tag.tagger)
-        created_at = datetime.fromtimestamp(tag.tagged_date, UTC)
-        message = tag.message
+    tag_obj = tag.tag if isinstance(tag, TagReference) else tag
+    if isinstance(tag_obj, git.TagObject):
+        author = create_user_model(tag_obj.tagger)
+        created_at = datetime.fromtimestamp(tag_obj.tagged_date, UTC)
+        message = tag_obj.message
 
     return Tag(
         name=tag.name if isinstance(tag, TagReference) else tag.tag,
@@ -206,17 +207,20 @@ def filter_commits(
     """
     from datetime import UTC, datetime
 
+    since_utc = since.replace(tzinfo=UTC) if since and since.tzinfo is None else since
+    until_utc = until.replace(tzinfo=UTC) if until and until.tzinfo is None else until
+
     filtered = []
     for commit in commits:
         commit_date = datetime.fromtimestamp(commit.committed_date, UTC)
 
-        if since and commit_date < since:
+        if since_utc and commit_date < since_utc:
             continue
-        if until and commit_date > until:
+        if until_utc and commit_date > until_utc:
             continue
         if author and author not in (commit.author.name, commit.author.email):
             continue
-        if path and not any(path in f.path for f in commit.stats.files):  # type: ignore
+        if path and not any(path in str(f) for f in commit.stats.files):
             continue
 
         filtered.append(commit)

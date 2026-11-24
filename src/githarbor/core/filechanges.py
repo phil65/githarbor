@@ -33,11 +33,12 @@ def parse_diff(diff_str: str) -> list[FileChange]:
     for patched_file in patch_set:
         if patched_file.is_rename:
             # Handle renamed files
+            lines = [ln.value for hunk in patched_file for ln in hunk if not ln.is_removed]
             changes.append(
                 FileChange(
-                    path=patched_file.target_file,
-                    old_path=patched_file.source_file,
-                    content=patched_file.target_file[1:],  # Remove leading /
+                    path=patched_file.path,
+                    old_path=patched_file.source_file.removeprefix("a/"),
+                    content="".join(lines) if lines else None,
                     mode="modify",
                 )
             )

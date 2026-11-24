@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 import functools
 import inspect
-import re
 import string
 from typing import TYPE_CHECKING, Any, overload
 
@@ -80,28 +79,13 @@ def handle_gitlab_errors[T, **P](
     return decorator
 
 
-TIMESTAMP_FORMATS: list[str] = [
-    "%Y-%m-%dT%H:%M:%S.%fZ",
-    "%Y-%m-%dT%H:%M:%S.%f%z",  # Format with explicit timezone
-]
-
-
 def parse_timestamp(timestamp: str) -> datetime:
     """Parse GitLab timestamp string to datetime.
 
     Args:
         timestamp: Timestamp string from GitLab API
     """
-    # Convert 'Z' to +00:00 for consistent parsing
-    timestamp = re.sub(r"Z$", "+00:00", timestamp)
-
-    for fmt in TIMESTAMP_FORMATS:
-        try:
-            return datetime.strptime(timestamp, fmt)
-        except ValueError:
-            continue
-    msg = f"Unable to parse timestamp: {timestamp}"
-    raise ValueError(msg)
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
 
 
 def create_branch_model(branch: ProjectBranch) -> Branch:
@@ -134,14 +118,14 @@ def create_user_model(gl_user: None) -> None: ...
 
 
 @overload
-def create_user_model(gl_user: RESTObject) -> User: ...
+def create_user_model(gl_user: RESTObject | dict[str, Any]) -> User: ...
 
 
-def create_user_model(gl_user: RESTObject | None) -> User | None:
-    """Create User model from GitLab user object.
+def create_user_model(gl_user: RESTObject | dict[str, Any] | None) -> User | None:
+    """Create User model from GitLab user object or dict.
 
     Args:
-        gl_user: GitLab user object or None
+        gl_user: GitLab user object, dict, or None
 
     Returns:
         User model instance or None if input is None
@@ -149,31 +133,36 @@ def create_user_model(gl_user: RESTObject | None) -> User | None:
     if not gl_user:
         return None
 
+    def _get(key: str, default: Any = None) -> Any:
+        if isinstance(gl_user, dict):
+            return gl_user.get(key, default)
+        return getattr(gl_user, key, default)
+
+    created_at_raw = _get("created_at")
+    last_activity_raw = _get("last_activity_on")
     return User(
-        username=gl_user.username,
-        name=gl_user.name,
-        email=getattr(gl_user, "email", None),
-        avatar_url=gl_user.avatar_url,
-        created_at=parse_timestamp(gl_user.created_at) if hasattr(gl_user, "created_at") else None,
-        bio=getattr(gl_user, "bio", None),
-        location=getattr(gl_user, "location", None),
-        company=getattr(gl_user, "organization", None),
-        url=gl_user.web_url,
-        followers=getattr(gl_user, "followers_count", 0),
-        following=getattr(gl_user, "following_count", 0),
-        public_repos=getattr(gl_user, "projects_limit", 0),
-        blog=getattr(gl_user, "website_url", None),
-        twitter_username=getattr(gl_user, "twitter", None),
+        username=_get("username", ""),
+        name=_get("name"),
+        email=_get("email"),
+        avatar_url=_get("avatar_url"),
+        created_at=parse_timestamp(created_at_raw) if created_at_raw else None,
+        bio=_get("bio"),
+        location=_get("location"),
+        company=_get("organization"),
+        url=_get("web_url"),
+        followers=_get("followers_count", 0),
+        following=_get("following_count", 0),
+        public_repos=_get("projects_limit", 0),
+        blog=_get("website_url"),
+        twitter_username=_get("twitter"),
         hireable=None,  # GitLab doesn't have this field
         gravatar_id=None,  # GitLab doesn't use gravatar_id
-        state=getattr(gl_user, "state", None),
-        locked=getattr(gl_user, "locked", None),
-        is_admin=getattr(gl_user, "is_admin", False),
-        last_activity_on=parse_timestamp(gl_user.last_activity_on)
-        if hasattr(gl_user, "last_activity_on")
-        else None,
-        linkedin=getattr(gl_user, "linkedin", None),
-        skype=getattr(gl_user, "skype", None),
+        state=_get("state"),
+        locked=_get("locked"),
+        is_admin=_get("is_admin", False),
+        last_activity_on=parse_timestamp(last_activity_raw) if last_activity_raw else None,
+        linkedin=_get("linkedin"),
+        skype=_get("skype"),
     )
 
 
@@ -189,6 +178,19 @@ def create_label_model(gl_label: RESTObject) -> Label:
 
 def create_commit_model(commit: RESTObject) -> Commit:
     """Create Commit model from GitLab commit object."""
+    raw_stats = getattr(commit, "stats", None)
+    if isinstance(raw_stats, dict):
+        stats = {
+            "additions": raw_stats.get("additions", 0),
+            "deletions": raw_stats.get("deletions", 0),
+            "total": raw_stats.get("total", 0),
+        }
+    else:
+        stats = {
+            "additions": getattr(raw_stats, "additions", 0),
+            "deletions": getattr(raw_stats, "deletions", 0),
+            "total": getattr(raw_stats, "total", 0),
+        }
     return Commit(
         sha=commit.id,
         message=commit.message,
@@ -199,11 +201,7 @@ def create_commit_model(commit: RESTObject) -> Commit:
             name=commit.author_name,
         ),
         url=commit.web_url,
-        stats={
-            "additions": getattr(commit.stats, "additions", 0),
-            "deletions": getattr(commit.stats, "deletions", 0),
-            "total": getattr(commit.stats, "total", 0),
-        },
+        stats=stats,
     )
 
 
@@ -238,6 +236,9 @@ def create_issue_model(issue: Any) -> Issue:
 
 def create_pull_request_model(mr: Any) -> PullRequest:
     """Create PullRequest model from GitLab merge request object."""
+    updated_at = getattr(mr, "updated_at", None)
+    merged_at = getattr(mr, "merged_at", None)
+    closed_at = getattr(mr, "closed_at", None)
     return PullRequest(
         number=mr.iid,
         title=mr.title,
@@ -246,12 +247,12 @@ def create_pull_request_model(mr: Any) -> PullRequest:
         source_branch=mr.source_branch,
         target_branch=mr.target_branch,
         created_at=parse_timestamp(mr.created_at),
-        updated_at=parse_timestamp(mr.updated_at) if hasattr(mr, "updated_at") else None,
-        merged_at=parse_timestamp(mr.merged_at) if hasattr(mr, "merged_at") else None,
-        closed_at=parse_timestamp(mr.closed_at) if hasattr(mr, "closed_at") else None,
+        updated_at=parse_timestamp(updated_at) if updated_at else None,
+        merged_at=parse_timestamp(merged_at) if merged_at else None,
+        closed_at=parse_timestamp(closed_at) if closed_at else None,
         author=create_user_model(getattr(mr, "author", None)),
-        assignees=[create_user_model(a) for a in getattr(mr, "assignees", []) if a is not None],
-        labels=[Label(name=label) for label in getattr(mr, "labels", [])],
+        assignees=[create_user_model(a) for a in (getattr(mr, "assignees", None) or []) if a],
+        labels=[Label(name=label) for label in (getattr(mr, "labels", None) or [])],
         review_comments_count=getattr(mr, "user_notes_count", 0),
         commits_count=getattr(mr, "commits_count", 0),
         additions=getattr(mr, "additions", 0),
@@ -277,6 +278,11 @@ def create_workflow_model(pipeline: Any) -> Workflow:
 
 def create_workflow_run_model(job: Any) -> WorkflowRun:
     """Create WorkflowRun model from GitLab job object."""
+    commit = getattr(job, "commit", None)
+    commit_sha = commit.get("id") if isinstance(commit, dict) else getattr(commit, "id", None)
+    started_at = getattr(job, "started_at", None)
+    finished_at = getattr(job, "finished_at", None)
+    artifacts_file = getattr(job, "artifacts_file", None) or {}
     return WorkflowRun(
         id=str(job.id),
         name=job.name,
@@ -284,56 +290,85 @@ def create_workflow_run_model(job: Any) -> WorkflowRun:
         status=job.status,
         conclusion=job.status,
         branch=getattr(job, "ref", None),
-        commit_sha=getattr(job.commit, "id", None),
+        commit_sha=commit_sha,
         url=job.web_url,
         created_at=parse_timestamp(job.created_at),
-        started_at=parse_timestamp(job.started_at) if hasattr(job, "started_at") else None,
-        completed_at=parse_timestamp(job.finished_at) if hasattr(job, "finished_at") else None,
-        logs_url=getattr(job, "artifacts_file", {}).get("filename"),
+        started_at=parse_timestamp(started_at) if started_at else None,
+        completed_at=parse_timestamp(finished_at) if finished_at else None,
+        logs_url=artifacts_file.get("filename"),
     )
 
 
 def create_release_model(release: Any) -> Release:
     """Create Release model from GitLab release object."""
-    asset_list = getattr(release, "assets", {}).get("links", [])
+    asset_list = (getattr(release, "assets", None) or {}).get("links", [])
+    released_at = getattr(release, "released_at", None)
     return Release(
         tag_name=release.tag_name,
         name=release.name,
         description=release.description or "",
         created_at=parse_timestamp(release.created_at),
-        published_at=parse_timestamp(release.released_at)
-        if hasattr(release, "released_at")
-        else None,
+        published_at=parse_timestamp(released_at) if released_at else None,
         draft=False,  # GitLab doesn't have draft releases
         prerelease=release.tag_name.startswith(("alpha", "beta", "rc")),
         author=create_user_model(getattr(release, "author", None)),
         assets=[create_asset_model(a) for a in asset_list],
-        url=getattr(release, "_links", {}).get("self"),
-        target_commitish=getattr(release, "commit", {}).get("id"),
+        url=(getattr(release, "_links", None) or {}).get("self"),
+        target_commitish=(getattr(release, "commit", None) or {}).get("id"),
     )
 
 
 def create_comment_model(gl_comment: Any) -> Comment:
-    """Create Comment model from GitLab comment/note object."""
+    """Create Comment model from GitLab comment/note object or dict."""
+    if isinstance(gl_comment, dict):
+        comment_id = str(gl_comment["id"])
+        body = gl_comment["body"]
+        author = create_user_model(gl_comment.get("author"))
+        created_at = parse_timestamp(gl_comment["created_at"])
+        updated_at_raw = gl_comment.get("updated_at")
+        url = gl_comment.get("url")
+    else:
+        comment_id = str(gl_comment.id)
+        body = gl_comment.body
+        author = create_user_model(gl_comment.author)
+        created_at = parse_timestamp(gl_comment.created_at)
+        updated_at_raw = getattr(gl_comment, "updated_at", None)
+        url = getattr(gl_comment, "url", None)
+
     return Comment(
-        id=str(gl_comment.id),
-        body=gl_comment.body,
-        author=create_user_model(gl_comment.author),
-        created_at=parse_timestamp(gl_comment.created_at),
-        updated_at=parse_timestamp(gl_comment.updated_at) if gl_comment.updated_at else None,
-        url=gl_comment.url if hasattr(gl_comment, "url") else None,
+        id=comment_id,
+        body=body,
+        author=author or User(username="unknown"),
+        created_at=created_at,
+        updated_at=parse_timestamp(updated_at_raw) if updated_at_raw else None,
+        url=url,
     )
 
 
 def create_tag_model(tag: Any) -> Tag:
     """Create Tag model from GitLab tag object."""
+    commit = tag.commit
+    author_name = commit.get("author_name")
+    author = (
+        User(
+            username=author_name,
+            name=author_name,
+            email=commit.get("author_email"),
+        )
+        if author_name
+        else None
+    )
+    project = getattr(tag, "_project", None)
+    url = (
+        f"{project.web_url}/-/tags/{tag.name}" if project and hasattr(project, "web_url") else None
+    )
     return Tag(
         name=tag.name,
-        sha=tag.commit["id"],
+        sha=commit["id"],
         message=tag.message or "",
-        created_at=parse_timestamp(tag.commit["created_at"]),
-        author=create_user_model(tag.commit["author"]),
-        url=f"{tag._project.web_url}/-/tags/{tag.name}",
+        created_at=parse_timestamp(commit["created_at"]) if commit.get("created_at") else None,
+        author=author,
+        url=url,
         verified=bool(getattr(tag, "verified", False)),
     )
 

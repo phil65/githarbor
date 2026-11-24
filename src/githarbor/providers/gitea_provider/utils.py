@@ -147,10 +147,17 @@ def create_issue_model(issue: GiteaIssue) -> Issue:
 
 def create_commit_model(commit: GiteaCommit) -> Commit:
     """Create Commit model from Gitea commit object."""
+    from datetime import datetime
+
+    raw_date = commit.commit.author._date if commit.commit and commit.commit.author else None
+    if isinstance(raw_date, str):
+        created_at: datetime | None = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+    else:
+        created_at = raw_date
     return Commit(
         sha=commit.sha,
         message=commit.commit.message,
-        created_at=commit.commit.author._date,
+        created_at=created_at,
         author=User(
             username=commit.commit.author.name,
             email=commit.commit.author.email,
@@ -171,7 +178,7 @@ def create_release_model(release: GiteaRelease) -> Release:
         draft=release.draft,
         prerelease=release.prerelease,
         author=create_user_model(release.author),
-        assets=[create_asset_model(asset) for asset in release.assets],
+        assets=[create_asset_model(asset) for asset in (release.assets or [])],
         url=release.url,
         target_commitish=release.target_commitish,
     )
@@ -179,6 +186,11 @@ def create_release_model(release: GiteaRelease) -> Release:
 
 def create_tag_model(gitea_tag: GiteaTag) -> Tag:
     """Create Tag model from Gitea tag object."""
+    verification = getattr(gitea_tag, "verification", None)
+    if isinstance(verification, dict):
+        verified = bool(verification.get("verified", False))
+    else:
+        verified = bool(getattr(verification, "verified", False))
     return Tag(
         name=gitea_tag.name,
         sha=gitea_tag.id,  # Gitea uses 'id' for the SHA
@@ -186,7 +198,7 @@ def create_tag_model(gitea_tag: GiteaTag) -> Tag:
         created_at=getattr(gitea_tag, "created_at", None),
         author=create_user_model(getattr(gitea_tag, "tagger", None)),
         url=getattr(gitea_tag, "url", None),
-        verified=bool(getattr(gitea_tag, "verification", {}).get("verified", False)),
+        verified=verified,
     )
 
 

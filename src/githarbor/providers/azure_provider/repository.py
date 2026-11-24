@@ -74,6 +74,7 @@ class AzureRepository(BaseRepository):
             self._project = project
             self._name = name
             self._owner = organization
+            self._token = t
             self._repo: GitRepository = self._client.get_repository(name, project=project)
 
         except Exception as e:
@@ -102,48 +103,47 @@ class AzureRepository(BaseRepository):
     @property
     def default_branch(self) -> str:
         """Default branch name."""
-        return self._repo.default_branch or "main"
+        return (self._repo.default_branch or "main").removeprefix("refs/heads/")
 
     @azuretools.handle_azure_errors("Failed to get user {username}")
     def get_user(self, username: str | None = None) -> User:
         """Get user information.
 
-        If username is not provided, returns the authenticated user.
-
         Args:
-            username: Optional username to get information for.
+            username: Username to look up (defaults to repository owner/organization).
 
         Returns:
             User model with user information.
         """
-        # Get the identity client
         identity_client = self._connection.clients.get_identity_client()
-
-        if username is None:
-            # Get the authenticated user
-            core_client = self._connection.clients.get_core_client()
-            user_info = core_client.get_authorized_user()
-        else:
-            # Search for the specific user
-            filter_ = f"General,localAccount,{username}"
-            user_descriptor = identity_client.read_identities(search_filter=filter_)
-            if not user_descriptor or not user_descriptor[0]:
-                msg = f"User {username} not found"
-                raise ResourceNotFoundError(msg)
-            user_info = user_descriptor[0]
-
+        target = username or self._owner
+        filter_ = f"General,localAccount,{target}"
+        user_descriptor = identity_client.read_identities(search_filter=filter_)
+        if not user_descriptor or not user_descriptor[0]:
+            msg = f"User {target} not found"
+            raise ResourceNotFoundError(msg)
+        user_info = user_descriptor[0]
+        props = getattr(user_info, "properties", None) or {}
         return User(
-            username=user_info.properties.get("Account", user_info.unique_name),
-            name=user_info.display_name or user_info.unique_name,
-            email=user_info.properties.get("Mail", ""),
-            avatar_url=user_info.properties.get("Avatar", ""),
+            username=props.get("Account", getattr(user_info, "unique_name", target)),
+            name=getattr(user_info, "display_name", None) or target,
+            email=props.get("Mail", ""),
+            avatar_url=props.get("Avatar", ""),
         )
+
+    def get_repo_user(self) -> User:
+        """Get repository owner information."""
+        return self.get_user(self._owner)
 
     @azuretools.handle_azure_errors("Failed to get branch {name}")
     def get_branch(self, name: str) -> Branch:
         """Get branch information."""
         branch = self._client.get_branch(self._repo.id, name=name, project=self._project)
-        commit = self._client.get_commit(branch.commit.commit_id, self._repo.id)
+        commit = self._client.get_commit(
+            branch.commit.commit_id,
+            self._repo.id,
+            project=self._project,
+        )
         return Branch(
             name=branch.name,
             sha=branch.commit.commit_id,
@@ -190,6 +190,8 @@ class AzureRepository(BaseRepository):
     @azuretools.handle_azure_errors("Failed to list issues")
     def list_issues(self, state: IssueState = "open") -> list[Issue]:
         """List issues (work items in Azure DevOps)."""
+        from azure.devops.v7_1.work_item_tracking.models import Wiql
+
         # Build WIQL query based on state
         state_map = {"open": "Active", "closed": "Closed", "all": ""}
         azure_state = state_map.get(state, "Active")
@@ -199,7 +201,7 @@ class AzureRepository(BaseRepository):
             f"WHERE [System.TeamProject] = '{self._project}' "
             f"{state_clause} ORDER BY [System.ChangedDate] DESC"
         )
-        wiql_result = self._work_client.query_by_wiql({"query": wiql})
+        wiql_result = self._work_client.query_by_wiql(Wiql(query=wiql))
         if not wiql_result.work_items:
             return []
 
@@ -217,32 +219,21 @@ class AzureRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        doc = {"System.Title": title, "System.Description": body}
+        from azure.devops.v7_1.work_item_tracking.models import JsonPatchOperation
+
+        doc = [
+            JsonPatchOperation(op="add", path="/fields/System.Title", value=title),
+            JsonPatchOperation(op="add", path="/fields/System.Description", value=body),
+        ]
+        if labels:
+            doc.append(
+                JsonPatchOperation(op="add", path="/fields/System.Tags", value="; ".join(labels))
+            )
+        if assignees:
+            doc.append(
+                JsonPatchOperation(op="add", path="/fields/System.AssignedTo", value=assignees[0])
+            )
         work_item = self._work_client.create_work_item(doc, self._project, type="Issue")
-        # if labels:
-        #     for label in labels:
-        #         self._work_client.add_work_item_label(
-        #             work_item.id,
-        #             label,
-        #             project=self._project,
-        #         )
-        # if assignees:
-        #     # Azure needs user ids instead of usernames
-        #     for username in assignees:
-        #         user = self._connection.identity_client.read_identities(
-        #             search_filter=f"General,localAccount,{username}",
-        #         )[0]
-        #         self._work_client.update_work_item(
-        #             work_item.id,
-        #             [
-        #                 {
-        #                     "op": "add",
-        #                     "path": "/fields/System.AssignedTo",
-        #                     "value": user.id,
-        #                 }
-        #             ],
-        #             project=self._project,
-        #         )
         return azuretools.create_issue_model(work_item)
 
     @azuretools.handle_azure_errors("Failed to get commit {sha}")
@@ -266,15 +257,22 @@ class AzureRepository(BaseRepository):
         max_results: int | None = None,
     ) -> list[Commit]:
         """List repository commits with optional filters."""
+        from azure.devops.v7_1.git.models import GitQueryCommitsCriteria, GitVersionDescriptor
+
+        item_version = (
+            GitVersionDescriptor(version=branch, version_type="branch") if branch else None
+        )
+        criteria = GitQueryCommitsCriteria(
+            item_version=item_version,
+            from_date=since.isoformat() if since else None,
+            to_date=until.isoformat() if until else None,
+            author=author,
+            item_path=path,
+        )
         commits = self._client.get_commits(
             repository_id=self._repo.id,
-            search_criteria=None,
+            search_criteria=criteria,
             project=self._project,
-            # branch_name=branch,
-            # from_date=since,
-            # to_date=until,
-            # author=author,
-            # item_path=path,
             top=max_results,
         )
         return [azuretools.create_commit_model(c) for c in commits]
@@ -288,6 +286,7 @@ class AzureRepository(BaseRepository):
             repo=self._repo.id,  # type: ignore
             path=path,
             destination=destination,
+            token=self._token,
             recursive=recursive,
         )
 
@@ -299,11 +298,15 @@ class AzureRepository(BaseRepository):
         pattern: str | None = None,
     ) -> Iterator[str]:
         """Iterate over repository files."""
+        from azure.devops.v7_1.git.models import GitVersionDescriptor
+
+        version_desc = GitVersionDescriptor(version=ref) if ref else None
         items = self._client.get_items(
             repository_id=self._repo.id,
             project=self._project,
+            scope_path=path or None,
             recursion_level="full",
-            version_descriptor={"version": ref} if ref else None,
+            version_descriptor=version_desc,
         )
         for item in items:
             if item.is_folder:

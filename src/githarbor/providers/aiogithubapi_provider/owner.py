@@ -30,20 +30,27 @@ class AioGitHubOwner(BaseOwner):
             username: Username of the owner
             token: GitHub access token
         """
-        from aiogithubapi import GitHubAPI
-        from aiogithubapi.exceptions import GitHubAuthenticationException
+        t = token or os.getenv("GITHUB_TOKEN")
+        if not t:
+            msg = "GitHub token is required"
+            raise ValueError(msg)
+        self._token = t
+        self._gh_client: Any = None
+        self._name = username
 
-        try:
-            token = token or os.getenv("GITHUB_TOKEN")
-            if not token:
-                msg = "GitHub token is required"
-                raise ValueError(msg)
-            self._gh = GitHubAPI(token=token)
-            self._name = username
+    @property
+    def _gh(self) -> Any:
+        """Lazily create the async GitHubAPI client inside a running event loop."""
+        if self._gh_client is None:
+            from aiogithubapi import GitHubAPI
+            from aiogithubapi.exceptions import GitHubAuthenticationException
 
-        except GitHubAuthenticationException as e:
-            msg = f"GitHub authentication failed: {e}"
-            raise AuthenticationError(msg) from e
+            try:
+                self._gh_client = GitHubAPI(token=self._token)
+            except GitHubAuthenticationException as e:
+                msg = f"GitHub authentication failed: {e}"
+                raise AuthenticationError(msg) from e
+        return self._gh_client
 
     @property
     def name(self) -> str:
@@ -68,7 +75,7 @@ class AioGitHubOwner(BaseOwner):
         from aiogithubapi.exceptions import GitHubAuthenticationException
 
         try:
-            response = await self._gh.user.repos()
+            response = await self._gh.users.repos(self._name)
             assert response.data
             return [create_repository(r.html_url) for r in response.data if r.html_url]
         except GitHubAuthenticationException as e:
@@ -131,7 +138,7 @@ class AioGitHubOwner(BaseOwner):
         try:
             kwargs = {GitHubRequestKwarg.METHOD: HttpMethod.DELETE}
             ep = f"/repos/{self._name}/{name}"
-            await self._gh.generic(endpoint=ep, **kwargs)  # type: ignore
+            await self._gh.generic(endpoint=ep, **kwargs)
         except GitHubAuthenticationException as e:
             msg = f"Failed to delete repository: {e}"
             raise ResourceNotFoundError(msg) from e

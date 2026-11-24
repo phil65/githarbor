@@ -26,7 +26,6 @@ class GitHubOwner(BaseOwner):
 
     def __init__(self, username: str, token: str | None = None):
         from github import Auth, Github, GithubException
-        from github.AuthenticatedUser import AuthenticatedUser
 
         try:
             t = token or TOKEN
@@ -35,8 +34,7 @@ class GitHubOwner(BaseOwner):
             auth = Auth.Token(t) if t else None
             self._gh = Github(auth=auth)
             self._name = username
-            self._user = self._gh.get_user()
-            assert isinstance(self._user, AuthenticatedUser)
+            self._user = self._gh.get_user(username)
         except GithubException as e:
             msg = f"GitHub authentication failed: {e!s}"
             raise AuthenticationError(msg) from e
@@ -72,8 +70,9 @@ class GitHubOwner(BaseOwner):
 
         from githarbor.repositories import create_repository
 
-        assert isinstance(self._user, AuthenticatedUser)
-        repo = self._user.create_repo(name=name, description=description, private=private)
+        auth_user = self._gh.get_user()
+        assert isinstance(auth_user, AuthenticatedUser)
+        repo = auth_user.create_repo(name=name, description=description, private=private)
         return create_repository(repo.html_url)
 
     @githubtools.handle_github_errors("Failed to get user information")

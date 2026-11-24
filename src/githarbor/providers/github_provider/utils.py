@@ -96,11 +96,13 @@ def download_from_github(
     from upathtools import to_upath
 
     token = token or TOKEN
-    if token and not username:
-        token = None
+    fs_kwargs: dict[str, Any] = {"org": org, "repo": repo}
+    if token and username:
+        fs_kwargs["username"] = username
+        fs_kwargs["token"] = token
     dest = to_upath(destination)
     dest.mkdir(exist_ok=True, parents=True)
-    fs = fsspec.filesystem("github", org=org, repo=repo)
+    fs = fsspec.filesystem("github", **fs_kwargs)
     logger.info("Copying files from Github: %s", path)
     if fs.isfile(str(path)):
         # Copy into dest; fs.get() would treat dest itself as the target file.
@@ -281,37 +283,59 @@ def create_workflow_run_model(run: Any) -> WorkflowRun:
         created_at=run.created_at,
         updated_at=run.updated_at,
         started_at=run.run_started_at,
-        completed_at=run.run_attempt_started_at,
+        completed_at=run.updated_at if run.status == "completed" else None,
         run_number=run.run_number,
         jobs_count=len(list(run.jobs())),
         logs_url=run.logs_url,
     )
 
 
-def create_tag_model(tag: Any) -> Tag:
-    """Create Tag model from GitHub tag object."""
+def create_tag_model(tag: Any, *, name: str | None = None) -> Tag:
+    """Create Tag model from GitHub Tag, GitTag, or lightweight Commit object."""
+    tag_name = name or getattr(tag, "name", None) or getattr(tag, "tag", "")
+    if hasattr(tag, "object") and tag.object is not None:
+        sha = tag.object.sha
+    elif hasattr(tag, "commit") and hasattr(tag.commit, "sha"):
+        sha = tag.commit.sha
+    else:
+        sha = getattr(tag, "sha", "")
+
+    tagger = getattr(tag, "tagger", None)
+    author = (
+        User(
+            username=tagger.name or "",
+            name=tagger.name,
+            email=tagger.email,
+        )
+        if tagger is not None
+        else None
+    )
     return Tag(
-        name=tag.name,
-        sha=tag.commit.sha if hasattr(tag, "commit") else tag.object.sha,
-        message=tag.message if hasattr(tag, "message") else None,
-        created_at=tag.tagger.date if hasattr(tag, "tagger") else None,
-        author=create_user_model(tag.tagger) if hasattr(tag, "tagger") else None,
-        url=tag.url if hasattr(tag, "url") else None,
+        name=tag_name,
+        sha=sha,
+        message=getattr(tag, "message", None),
+        created_at=tagger.date if tagger is not None else None,
+        author=author,
+        url=getattr(tag, "url", None),
     )
 
 
 def create_branch_model(branch: Any) -> Branch:
     """Create Branch model from GitHub branch object."""
+    from github.GithubException import GithubException
+
     last_commit = branch.commit
-    rules = (
-        {
-            "required_reviews": branch.get_required_status_checks(),
-            "dismiss_stale_reviews": branch.get_required_pull_request_reviews(),
-            "require_code_owner_reviews": branch.get_required_signatures(),
-        }
-        if branch.protected
-        else None
-    )
+    rules: dict[str, Any] | None = None
+    if branch.protected:
+        try:
+            rules = {
+                "required_status_checks": branch.get_required_status_checks(),
+                "required_pull_request_reviews": branch.get_required_pull_request_reviews(),
+                "required_signatures": branch.get_required_signatures(),
+            }
+        except GithubException:
+            # Protection details require admin permissions on the repository.
+            rules = None
     return Branch(
         name=branch.name,
         sha=branch.commit.sha,

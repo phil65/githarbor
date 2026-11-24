@@ -138,25 +138,27 @@ def create_issue_model(issue: Any) -> Issue:
 
 
 def create_pull_request_model(pr: Any) -> PullRequest:
-    """Convert PyGitea Pull Request to GitHarbor PullRequest model."""
+    """Convert PyGitea Pull Request (or Issue with pull_request) to PullRequest model."""
     from githarbor.core.models import PullRequest
 
+    head = getattr(pr, "head", None)
+    base = getattr(pr, "base", None)
+    source_branch = head.get("ref", "") if isinstance(head, dict) else getattr(head, "ref", "")
+    target_branch = base.get("ref", "") if isinstance(base, dict) else getattr(base, "ref", "")
     return PullRequest(
         number=pr.number,
         title=pr.title,
-        source_branch=pr.head.ref if pr.head else "",
-        target_branch=pr.base.ref if pr.base else "",
-        description=pr.body if hasattr(pr, "body") else "",
+        source_branch=source_branch,
+        target_branch=target_branch,
+        description=getattr(pr, "body", "") or "",
         state=pr.state,
-        author=create_user_model(pr.user) if pr.user else None,
-        created_at=_parse_datetime(pr.created_at),
-        updated_at=_parse_datetime(pr.updated_at),
-        merged_at=_parse_datetime(pr.merged_at) if hasattr(pr, "merged_at") else None,
-        merged_by=create_user_model(pr.merged_by)
-        if hasattr(pr, "merged_by") and pr.merged_by
-        else None,
-        mergeable=pr.mergeable if hasattr(pr, "mergeable") else None,
-        url=pr.html_url if hasattr(pr, "html_url") else None,
+        author=create_user_model(pr.user) if getattr(pr, "user", None) else None,
+        created_at=_parse_datetime(getattr(pr, "created_at", None)),
+        updated_at=_parse_datetime(getattr(pr, "updated_at", None)),
+        merged_at=_parse_datetime(getattr(pr, "merged_at", None)),
+        merged_by=create_user_model(pr.merged_by) if getattr(pr, "merged_by", None) else None,
+        mergeable=getattr(pr, "mergeable", None),
+        url=getattr(pr, "html_url", None),
     )
 
 

@@ -33,6 +33,23 @@ if TYPE_CHECKING:
 def handle_githubkit_errors[T, **P](
     error_msg_template: str,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    import string
+
+    parser = string.Formatter()
+    param_names = {
+        field_name
+        for _, field_name, _, _ in parser.parse(error_msg_template)
+        if field_name and field_name != "error"
+    }
+
+    def _extract_params(func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]):
+        sig = inspect.signature(func)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        return {
+            name: bound_args.arguments[name] for name in param_names if name in bound_args.arguments
+        }
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         if not inspect.iscoroutinefunction(func):
             # For sync functions
@@ -43,7 +60,8 @@ def handle_githubkit_errors[T, **P](
                 try:
                     return func(*args, **kwargs)
                 except GitHubException as e:
-                    msg = error_msg_template.format(error=str(e))
+                    params = _extract_params(func, args, kwargs)
+                    msg = error_msg_template.format(**params, error=str(e))
                     raise ResourceNotFoundError(msg) from e
 
         else:
@@ -55,7 +73,8 @@ def handle_githubkit_errors[T, **P](
                 try:
                     return await func(*args, **kwargs)
                 except GitHubException as e:
-                    msg = error_msg_template.format(error=str(e))
+                    params = _extract_params(func, args, kwargs)
+                    msg = error_msg_template.format(**params, error=str(e))
                     raise ResourceNotFoundError(msg) from e
 
         return wrapper  # type: ignore
@@ -352,7 +371,12 @@ def create_commit_model(
             if commit_data.verification is not UNSET and commit_data.verification
             else False
         ),
-        files_changed=[f.filename for f in (ghk_commit.files or [])],
+        files_changed=[
+            f.filename
+            for f in (
+                ghk_commit.files if ghk_commit.files and ghk_commit.files is not UNSET else []
+            )
+        ],
     )
 
 

@@ -118,19 +118,19 @@ def download_from_azure(
     connection = Connection(base_url=url, creds=credentials)
     git_client = connection.clients.get_git_client()
     logger.info("Downloading files from Azure DevOps: %s", path)
+    if recursive:
+        msg = "Recursive download not yet implemented for Azure DevOps"
+        raise NotImplementedError(msg)
+
     content = git_client.get_item_content(
         repository_id=repo,
         path=str(path),
         project=project,
         download=True,
     )
-
-    if recursive:
-        msg = "Recursive download not yet implemented for Azure DevOps"
-        raise NotImplementedError(msg)
-
+    data = content if isinstance(content, bytes) else b"".join(content)
     file_dest = dest / to_upath(path).name
-    file_dest.write_bytes(content)
+    file_dest.write_bytes(data)
 
 
 @overload
@@ -142,14 +142,26 @@ def create_user_model(azure_user: Any) -> User: ...
 
 
 def create_user_model(azure_user: Any) -> User | None:
-    """Create User model from Azure DevOps identity object."""
+    """Create User model from Azure DevOps identity dict, IdentityRef, or GitUserDate."""
     if not azure_user:
         return None
+    if isinstance(azure_user, dict):
+        return User(
+            username=azure_user.get("uniqueName", "") or azure_user.get("displayName", ""),
+            name=azure_user.get("displayName", ""),
+            email=azure_user.get("mailAddress", ""),
+            avatar_url=azure_user.get("imageUrl", ""),
+        )
+    # Handle IdentityRef (unique_name, display_name, image_url) and GitUserDate (name, email)
+    display_name = getattr(azure_user, "display_name", None) or getattr(azure_user, "name", "")
+    username = getattr(azure_user, "unique_name", None) or display_name or ""
+    email = getattr(azure_user, "email", None) or getattr(azure_user, "mail_address", "")
+    avatar_url = getattr(azure_user, "image_url", "") or ""
     return User(
-        username=azure_user.get("uniqueName", ""),
-        name=azure_user.get("displayName", ""),
-        email=azure_user.get("mailAddress", ""),
-        avatar_url=azure_user.get("imageUrl", ""),
+        username=username,
+        name=display_name or "",
+        email=email or "",
+        avatar_url=avatar_url,
     )
 
 
@@ -170,8 +182,8 @@ def create_pull_request_model(pr: GitPullRequest) -> PullRequest:
         title=pr.title or "unknown",
         description=pr.description or "",
         state=pr.status,
-        source_branch=pr.source_ref_name.split("/")[-1],  # type: ignore
-        target_branch=pr.target_ref_name.split("/")[-1],  # type: ignore
+        source_branch=(pr.source_ref_name or "").removeprefix("refs/heads/"),
+        target_branch=(pr.target_ref_name or "").removeprefix("refs/heads/"),
         created_at=pr.creation_date,
         updated_at=None,  # Not directly provided by Azure DevOps
         merged_at=pr.closed_date if pr.status == "completed" else None,
@@ -184,6 +196,15 @@ def create_pull_request_model(pr: GitPullRequest) -> PullRequest:
     )
 
 
+def _parse_azure_datetime(value: Any) -> Any:
+    """Parse Azure DevOps ISO datetime string if needed."""
+    from datetime import datetime
+
+    if isinstance(value, str):
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return value
+
+
 def create_issue_model(work_item: AzureWorkItem) -> Issue:
     """Create Issue model from Azure DevOps work item object."""
     fields = work_item.fields
@@ -193,8 +214,8 @@ def create_issue_model(work_item: AzureWorkItem) -> Issue:
         title=fields["System.Title"],
         description=fields.get("System.Description", ""),
         state=fields["System.State"],
-        created_at=fields["System.CreatedDate"],
-        updated_at=fields.get("System.ChangedDate"),
+        created_at=_parse_azure_datetime(fields.get("System.CreatedDate")),
+        updated_at=_parse_azure_datetime(fields.get("System.ChangedDate")),
         closed_at=None,  # Not directly provided
         closed=fields["System.State"] in ["Closed", "Resolved"],
         author=create_user_model(fields.get("System.CreatedBy")),
@@ -224,11 +245,23 @@ def create_commit_model(commit: GitCommit) -> Commit:
         if commit.committer
         else None
     )
+    counts = commit.change_counts
+    if isinstance(counts, dict):
+        additions = counts.get("Add", counts.get("add", 0))
+        deletions = counts.get("Delete", counts.get("delete", 0))
+        edits = counts.get("Edit", counts.get("edit", 0))
+    else:
+        additions = getattr(counts, "add", 0) if counts else 0
+        deletions = getattr(counts, "delete", 0) if counts else 0
+        edits = getattr(counts, "edit", 0) if counts else 0
     stats = {
-        "additions": commit.change_counts.add if commit.change_counts else 0,
-        "deletions": commit.change_counts.delete if commit.change_counts else 0,
-        "total": commit.change_counts.edit if commit.change_counts else 0,
+        "additions": additions,
+        "deletions": deletions,
+        "total": additions + deletions + edits,
     }
+    parents = [
+        p if isinstance(p, str) else getattr(p, "commit_id", str(p)) for p in (commit.parents or [])
+    ]
     return Commit(
         sha=commit.commit_id or "",
         message=commit.comment or "",
@@ -237,7 +270,7 @@ def create_commit_model(commit: GitCommit) -> Commit:
         committer=committer,
         url=commit.url,
         stats=stats,
-        parents=[p.commit_id for p in commit.parents] if commit.parents else [],
+        parents=parents,
     )
 
 

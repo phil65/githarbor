@@ -34,8 +34,6 @@ if TYPE_CHECKING:
         Release,
         Tag,
         User,
-        Workflow,
-        WorkflowRun,
     )
 
 StrPath = str | os.PathLike[str]
@@ -109,7 +107,7 @@ class GiteaRepository(BaseRepository):
     @giteatools.handle_api_errors("Failed to get repository owner info")
     def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
-        user = self._user_api.user_get_current()
+        user = self._user_api.user_get(self._owner)
         return giteatools.create_user_model(user)
 
     @giteatools.handle_api_errors("Failed to get pull request")
@@ -193,44 +191,48 @@ class GiteaRepository(BaseRepository):
         max_results: int | None = None,
     ) -> list[Commit]:
         """List repository commits with optional filters."""
+        if path:
+            msg = "Filtering commits by path is not supported for Gitea"
+            raise FeatureNotSupportedError(msg)
         kwargs: dict[str, Any] = {}
         if branch:
             kwargs["sha"] = branch
-        if since:
-            kwargs["since"] = since.isoformat()
-        if until:
-            kwargs["until"] = until.isoformat()
-        if path:
-            kwargs["path"] = path
-        if max_results:
-            kwargs["limit"] = max_results
 
         commits = self._repo_api.repo_get_all_commits(self._owner, self._name, **kwargs)
         assert isinstance(commits, list)
 
+        models = [giteatools.create_commit_model(commit) for commit in commits]
+        if since:
+            models = [m for m in models if m.created_at and m.created_at >= since]
+        if until:
+            models = [m for m in models if m.created_at and m.created_at <= until]
         if author:
-            commits = [
-                c for c in commits if author in (c.commit.author.name or c.commit.author.email)
+            models = [
+                m
+                for m in models
+                if m.author
+                and (author in (m.author.name or "") or author in (m.author.email or ""))
             ]
+        if max_results:
+            models = models[:max_results]
 
-        return [giteatools.create_commit_model(commit) for commit in commits]
-
-    def get_workflow(self, workflow_id: str) -> Workflow:
-        raise NotImplementedError
-
-    def list_workflows(self) -> list[Workflow]:
-        raise NotImplementedError
-
-    def get_workflow_run(self, run_id: str) -> WorkflowRun:
-        raise NotImplementedError
+        return models
 
     @giteatools.handle_api_errors("Failed to download file")
     def download(self, path: str, destination: JoinablePathLike, recursive: bool = False) -> None:
         """Download repository contents."""
+        import base64
+
         from upathtools import to_upath
 
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
+
+        def _decode_content(file_content: Any) -> bytes:
+            raw = file_content.content or ""
+            if getattr(file_content, "encoding", "base64") == "base64":
+                return base64.b64decode(raw)
+            return raw.encode()
 
         if recursive:
             contents = self._list_contents(str(path), self.default_branch)
@@ -245,7 +247,7 @@ class GiteaRepository(BaseRepository):
                     )
                     file_dest = dest / content.path
                     file_dest.parent.mkdir(exist_ok=True, parents=True)
-                    file_dest.write_bytes(file_content.content.encode())
+                    file_dest.write_bytes(_decode_content(file_content))
         else:
             content = self._repo_api.repo_get_contents(
                 self._owner,
@@ -254,7 +256,7 @@ class GiteaRepository(BaseRepository):
                 ref=self.default_branch,
             )
             file_dest = dest / to_upath(path).name
-            file_dest.write_bytes(content.content.encode())
+            file_dest.write_bytes(_decode_content(content))
 
     @giteatools.handle_api_errors("Failed to search commits")
     def search_commits(
@@ -349,14 +351,15 @@ class GiteaRepository(BaseRepository):
         include_prereleases: bool = False,
     ) -> Release:
         """Get the latest repository release."""
-        kwargs = {"draft": include_drafts, "pre_release": include_prereleases}
-        releases = self._repo_api.repo_list_releases(self._owner, self._name, per_page=1, **kwargs)
-
+        releases = self.list_releases(
+            include_drafts=include_drafts,
+            include_prereleases=include_prereleases,
+            limit=1,
+        )
         if not releases:
             msg = "No matching releases found"
             raise ResourceNotFoundError(msg)
-        assert isinstance(releases, list), f"Expected list, got {type(releases)}"
-        return giteatools.create_release_model(releases[0])
+        return releases[0]
 
     @giteatools.handle_api_errors("Failed to list releases")
     def list_releases(
@@ -366,21 +369,26 @@ class GiteaRepository(BaseRepository):
         limit: int | None = None,
     ) -> list[Release]:
         """List repository releases."""
-        kwargs = {"per_page": limit} if limit else {}
-        results = self._repo_api.repo_list_releases(self._owner, self._name, **kwargs)
+        results = self._repo_api.repo_list_releases(self._owner, self._name)
         assert isinstance(results, list)
-        return [
+        filtered = [
             giteatools.create_release_model(release)
             for release in results
-            if ((release.draft and include_drafts) or not release.draft)
-            and ((release.prerelease and include_prereleases) or not release.prerelease)
+            if (include_drafts or not release.draft)
+            and (include_prereleases or not release.prerelease)
         ]
+        return filtered[:limit] if limit else filtered
 
     @giteatools.handle_api_errors("Failed to get release")
     def get_release(self, tag: str) -> Release:
         """Get a specific release by tag."""
-        release = self._repo_api.repo_get_release(self._owner, self._name, tag)
-        return giteatools.create_release_model(release)
+        results = self._repo_api.repo_list_releases(self._owner, self._name)
+        assert isinstance(results, list)
+        for release in results:
+            if release.tag_name == tag:
+                return giteatools.create_release_model(release)
+        msg = f"Release with tag {tag!r} not found"
+        raise ResourceNotFoundError(msg)
 
     @giteatools.handle_api_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
@@ -397,19 +405,6 @@ class GiteaRepository(BaseRepository):
                 return giteatools.create_tag_model(tag)
         msg = f"Tag {name!r} not found"
         raise ResourceNotFoundError(msg)
-
-    def get_languages(self) -> dict[str, int]:
-        raise NotImplementedError
-
-    def compare_branches(
-        self,
-        base: str,
-        head: str,
-        include_commits: bool = True,
-        include_files: bool = True,
-        include_stats: bool = True,
-    ) -> dict[str, Any]:
-        raise NotImplementedError
 
     @giteatools.handle_api_errors("Failed to create pull request")
     def create_pull_request(

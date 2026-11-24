@@ -88,8 +88,11 @@ class GitLabRepository(BaseRepository):
     @gitlabtools.handle_gitlab_errors("Failed to get user info")
     def get_repo_user(self) -> User:
         """Get user (repository owner) information."""
-        user = self._gl.users.list(username=self._owner)[0]
-        return gitlabtools.create_user_model(user)
+        users = self._gl.users.list(username=self._owner)
+        if not users:
+            msg = f"User {self._owner!r} not found"
+            raise ResourceNotFoundError(msg)
+        return gitlabtools.create_user_model(users[0])
 
     @gitlabtools.handle_gitlab_errors("Branch {name} not found")
     def get_branch(self, name: str) -> Branch:
@@ -109,7 +112,8 @@ class GitLabRepository(BaseRepository):
 
     @gitlabtools.handle_gitlab_errors("Failed to list merge requests")
     def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
-        mrs = self._repo.mergerequests.list(state=state, all=True)
+        gl_state = "opened" if state == "open" else state
+        mrs = self._repo.mergerequests.list(state=gl_state, get_all=True)
         return [gitlabtools.create_pull_request_model(mr) for mr in mrs]
 
     @gitlabtools.handle_gitlab_errors("Failed to list branches")
@@ -124,9 +128,8 @@ class GitLabRepository(BaseRepository):
 
     @gitlabtools.handle_gitlab_errors("Failed to list issues")
     def list_issues(self, state: IssueState = "open") -> list[Issue]:
-        if state == "open":
-            state = "opened"  # type: ignore
-        issues = self._repo.issues.list(state=state, all=True)
+        gl_state = "opened" if state == "open" else state
+        issues = self._repo.issues.list(state=gl_state, get_all=True)
         return [gitlabtools.create_issue_model(issue) for issue in issues]
 
     @gitlabtools.handle_gitlab_errors("Failed to create issue")
@@ -179,7 +182,7 @@ class GitLabRepository(BaseRepository):
             kwargs["per_page"] = max_results
             kwargs["page"] = 1
         else:
-            kwargs["all"] = True
+            kwargs["get_all"] = True
 
         commits = self._repo.commits.list(**kwargs)
         # Convert to list to materialize the results
@@ -239,7 +242,12 @@ class GitLabRepository(BaseRepository):
             kwargs["path"] = path
         if max_results:
             kwargs["per_page"] = max_results
-        commits = self._repo.commits.list(search=query, get_all=True, **kwargs)
+            kwargs["page"] = 1
+        else:
+            kwargs["get_all"] = True
+        commits = list(self._repo.commits.list(search=query, **kwargs))
+        if max_results:
+            commits = commits[:max_results]
         return [gitlabtools.create_commit_model(commit) for commit in commits]
 
     @gitlabtools.handle_gitlab_errors("Failed to iter files from {path}")
@@ -261,15 +269,24 @@ class GitLabRepository(BaseRepository):
         sort_by: Literal["commits", "name", "date"] = "commits",
         limit: int | None = None,
     ) -> list[User]:
-        contributors = self._repo.users.list(include_stats=True)
+        order_by = "name" if sort_by == "name" else "commits"
+        sort_dir = "asc" if sort_by == "name" else "desc"
+        contributors = self._repo.repository_contributors(
+            order_by=order_by,
+            sort=sort_dir,
+            get_all=True,
+        )
         assert isinstance(contributors, list)
-        if sort_by == "name":
-            contributors = sorted(contributors, key=lambda c: c.username)
-        elif sort_by == "date":
-            contributors = sorted(contributors, key=lambda c: c.created_at)
-        contributors = contributors[:limit] if limit else contributors
-        items = [gitlabtools.create_user_model(c) for c in contributors]
-        return [i for i in items if i is not None]
+        if limit:
+            contributors = contributors[:limit]
+        return [
+            User(
+                username=c["name"],
+                name=c["name"],
+                email=c.get("email"),
+            )
+            for c in contributors
+        ]
 
     @gitlabtools.handle_gitlab_errors("Failed to get languages")
     def get_languages(self) -> dict[str, int]:
@@ -390,13 +407,12 @@ class GitLabRepository(BaseRepository):
         base_branch: str,
         draft: bool = False,
     ) -> PullRequest:
+        mr_title = f"Draft: {title}" if draft and not title.startswith("Draft:") else title
         mr = self._repo.mergerequests.create({
-            "title": title,
+            "title": mr_title,
             "description": body,
             "source_branch": head_branch,
             "target_branch": base_branch,
-            # GitLab uses "work_in_progress" instead of "draft"
-            "work_in_progress": draft,
         })
         return gitlabtools.create_pull_request_model(mr)
 

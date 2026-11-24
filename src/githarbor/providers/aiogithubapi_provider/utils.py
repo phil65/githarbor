@@ -179,6 +179,7 @@ async def download_from_github(
     path: str | os.PathLike[str],
     destination: JoinablePathLike,
     token: str | None = None,
+    branch: str = "main",
     recursive: bool = False,
 ) -> None:
     """Download files from GitHub repository."""
@@ -189,7 +190,7 @@ async def download_from_github(
     dest = to_upath(destination)
     dest.mkdir(exist_ok=True, parents=True)
 
-    url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}"
+    url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
     headers = {"Authorization": f"token {token}"} if token else {}
 
     async with aiohttp.ClientSession() as session:

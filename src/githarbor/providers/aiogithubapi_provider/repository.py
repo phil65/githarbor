@@ -34,6 +34,7 @@ class AioGitHubRepository(BaseRepository):
     """GitHub repository implementation using aiogithubapi."""
 
     url_patterns: ClassVar[list[str]] = ["github.com"]
+    is_async: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -48,18 +49,24 @@ class AioGitHubRepository(BaseRepository):
             name: Repository name
             token: GitHub access token
         """
-        try:
-            t = token or os.getenv("GITHUB_TOKEN")
-            assert t, "GitHub token is required"
-            self._gh = GitHubAPI(token=t)
-            self._token = t
-            self._owner = owner
-            self._name = name
-            self._repo = None
+        t = token or os.getenv("GITHUB_TOKEN")
+        assert t, "GitHub token is required"
+        self._gh_client: GitHubAPI | None = None
+        self._token = t
+        self._owner = owner
+        self._name = name
+        self._repo = None
 
-        except GitHubAuthenticationException as e:
-            msg = f"GitHub authentication failed: {e}"
-            raise AuthenticationError(msg) from e
+    @property
+    def _gh(self) -> GitHubAPI:
+        """Lazily create the async GitHubAPI client inside a running event loop."""
+        if self._gh_client is None:
+            try:
+                self._gh_client = GitHubAPI(token=self._token)
+            except GitHubAuthenticationException as e:
+                msg = f"GitHub authentication failed: {e}"
+                raise AuthenticationError(msg) from e
+        return self._gh_client
 
     @classmethod
     def from_url(cls, url: str, **kwargs: Any) -> AioGitHubRepository:
@@ -109,8 +116,7 @@ class AioGitHubRepository(BaseRepository):
     async def list_issues_async(self, state: IssueState = "open") -> list[Issue]:
         """List repository issues."""
         repo = f"{self._owner}/{self._name}"
-        params = {GitHubRequestKwarg.QUERY: {"state": state}}
-        response = await self._gh.repos.issues.list(repo, params=params)
+        response = await self._gh.repos.issues.list(repo, params={"state": state})  # ty: ignore[invalid-argument-type]
         return [aiogithubapitools.create_issue_model(i) for i in response.data or []]
 
     async def create_issue_async(
@@ -121,7 +127,6 @@ class AioGitHubRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        from aiogithubapi import GitHubRequestKwarg
         from aiogithubapi.github import HttpMethod
 
         data = {
@@ -138,14 +143,17 @@ class AioGitHubRepository(BaseRepository):
 
     async def get_pull_request_async(self, number: int) -> PullRequest:
         """Get pull request by number."""
+        from aiogithubapi.models.pull_request import GitHubPullRequestModel
+
         try:
-            repo = f"{self._owner}/{self._name}"
-            params = {GitHubRequestKwarg.QUERY: {"number": number}}
-            response = await self._gh.repos.pulls.list(repo, params=params)
+            endpoint = f"/repos/{self._owner}/{self._name}/pulls/{number}"
+            response = await self._gh.generic(endpoint=endpoint)
             if not response.data:
                 msg = f"Pull request #{number} not found"
                 raise ResourceNotFoundError(msg)
-            return aiogithubapitools.create_pull_request_model(response.data[0])
+            return aiogithubapitools.create_pull_request_model(
+                GitHubPullRequestModel(response.data)
+            )
         except GitHubException as e:
             msg = f"Failed to get pull request #{number}: {e}"
             raise ResourceNotFoundError(msg) from e
@@ -153,8 +161,7 @@ class AioGitHubRepository(BaseRepository):
     async def list_pull_requests_async(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
         repo = f"{self._owner}/{self._name}"
-        params = {GitHubRequestKwarg.QUERY: {"state": state}}
-        response = await self._gh.repos.pulls.list(repo, params=params)
+        response = await self._gh.repos.pulls.list(repo, params={"state": state})  # ty: ignore[invalid-argument-type]
         return [aiogithubapitools.create_pull_request_model(pr) for pr in response.data or []]
 
     # async def list_branches_async(self) -> list[Branch]:
@@ -215,10 +222,12 @@ class AioGitHubRepository(BaseRepository):
         recursive: bool = False,
     ) -> None:
         """Download repository content."""
+        await self._ensure_repo()
         await aiogithubapitools.download_from_github(
             repository=f"{self._owner}/{self._name}",
             path=path,
             destination=destination,
             token=self._token,
+            branch=self.default_branch,
             recursive=recursive,
         )

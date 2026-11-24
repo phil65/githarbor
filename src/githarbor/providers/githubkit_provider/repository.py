@@ -231,10 +231,11 @@ class GitHubKitRepository(BaseRepository):
             search_query += f" ref:{branch}"
         if path:
             search_query += f" path:{path}"
-        if max_results:
-            search_query += f" per_page:{max_results}"
 
-        resp = await self._gh.rest.search.async_commits(q=search_query)
+        kwargs: dict[str, Any] = {"q": search_query}
+        if max_results:
+            kwargs["per_page"] = max_results
+        resp = await self._gh.rest.search.async_commits(**kwargs)
         return [githubkittools.create_commit_model(c.commit) for c in resp.parsed_data.items]
 
     @githubkittools.handle_githubkit_errors("Failed to get languages")
@@ -331,9 +332,14 @@ class GitHubKitRepository(BaseRepository):
     @githubkittools.handle_githubkit_errors("Failed to get tag {name}")
     async def get_tag_async(self, name: str) -> Tag:
         """Get tag by name."""
-        resp = await self._gh.rest.git.async_get_tag(self._owner, self._name, name)
-        data = resp.parsed_data
-        return githubkittools.create_tag_model(data)
+        from githarbor.core.models import Tag
+
+        ref_resp = await self._gh.rest.git.async_get_ref(self._owner, self._name, f"tags/{name}")
+        obj = ref_resp.parsed_data.object_
+        if obj.type == "tag":
+            resp = await self._gh.rest.git.async_get_tag(self._owner, self._name, obj.sha)
+            return githubkittools.create_tag_model(resp.parsed_data)
+        return Tag(name=name, sha=obj.sha, url=obj.url)
 
     @githubkittools.handle_githubkit_errors("Failed to list tags")
     async def list_tags_async(self) -> list[Tag]:

@@ -26,11 +26,8 @@ if TYPE_CHECKING:
         Commit,
         Issue,
         PullRequest,
-        Release,
         Tag,
         User,
-        Workflow,
-        WorkflowRun,
     )
 
 StrPath = str | os.PathLike[str]
@@ -112,14 +109,18 @@ class PyGiteaRepository(BaseRepository):
         user = gitea.User.request(self._gitea, self._owner)
         return pygiteatools.create_user_model(user)
 
+    def _get_issues_by_state(self, state: str) -> list[Any]:
+        """Fetch issues for open, closed, or all states."""
+        if state == "all":
+            return self._repo.get_issues_state("open") + self._repo.get_issues_state("closed")
+        return self._repo.get_issues_state(state)
+
     @pygiteatools.handle_api_errors("Failed to get pull request")
     def get_pull_request(self, number: int) -> PullRequest:
         """Get a specific pull request by number."""
-        # Note: py-gitea doesn't have a direct PullRequest class
-        # We need to use the repository API to get pull requests
-        prs = self._repo.get_issues_state("open") + self._repo.get_issues_state("closed")
+        prs = self._get_issues_by_state("all")
         for pr in prs:
-            if pr.number == number:
+            if pr.pull_request and pr.number == number:
                 return pygiteatools.create_pull_request_model(pr)
         msg = f"Pull request #{number} not found"
         raise ResourceNotFoundError(msg)
@@ -127,9 +128,7 @@ class PyGiteaRepository(BaseRepository):
     @pygiteatools.handle_api_errors("Failed to list pull requests")
     def list_pull_requests(self, state: PullRequestState = "open") -> list[PullRequest]:
         """List pull requests."""
-        # py-gitea treats pull requests as issues with additional metadata
-        issues = self._repo.get_issues_state(state)
-        # Filter for pull requests (issues that are actually PRs)
+        issues = self._get_issues_by_state(state)
         prs = [issue for issue in issues if issue.pull_request]
         return [pygiteatools.create_pull_request_model(pr) for pr in prs]
 
@@ -150,7 +149,7 @@ class PyGiteaRepository(BaseRepository):
     @pygiteatools.handle_api_errors("Failed to list issues")
     def list_issues(self, state: IssueState = "open") -> list[Issue]:
         """List repository issues."""
-        issues = self._repo.get_issues_state(state)
+        issues = self._get_issues_by_state(state)
         return [pygiteatools.create_issue_model(issue) for issue in issues]
 
     @pygiteatools.handle_api_errors("Failed to create issue")
@@ -162,7 +161,18 @@ class PyGiteaRepository(BaseRepository):
         assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
-        issue = self._repo.create_issue(title=title, description=body, assignees=assignees or [])
+        import gitea
+
+        assignee_users = (
+            {gitea.User.request(self._gitea, username) for username in assignees}
+            if assignees
+            else None
+        )
+        issue = self._repo.create_issue(
+            title=title,
+            description=body,
+            assignees=assignee_users,
+        )
         return pygiteatools.create_issue_model(issue)
 
     @pygiteatools.handle_api_errors("Failed to get commit")
@@ -201,72 +211,43 @@ class PyGiteaRepository(BaseRepository):
 
         return [pygiteatools.create_commit_model(commit) for commit in commits]
 
-    def get_workflow(self, workflow_id: str) -> Workflow:
-        """Get workflow - not supported by py-gitea."""
-        msg = "Workflows are not supported by py-gitea"
-        raise NotImplementedError(msg)
-
-    def list_workflows(self) -> list[Workflow]:
-        """List workflows - not supported by py-gitea."""
-        msg = "Workflows are not supported by py-gitea"
-        raise NotImplementedError(msg)
-
-    def get_workflow_run(self, run_id: str) -> WorkflowRun:
-        """Get workflow run - not supported by py-gitea."""
-        msg = "Workflow runs are not supported by py-gitea"
-        raise NotImplementedError(msg)
-
     @pygiteatools.handle_api_errors("Failed to download file")
     def download(self, path: str, destination: JoinablePathLike, recursive: bool = False):
         """Download repository contents."""
+        import base64
+
         from upathtools import to_upath
 
         dest = to_upath(destination)
         dest.mkdir(exist_ok=True, parents=True)
 
-        try:
-            content = self._repo.get_git_content()
+        content = self._repo.get_git_content()
 
-            if recursive:
-                for file_content in content:
-                    if file_content.type == "file":
-                        file_data = self._repo.get_file_content(file_content)
-                        file_dest = dest / file_content.path
-                        file_dest.parent.mkdir(exist_ok=True, parents=True)
+        def _write_file(file_dest: Any, file_data: Any) -> None:
+            if not isinstance(file_data, str):
+                msg = f"Unexpected directory or non-file content for {file_dest}"
+                raise ResourceNotFoundError(msg)
+            try:
+                content_bytes = base64.b64decode(file_data)
+                file_dest.write_bytes(content_bytes)
+            except Exception:  # noqa: BLE001
+                file_dest.write_text(file_data)
 
-                        # Decode base64 content if needed
-                        import base64
-
-                        try:
-                            content_bytes = base64.b64decode(file_data)
-                            file_dest.write_bytes(content_bytes)
-                        except Exception:  # noqa: BLE001
-                            # If not base64, write as text
-                            file_dest.write_text(file_data)
-            else:
-                # Find specific file
-                target_file = None
-                for file_content in content:
-                    if file_content.path == path:
-                        target_file = file_content
-                        break
-
-                if target_file:
-                    file_data = self._repo.get_file_content(target_file)
-                    file_dest = dest / to_upath(path).name
-
-                    import base64
-
-                    try:
-                        content_bytes = base64.b64decode(file_data)
-                        file_dest.write_bytes(content_bytes)
-                    except Exception:  # noqa: BLE001
-                        file_dest.write_text(file_data)
-
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Download failed, using fallback method: %s", e)
-            # Fallback - create empty file
-            (dest / to_upath(path).name).touch()
+        if recursive:
+            for file_content in content:
+                if file_content.type == "file":
+                    file_data = self._repo.get_file_content(file_content)
+                    file_dest = dest / file_content.path
+                    file_dest.parent.mkdir(exist_ok=True, parents=True)
+                    _write_file(file_dest, file_data)
+        else:
+            target_file = next((fc for fc in content if fc.path == path), None)
+            if not target_file:
+                msg = f"File {path!r} not found"
+                raise ResourceNotFoundError(msg)
+            file_data = self._repo.get_file_content(target_file)
+            file_dest = dest / to_upath(path).name
+            _write_file(file_dest, file_data)
 
     @pygiteatools.handle_api_errors("Failed to search commits")
     def search_commits(
@@ -323,7 +304,9 @@ class PyGiteaRepository(BaseRepository):
         for commit in commits:
             if commit.author:
                 username = commit.author.username
-                if username and username not in contributors:
+                if not username:
+                    continue
+                if username not in contributors:
                     contributors[username] = {"user": commit.author, "commits": 0}
                 contributors[username]["commits"] += 1
 
@@ -339,68 +322,11 @@ class PyGiteaRepository(BaseRepository):
 
         return [pygiteatools.create_user_model(c["user"]) for c in contributor_list]
 
-    def get_languages(self) -> dict[str, int]:
-        """Get repository languages - not supported by py-gitea."""
-        msg = "Language statistics are not supported by py-gitea"
-        raise NotImplementedError(msg)
-
-    def compare_branches(
-        self,
-        base: str,
-        head: str,
-        include_commits: bool = True,
-        include_files: bool = True,
-        include_stats: bool = True,
-    ) -> dict[str, Any]:
-        """Compare branches - not supported by py-gitea."""
-        msg = "Branch comparison is not supported by py-gitea"
-        raise NotImplementedError(msg)
-
-    @pygiteatools.handle_api_errors("Failed to get latest release")
-    def get_latest_release(
-        self,
-        include_drafts: bool = False,
-        include_prereleases: bool = False,
-    ) -> Release:
-        """Get the latest repository release."""
-        releases = self.list_releases(
-            include_drafts=include_drafts,
-            include_prereleases=include_prereleases,
-            limit=1,
-        )
-        if not releases:
-            msg = "No releases found"
-            raise ResourceNotFoundError(msg)
-        return releases[0]
-
-    @pygiteatools.handle_api_errors("Failed to list releases")
-    def list_releases(
-        self,
-        include_drafts: bool = False,
-        include_prereleases: bool = False,
-        limit: int | None = None,
-    ) -> list[Release]:
-        """List repository releases - limited support in py-gitea."""
-        # py-gitea may not have direct release support
-        # This is a placeholder implementation
-        logger.warning("Release support in py-gitea is limited")
-        return []
-
-    @pygiteatools.handle_api_errors("Failed to get release")
-    def get_release(self, tag: str) -> Release:
-        """Get a specific release by tag."""
-        releases = self.list_releases()
-        for release in releases:
-            if release.tag_name == tag:
-                return release
-        msg = f"Release with tag '{tag}' not found"
-        raise ResourceNotFoundError(msg)
-
     @pygiteatools.handle_api_errors("Failed to list tags")
     def list_tags(self) -> list[Tag]:
-        """List all repository tags - limited support in py-gitea."""
-        logger.warning("Tag support in py-gitea is limited")
-        return []
+        """List all repository tags."""
+        tags = self._repo.get_tags()
+        return [pygiteatools.create_tag_model(tag) for tag in tags]
 
     @pygiteatools.handle_api_errors("Failed to get tag")
     def get_tag(self, name: str) -> Tag:
@@ -412,48 +338,26 @@ class PyGiteaRepository(BaseRepository):
         msg = f"Tag '{name}' not found"
         raise ResourceNotFoundError(msg)
 
-    @pygiteatools.handle_api_errors("Failed to create pull request")
-    def create_pull_request(
-        self,
-        title: str,
-        body: str,
-        head_branch: str,
-        base_branch: str,
-        draft: bool = False,
-    ) -> PullRequest:
-        """Create pull request - limited support in py-gitea."""
-        if draft:
-            logger.warning("Draft pull requests are not supported by py-gitea")
-
-        # py-gitea doesn't have direct PR creation in the simple API
-        # This would require more complex API calls
-        msg = "Pull request creation is not fully supported by py-gitea"
-        raise NotImplementedError(msg)
-
+    @pygiteatools.handle_api_errors("Failed to create branch")
     def create_branch(
         self,
         name: str,
         base_commit: str,
     ) -> Branch:
-        """Create a new branch - limited support in py-gitea."""
-        try:
-            # py-gitea has add_branch method but requires a Branch object as source
-            branches = self._repo.get_branches()
-            base_branch = None
-            for branch in branches:
-                if branch.commit and branch.commit.get("id") == base_commit:
-                    base_branch = branch
-                    break
+        """Create a new branch."""
+        branches = self._repo.get_branches()
+        base_branch = None
+        for branch in branches:
+            if branch.commit and branch.commit.get("id") == base_commit:
+                base_branch = branch
+                break
 
-            if not base_branch:
-                msg = f"Base commit {base_commit} not found in any branch"
-                raise ResourceNotFoundError(msg)  # noqa: TRY301
+        if not base_branch:
+            msg = f"Base commit {base_commit} not found in any branch"
+            raise ResourceNotFoundError(msg)
 
-            new_branch = self._repo.add_branch(base_branch, name)
-            return pygiteatools.create_branch_model(new_branch)
-        except Exception as e:
-            msg = f"Branch creation failed: {e}"
-            raise NotImplementedError(msg) from e
+        new_branch = self._repo.add_branch(base_branch, name)
+        return pygiteatools.create_branch_model(new_branch)
 
 
 if __name__ == "__main__":
