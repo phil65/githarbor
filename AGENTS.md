@@ -76,6 +76,18 @@ Linux/macOS/Windows; 3.14 is `continue-on-error`. Tags trigger the PyPI release 
   `FeatureNotSupportedError`, ...), usually via the error-handling decorator in their `utils.py` (`handle_github_errors`, `handle_api_errors`, ...).
 - Type-check suppressions: `# ty: ignore[rule]` with a rule name; no blanket `# type: ignore`.
 
+## Specs
+
+Hosting APIs are used through third-party SDKs (extras in `pyproject.toml`); none is pinned to an API version beyond what the SDK sends.
+
+| Spec | URL | Targets | Code | Update check |
+|---|---|---|---|---|
+| GitHub REST API (via PyGithub, githubkit, aiogithubapi) | https://docs.github.com/en/rest | unpinned (SDK default REST API version) | `src/githarbor/providers/github_provider/`, `githubkit_provider/`, `aiogithubapi_provider/` | https://docs.github.com/en/rest/about-the-rest-api/api-versions |
+| GitLab REST API v4 (via python-gitlab) | https://docs.gitlab.com/api/rest/ | API v4 | `src/githarbor/providers/gitlab_provider/` | same URL |
+| Gitea / Codeberg API v1 (via giteapy, py-gitea) | https://gitea.com/api/swagger | API v1 (`/api/v1`) | `src/githarbor/providers/gitea_provider/`, `pygitea_provider/` | https://docs.gitea.com/api/1.24/ |
+| Azure DevOps REST API (via azure-devops) | https://learn.microsoft.com/en-us/rest/api/azure/devops/ | unpinned (SDK default api-version) | `src/githarbor/providers/azure_provider/` | same URL |
+| Model Context Protocol (server, via fastmcp) | https://modelcontextprotocol.io/specification/latest | unpinned (follows the installed `mcp` SDK) | `src/githarbor/mcp_server.py` | same URL |
+
 ## Pitfalls
 
 - Copier-managed (template `copier-phil65`): `.github/workflows/*`, `.pre-commit-config.yaml`,

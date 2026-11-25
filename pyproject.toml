@@ -50,6 +50,11 @@ Documentation = "https://phil65.github.io/githarbor/"
 Homepage = "https://github.com/phil65/githarbor"
 Issues = "https://github.com/phil65/githarbor/issues"
 Source = "https://github.com/phil65/githarbor"
+"Spec: Azure DevOps REST" = "https://learn.microsoft.com/en-us/rest/api/azure/devops/"
+"Spec: GitHub REST" = "https://docs.github.com/en/rest"
+"Spec: GitLab REST" = "https://docs.gitlab.com/api/rest/"
+"Spec: Gitea API" = "https://gitea.com/api/swagger"
+"Spec: MCP" = "https://modelcontextprotocol.io/specification/latest"
 
 [project.scripts]
 githarbor = "githarbor.mcp_server:main"
