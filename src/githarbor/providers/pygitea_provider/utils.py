@@ -207,7 +207,7 @@ def _parse_datetime(dt_str: str | None) -> datetime | None:
             return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
         # Fallback to basic ISO format
         return datetime.fromisoformat(dt_str)
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         logger.warning("Failed to parse datetime: %s", dt_str)
         return None
 

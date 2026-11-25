@@ -761,7 +761,7 @@ class Repository(BaseRepository):
             return self._repository.get_recent_activity(  # ty: ignore[missing-attribute]
                 days, include_commits, include_prs, include_issues
             )
-        except (NotImplementedError, AttributeError):
+        except NotImplementedError, AttributeError:
             # Fall back to our composite implementation
             from datetime import UTC, datetime, timedelta
 
