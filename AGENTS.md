@@ -48,7 +48,7 @@ jinjarope extension that exposes the functional API as Jinja globals/filters.
 | Exceptions | `src/githarbor/exceptions.py` |
 | MCP tools / CLI args | `src/githarbor/mcp_server.py` |
 | Tests | `tests/` (`conftest.py` has model fixtures) |
-| Docs site config | `mkdocs.yml` (mkdocs-mknodes default site, `docs/` is empty) |
+| Docs site config | `mkdocs.yml` (mknodes default site, `docs/` is empty) |
 
 ## Commands
 
@@ -59,7 +59,7 @@ uv run pytest -m integration            # live API tests (need GITHUB_TOKEN / GI
 uv run ruff check . && uv run ruff format --check .
 uv run ty check                         # type check (src/ only); warnings fail CI
 uv run deptry src                       # dependency check
-uv run mkdocs-mknodes build             # docs build (same as CI)
+uv run mknodes build             # docs build (same as CI)
 duty lint | lint_check | test | build | serve | update | version <bump>  # duties.py; duty is not a project dependency
 ```
 
