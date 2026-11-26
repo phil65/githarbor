@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import annotationlib
 import functools
 import inspect
 import logging
@@ -63,7 +62,7 @@ def handle_github_errors[T, **P](
             from github.GithubException import GithubException
 
             # Extract parameter values from args/kwargs based on function signature
-            sig = inspect.signature(func)
+            sig = inspect.signature(func, annotation_format=annotationlib.Format.FORWARDREF)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
             params = {

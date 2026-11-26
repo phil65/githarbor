@@ -1,7 +1,5 @@
 """Azure DevOps repository implementation."""
 
-from __future__ import annotations
-
 import fnmatch
 import os
 from typing import TYPE_CHECKING, Any, ClassVar

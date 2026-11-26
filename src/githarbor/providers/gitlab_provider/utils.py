@@ -1,7 +1,6 @@
 """GitLab helper functions and utilities."""
 
-from __future__ import annotations
-
+import annotationlib
 from datetime import datetime
 import functools
 import inspect
@@ -59,7 +58,7 @@ def handle_gitlab_errors[T, **P](
             import gitlab.exceptions
 
             # Extract parameter values from args/kwargs based on function signature
-            sig = inspect.signature(func)
+            sig = inspect.signature(func, annotation_format=annotationlib.Format.FORWARDREF)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
             params = {

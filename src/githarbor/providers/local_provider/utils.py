@@ -1,7 +1,6 @@
 """Module containing helper functions for local repository operations."""
 
-from __future__ import annotations
-
+import annotationlib
 import functools
 import inspect
 import string
@@ -44,7 +43,7 @@ def handle_git_errors[T, **P](
             from git.exc import GitError
             from gitdb.exc import ODBError
 
-            sig = inspect.signature(func)
+            sig = inspect.signature(func, annotation_format=annotationlib.Format.FORWARDREF)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
             params = {

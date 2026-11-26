@@ -1,7 +1,5 @@
 """GitHarbor MCP Server - Expose GitHarbor functionality through MCP."""
 
-from __future__ import annotations
-
 import argparse
 import dataclasses
 import functools

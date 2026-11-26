@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 class GitHarborError(Exception):
     """Base exception for GitHarbor."""
 

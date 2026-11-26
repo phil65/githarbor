@@ -1,7 +1,5 @@
 """GitHub repository implementation using aiogithubapi."""
 
-from __future__ import annotations
-
 import os
 from typing import TYPE_CHECKING, Any, ClassVar
 

@@ -1,7 +1,6 @@
 """Azure DevOps helper functions and decorators."""
 
-from __future__ import annotations
-
+import annotationlib
 import functools
 import inspect
 import logging
@@ -62,7 +61,7 @@ def handle_azure_errors[T, **P](
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             from azure.devops.exceptions import AzureDevOpsServiceError
 
-            sig = inspect.signature(func)
+            sig = inspect.signature(func, annotation_format=annotationlib.Format.FORWARDREF)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
             params = {

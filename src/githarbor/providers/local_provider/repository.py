@@ -1,7 +1,5 @@
 """Module containing local repository implementation."""
 
-from __future__ import annotations
-
 import fnmatch
 import functools
 import pathlib

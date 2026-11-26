@@ -1,7 +1,5 @@
 """Module containing repository proxy implementation."""
 
-from __future__ import annotations
-
 import asyncio
 from typing import TYPE_CHECKING, Any, Literal
 

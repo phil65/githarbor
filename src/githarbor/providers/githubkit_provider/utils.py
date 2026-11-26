@@ -1,7 +1,6 @@
 """Tools for converting between GitHubKit and GitHarbor models."""
 
-from __future__ import annotations
-
+import annotationlib
 import functools
 import inspect
 from typing import TYPE_CHECKING, Any, overload
@@ -43,7 +42,7 @@ def handle_githubkit_errors[T, **P](
     }
 
     def _extract_params(func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]):
-        sig = inspect.signature(func)
+        sig = inspect.signature(func, annotation_format=annotationlib.Format.FORWARDREF)
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
         return {

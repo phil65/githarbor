@@ -1,7 +1,5 @@
 """Module containing the repository registry."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, ClassVar
 from weakref import WeakValueDictionary
 
