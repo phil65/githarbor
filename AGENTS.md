@@ -68,7 +68,7 @@ Linux/macOS/Windows; 3.14 is `continue-on-error`. Tags trigger the PyPI release 
 
 ## Conventions
 
-- Python >= 3.13, `from __future__ import annotations`, PEP 695 generics (`def f[**P, T]`).
+- Python >= 3.14, no `from __future__ import annotations` (PEP 649; banned via ruff TID251), PEP 695 generics (`def f[**P, T]`).
 - Ruff with a broad rule set, line length 100, Google-style docstrings.
 - Provider SDK imports happen lazily (inside functions/`__init__` or under `TYPE_CHECKING`), so
   importing any module works without that SDK installed. The docs build imports every submodule.
